@@ -16,7 +16,7 @@ export default {
      * Level (1: warning, 2: error) is "2" (error), which means commitlint will fail if
      * this rule is violated.
      * "always" means it always checks.
-     * The value "50" is the maximum number of characters allowed in the subject line.
+     * The value "72" is the maximum number of characters allowed in the subject line.
      */
     'header-max-length': [2, 'always', 72],
 

@@ -49,12 +49,12 @@ else
   FIXED_BODY=""
 fi
 
-# 4️⃣ Validate header length (max 50 characters)
+# 4️⃣ Validate header length (max 72 characters)
 HEADER_TEXT=$(echo "$HEADER" | cut -d " " -f2-)
 HEADER_LENGTH=${#HEADER_TEXT}
 
-if [ "$HEADER_LENGTH" -gt 50 ]; then
-  echo "❌ Commit header is too long! Max 50 characters allowed."
+if [ "$HEADER_LENGTH" -gt 72 ]; then
+  echo "❌ Commit header is too long! Max 72 characters allowed."
   exit 1
 fi
 
