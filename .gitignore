@@ -23,6 +23,10 @@ lib-cov
 coverage
 *.lcov
 
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+
 # nyc test coverage
 .nyc_output
 
@@ -65,6 +69,11 @@ web_modules/
 
 # Optional REPL history
 .node_repl_history
+
+# Editor and IDE configuration files
+.vscode/
+.idea/
+.history/
 
 # Output of 'npm pack'
 *.tgz
@@ -134,3 +143,18 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# System-specific and temporary files
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Deleted or temporary files
+**/*_del
+
+# Ignore all files that start with "---" AND do NOT contain a dot
+---*
+!---*.*
