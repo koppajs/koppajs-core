@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 echo "🚀 Running commit message validation..."
 
 # Check if `pnpm` is installed
@@ -6,45 +8,66 @@ if ! command -v pnpm &> /dev/null; then
   exit 1
 fi
 
-# Read the commit message from the file
+# Read the commit message from the file passed as the first argument
 COMMIT_MSG=$(cat "$1")
 
-# 1️⃣ **Auto-fix: Convert only the first letter after type to sentence case**
+# 1️⃣ Auto-fix: Capitalize the first letter after the type (sentence-case)
 CORRECTED_MSG=$(echo "$COMMIT_MSG" | sed -E "s/^([^:]+: )(.)(.*)/\1$(echo \2 | tr '[:lower:]' '[:upper:]')\3/")
 
-if [ "$COMMIT_MSG" != "$CORRECTED_MSG" ]; then
-  echo "🔄 Auto-fixing commit message case..."
-  echo "$CORRECTED_MSG" > "$1"
+# 2️⃣ Separate header, body, and footer
+HEADER=$(echo "$COMMIT_MSG" | head -n1)
+BODY_AND_FOOTER=$(echo "$COMMIT_MSG" | tail -n +2)
+
+# Prüfe, ob eine Leerzeile existiert, die Body von Footer trennt
+if echo "$BODY_AND_FOOTER" | grep -qE "^[A-Za-z0-9-]+: .*$"; then
+  BODY=$(echo "$BODY_AND_FOOTER" | sed -E '/^[A-Za-z0-9-]+: .*$/,$d')
+  FOOTER=$(echo "$BODY_AND_FOOTER" | grep -E "^[A-Za-z0-9-]+: .*")
+else
+  BODY="$BODY_AND_FOOTER"
+  FOOTER=""
 fi
 
-# 2️⃣ **Check if a known type is included**
-if ! echo "$COMMIT_MSG" | grep -Eq "^(docs|feat|fix|style|perf|ui|hotfix|test|security|refactor|ci|add|remove|build|merge|improve|deploy|pin):"; then
-  echo "❌ Commit message must start with a known type! Use one of the following:"
-  echo ""
-  echo "docs:     Documentation update"
-  echo "feat:     A new feature"
-  echo "fix:      A bug fix"
-  echo "style:    Code formatting (no logic changes)"
-  echo "perf:     Performance improvement"
-  echo "ui:       UI & styling changes"
-  echo "hotfix:   Critical fix in production"
-  echo "test:     Adding or fixing tests"
-  echo "security: Security-related changes"
-  echo "refactor: Code restructuring (no behavior changes)"
-  echo "ci:       Continuous Integration changes"
-  echo "add:      Adding dependencies"
-  echo "remove:   Removing dependencies"
-  echo "build:    Changes that affect the build system"
-  echo "merge:    Merge branches"
-  echo "improve:  General improvements"
-  echo "deploy:   Deploying a project"
-  echo "pin:      Pin dependencies"
-  echo ""
-  echo "Example commit message: 'Feat: Add user authentication'"
+# 3️⃣ Auto-fix: Ensure each sentence in the body starts with an uppercase letter
+if [ -n "$BODY" ]; then
+  FIXED_BODY=$(echo "$BODY" | awk '{
+    gsub(/([.!?])\s*\n\s*([a-z])/, "\\1\n\n\\U\\2", $0);
+    gsub(/([.!?]) ([a-z])/, "\\1 \\U\\2", $0);
+    print;
+  }')
+else
+  FIXED_BODY=""
+fi
+
+# 4️⃣ Validate header length (max 72 characters)
+HEADER_TEXT=$(echo "$HEADER" | cut -d " " -f2-)
+HEADER_LENGTH=${#HEADER_TEXT}
+
+if [ "$HEADER_LENGTH" -gt 72 ]; then
+  echo "❌ Commit header is too long! Max 72 characters allowed."
   exit 1
 fi
 
-# 3️⃣ **Run commitlint to validate the commit message**
+# 5️⃣ Validate body length (max 72 characters per line)
+if [ -n "$FIXED_BODY" ]; then
+  while IFS= read -r line; do
+    if [ "${#line}" -gt 72 ]; then
+      echo "❌ Commit body contains lines longer than 72 characters."
+      exit 1
+    fi
+  done <<< "$FIXED_BODY"
+fi
+
+# 6️⃣ Validate footer length (each line max 72 characters)
+if [ -n "$FOOTER" ]; then
+  while IFS= read -r line; do
+    if [ "${#line}" -gt 72 ]; then
+      echo "❌ Commit footer contains lines longer than 72 characters."
+      exit 1
+    fi
+  done <<< "$FOOTER"
+fi
+
+# 7️⃣ Run commitlint to validate the commit message against our config
 pnpm commitlint --config ./config/commitlint.config.js --edit "$1"
 STATUS=$?
 
@@ -53,33 +76,21 @@ if [ $STATUS -ne 0 ]; then
   exit 1
 fi
 
-# 4️⃣ **Prepend the correct Gitmoji**
-case "$COMMIT_MSG" in
-  "docs:"*) PREFIX="📝" ;;
-  "feat:"*) PREFIX="✨" ;;
-  "fix:"*) PREFIX="🐛" ;;
-  "style:"*) PREFIX="🎨" ;;
-  "Perf:"*) PREFIX="⚡" ;;
-  "ui:"*) PREFIX="💄" ;;
-  "hotfix:"*) PREFIX="🚑" ;;
-  "test:"*) PREFIX="✅" ;;
-  "security:"*) PREFIX="🔒" ;;
-  "refactor:"*) PREFIX="♻️" ;;
-  "ci:"*) PREFIX="⚙️" ;;
-  "add:"*) PREFIX="➕" ;;
-  "remove:"*) PREFIX="🗑️" ;;
-  "build:"*) PREFIX="🔧" ;;
-  "merge:"*) PREFIX="🔀" ;;
-  "improve:"*) PREFIX="💡" ;;
-  "deploy:"*) PREFIX="🚀" ;;
-  "pin:"*) PREFIX="📌" ;;
-  *) PREFIX="" ;;
+# 8️⃣ Prepend the correct Gitmoji based on the commit type
+case "$HEADER" in
+  "feat:"*)      PREFIX="✨" ;;
+  "fix:"*)       PREFIX="🐛" ;;
+  "docs:"*)      PREFIX="📝" ;;
+  "refactor:"*)  PREFIX="♻️" ;;
+  "test:"*)      PREFIX="✅" ;;
+  "chore:"*)     PREFIX="🧹" ;; 
+  *)             PREFIX=""   ;;
 esac
 
-# Falls ein Prefix gefunden wurde, setze es nach dem Typ
+# If a Gitmoji prefix was found, insert it after the type
 if [ -n "$PREFIX" ]; then
-  NEW_MSG=$(echo "$COMMIT_MSG" | sed -E "s/^([^:]+):(.*)/\1: $PREFIX\2/")
-  echo "$NEW_MSG" > "$1"
+  NEW_MSG=$(echo "$HEADER" | sed -E "s/^([^:]+):(.*)/\1: $PREFIX\2/")
+  echo -e "$NEW_MSG\n\n$FIXED_BODY\n\n$FOOTER" > "$1"
   echo "✨ Auto-added Gitmoji: $PREFIX"
 fi
 
