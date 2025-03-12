@@ -1,0 +1,87 @@
+echo "🚀 Running commit message validation..."
+
+# Check if `pnpm` is installed
+if ! command -v pnpm &> /dev/null; then
+  echo "❌ Error: pnpm is not installed!" >&2
+  exit 1
+fi
+
+# Read the commit message from the file
+COMMIT_MSG=$(cat "$1")
+
+# 1️⃣ **Auto-fix: Convert only the first letter after type to sentence case**
+CORRECTED_MSG=$(echo "$COMMIT_MSG" | sed -E "s/^([^:]+: )(.)(.*)/\1$(echo \2 | tr '[:lower:]' '[:upper:]')\3/")
+
+if [ "$COMMIT_MSG" != "$CORRECTED_MSG" ]; then
+  echo "🔄 Auto-fixing commit message case..."
+  echo "$CORRECTED_MSG" > "$1"
+fi
+
+# 2️⃣ **Check if a known type is included**
+if ! echo "$COMMIT_MSG" | grep -Eq "^(docs|feat|fix|style|perf|ui|hotfix|test|security|refactor|ci|add|remove|build|merge|improve|deploy|pin):"; then
+  echo "❌ Commit message must start with a known type! Use one of the following:"
+  echo ""
+  echo "docs:     Documentation update"
+  echo "feat:     A new feature"
+  echo "fix:      A bug fix"
+  echo "style:    Code formatting (no logic changes)"
+  echo "perf:     Performance improvement"
+  echo "ui:       UI & styling changes"
+  echo "hotfix:   Critical fix in production"
+  echo "test:     Adding or fixing tests"
+  echo "security: Security-related changes"
+  echo "refactor: Code restructuring (no behavior changes)"
+  echo "ci:       Continuous Integration changes"
+  echo "add:      Adding dependencies"
+  echo "remove:   Removing dependencies"
+  echo "build:    Changes that affect the build system"
+  echo "merge:    Merge branches"
+  echo "improve:  General improvements"
+  echo "deploy:   Deploying a project"
+  echo "pin:      Pin dependencies"
+  echo ""
+  echo "Example commit message: 'Feat: Add user authentication'"
+  exit 1
+fi
+
+# 3️⃣ **Run commitlint to validate the commit message**
+pnpm commitlint --config ./config/commitlint.config.js --edit "$1"
+STATUS=$?
+
+if [ $STATUS -ne 0 ]; then
+  echo "❌ Commit message validation failed! Please follow the commit conventions."
+  exit 1
+fi
+
+# 4️⃣ **Prepend the correct Gitmoji**
+case "$COMMIT_MSG" in
+  "docs:"*) PREFIX="📝" ;;
+  "feat:"*) PREFIX="✨" ;;
+  "fix:"*) PREFIX="🐛" ;;
+  "style:"*) PREFIX="🎨" ;;
+  "Perf:"*) PREFIX="⚡" ;;
+  "ui:"*) PREFIX="💄" ;;
+  "hotfix:"*) PREFIX="🚑" ;;
+  "test:"*) PREFIX="✅" ;;
+  "security:"*) PREFIX="🔒" ;;
+  "refactor:"*) PREFIX="♻️" ;;
+  "ci:"*) PREFIX="⚙️" ;;
+  "add:"*) PREFIX="➕" ;;
+  "remove:"*) PREFIX="🗑️" ;;
+  "build:"*) PREFIX="🔧" ;;
+  "merge:"*) PREFIX="🔀" ;;
+  "improve:"*) PREFIX="💡" ;;
+  "deploy:"*) PREFIX="🚀" ;;
+  "pin:"*) PREFIX="📌" ;;
+  *) PREFIX="" ;;
+esac
+
+# Falls ein Prefix gefunden wurde, setze es nach dem Typ
+if [ -n "$PREFIX" ]; then
+  NEW_MSG=$(echo "$COMMIT_MSG" | sed -E "s/^([^:]+):(.*)/\1: $PREFIX\2/")
+  echo "$NEW_MSG" > "$1"
+  echo "✨ Auto-added Gitmoji: $PREFIX"
+fi
+
+echo "✅ Commit message is valid!"
+exit 0

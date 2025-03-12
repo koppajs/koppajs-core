@@ -1,0 +1,30 @@
+echo "🚀 Running pre-commit checks..."
+
+# Ensure that pnpm is installed
+if ! command -v pnpm &> /dev/null; then
+  echo "❌ Error: pnpm is not installed!" >&2
+  exit 1
+fi
+
+# Run Prettier for code formatting
+echo "🖌 Running Prettier..."
+pnpm run format && git add .
+
+# Run ESLint for linting
+echo "🔍 Running ESLint..."
+pnpm run lint
+if [ $? -ne 0 ]; then
+  echo "❌ Linting failed! Commit aborted."
+  exit 1
+fi
+
+# Run tests
+echo "🧪 Running tests..."
+pnpm test
+if [ $? -ne 0 ]; then
+  echo "❌ Tests failed! Commit aborted."
+  exit 1
+fi
+
+echo "✅ All checks passed! Proceeding with commit."
+exit 0
