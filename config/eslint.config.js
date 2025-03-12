@@ -29,7 +29,7 @@ export default [
       prettier: prettierPlugin,
     },
     rules: {
-      'prettier/prettier': 'error',
+      'prettier/prettier': ['error', { singleQuote: true }],
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-console': 'warn',
       curly: 'error',
