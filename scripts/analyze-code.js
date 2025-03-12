@@ -11,7 +11,8 @@ const SRC_DIR = path.join(__dirname, '../src');
 const OUTPUT_FILE = path.join(__dirname, '../---code_analysis');
 
 // Regex Patterns
-const FUNCTION_PATTERN = /\bfunction\b|\b\w+\s*=\s*\(?[^=]*\)?\s*=>|\b\w+\s*\([^=]*\)\s*{/g; // Function definitions
+const FUNCTION_PATTERN =
+  /\bfunction\b|\b\w+\s*=\s*\(?[^=]*\)?\s*=>|\b\w+\s*\([^=]*\)\s*{/g; // Function definitions
 const CLASS_PATTERN = /\bclass\s+\w+/g; // Class declarations
 const IMPORT_EXPORT_PATTERN = /\b(import|export)\b/g; // Imports & Exports
 
@@ -45,7 +46,11 @@ async function analyzeCode() {
       const fileData = await fs.readFile(file, 'utf-8');
       const lines = fileData.split('\n').map((line) => line.trim());
       const codeLines = lines.filter(
-        (line) => line && !line.startsWith('//') && !line.startsWith('/*') && !line.startsWith('*'),
+        (line) =>
+          line &&
+          !line.startsWith('//') &&
+          !line.startsWith('/*') &&
+          !line.startsWith('*'),
       );
 
       totalLines += codeLines.length;

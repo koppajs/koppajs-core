@@ -8,7 +8,7 @@ fi
 
 # Run Prettier for code formatting
 echo "🖌 Running Prettier..."
-pnpm run format && git add .
+pnpm run format
 
 # Run ESLint for linting
 echo "🔍 Running ESLint..."
@@ -17,6 +17,9 @@ if [ $? -ne 0 ]; then
   echo "❌ Linting failed! Commit aborted."
   exit 1
 fi
+
+# Stage all changes after formatting and linting
+git add .
 
 # Run tests
 echo "🧪 Running tests..."
