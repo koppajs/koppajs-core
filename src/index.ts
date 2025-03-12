@@ -1,4 +1,5 @@
 // 📁 `src/index.ts`
+/// <reference path="../types.d.ts" />
 
 import Component from './Component';
 import Instance from './Instance';

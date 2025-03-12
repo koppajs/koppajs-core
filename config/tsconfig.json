@@ -45,7 +45,7 @@
     /* Global Type Declarations */
     "types": ["vite/client", "node"] // Include global type definitions
   },
-  "include": ["../src/**/*.ts", "../types.d.ts"], // Files to include in compilation
+  "include": ["../types.d.ts", "../src/**/*.ts"], // Files to include in compilation
   "exclude": [
     "../.git",
     "../.husky",
