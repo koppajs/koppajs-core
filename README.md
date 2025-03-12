@@ -1,6 +1,6 @@
 <div align="center">
     <a href="https://koppajs.org" target="_blank">
-        <img width="180" src="https://koppajs.org/images/logo.png" alt="koppajs Logo">
+        <img width="180" src="https://avatars.githubusercontent.com/u/202870041?s=400&u=1297d4d69f48dd24d51dd1bd53d4cf576c7a1f21&v=4" alt="koppajs Logo">
     </a>
 </div>
 <br>
