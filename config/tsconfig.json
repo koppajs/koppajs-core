@@ -47,11 +47,13 @@
   },
   "include": ["../src/**/*.ts", "../types.d.ts"], // Files to include in compilation
   "exclude": [
+    "../.git",
+    "../.husky",
+    "../config",
     "../node_modules",
+    "../script",
     "../dist",
     "../test/**",
-    "../**/*.test.ts",
-    "../.git",
     "../.idea",
     "../.vscode",
     "../.history/**",
