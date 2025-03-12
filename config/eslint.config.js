@@ -15,6 +15,7 @@ export default [
       '*.config.ts',
       'jest.config.ts',
       '**/*_del',
+      'README.md',
     ],
   },
   {

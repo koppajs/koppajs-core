@@ -23,3 +23,6 @@ jest.config.ts
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+
+# Ignore selected files
+README.md

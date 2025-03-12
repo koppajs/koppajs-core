@@ -135,14 +135,35 @@ Supported: HTML, JavaScript, TypeScript, CSS & SCSS
 **Example of a Koppa component (components/my-component.kpa)**:
 
 ```html
-[template]
-<div>
-  <h1>{{ title }}</h1>
-  <button onClick="changeTitle">Change Title</button>
-</div>
-[/template] [ts] return { data: { title: "Hello koppajs!" }, methods: { changeTitle() { this.title =
-"koppajs is awesome!"; } } }; [/ts] [css] div { text-align: center; } button { background-color:
-blue; color: white; } [/css]
+    [template]
+        <div>
+            <h1>{{ title }}</h1>
+            <button onClick="changeTitle">Change Title</button>
+        </div>
+    [/template]
+
+    [ts]
+        return {
+            data: {
+            title: "Hello koppajs!"
+            },
+            methods: {
+            changeTitle() {
+                this.title = "koppajs is awesome!";
+            }
+            }
+        };
+    [/ts]
+
+    [css]
+        div {
+            text-align: center;
+        }
+        button {
+            background-color: blue;
+            color: white;
+        }
+    [/css]
 ```
 
 This `.kpa` file contains **template, logic, and styles** in a single file.
