@@ -10,9 +10,12 @@
     </a>
 </div>
 
+<br><br>
+
 <div align="center">
     <img src="./src/assets/images/logo-long.png" width="600">
 </div>
+
 <br><br>
 
 # ⚡ koppajs – The UI framework for pragmatic developers – lightweight, fast & modular.
