@@ -1,22 +1,8 @@
-<div align="center">
-    <a href="https://npmcharts.com/compare/@koppajs/core?minimal=true" target="_blank">
-        <img src="https://badgen.net/npm/dm/@koppajs/core?scale=1&color=69DF20" alt="Downloads">
-    </a>
-    <a href="https://www.npmjs.com/package/@koppajs/core">
-        <img src="https://badgen.net/npm/v/@koppajs/core?scale=1&color=4AC56D" alt="Version">
-    </a>
-    <a href="http://opensource.org/licenses/MIT" target="_blank">
-        <img src="https://badgen.net/badge/license/MIT/?scale1&color=2eaad1" alt="License">
-    </a>
-</div>
-
-<br><br>
-
-<div align="center">
+<div>
+    <br><br>
     <img src="./src/assets/images/logo-long.png" width="600">
+    <br><br><br><br>
 </div>
-
-<br><br>
 
 # ⚡ koppajs – The UI framework for pragmatic developers – lightweight, fast & modular.
 
