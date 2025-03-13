@@ -1,10 +1,4 @@
 <div align="center">
-    <a href="https://koppajs.org" target="_blank">
-        <img width="180" src="https://avatars.githubusercontent.com/u/202870041?s=400&u=1297d4d69f48dd24d51dd1bd53d4cf576c7a1f21&v=4" alt="koppajs Logo">
-    </a>
-</div>
-<br>
-<div align="center">
     <a href="https://npmcharts.com/compare/@koppajs/core?minimal=true" target="_blank">
         <img src="https://badgen.net/npm/dm/@koppajs/core?scale=1&color=69DF20" alt="Downloads">
     </a>
@@ -16,6 +10,9 @@
     </a>
 </div>
 
+<div align="center">
+    <img src="./src/assets/images/logo-long.png" width="600">
+</div>
 <br><br>
 
 # ⚡ koppajs – The UI framework for pragmatic developers – lightweight, fast & modular.
