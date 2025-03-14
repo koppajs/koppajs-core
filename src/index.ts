@@ -3,23 +3,13 @@
 
 import Component from './Component';
 import Instance from './Instance';
-import { extendPrototypes } from './utils';
+import { extendPrototypes, generateCompactUniqueId } from './utils';
 
 // Extend native prototypes with additional utility functions
 extendPrototypes();
 
-/**
- * Generates a cryptographically secure random number within a fixed range.
- * @returns {number} A secure random number between 100000 and 999999.
- */
-function getSecureRandomNumber(): number {
-  const array = new Uint32Array(1);
-  crypto.getRandomValues(array);
-  return 100000 + ((array[0] ?? 0) % 900000);
-}
-
 // Unique identifier used to verify singleton initialization
-const identifier = getSecureRandomNumber().toString();
+const identifier = generateCompactUniqueId();
 
 /**
  * Singleton class representing the core instance of Koppa.js.
