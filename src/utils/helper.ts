@@ -1,3 +1,6 @@
+// 📁 `src/utils/helper.ts`
+/// <reference path="../../types.d.ts" />
+
 export function isArrowFunction(func: Function): boolean {
   return typeof func === 'function' && !func.hasOwnProperty('prototype');
 }

@@ -1,4 +1,5 @@
 // 📁 `src/EventHandler.ts`
+/// <reference path="../types.d.ts" />
 
 import Instance from './Instance';
 import { isArrowFunction } from './utils';

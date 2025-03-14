@@ -1,4 +1,5 @@
 // 📁 `src/LifecycleManager.ts`
+/// <reference path="../types.d.ts" />
 
 /**
  * Manages lifecycle hooks for application modules and invokes them at appropriate times.

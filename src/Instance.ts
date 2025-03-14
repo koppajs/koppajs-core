@@ -1,4 +1,5 @@
 // 📁 `src/Instance.ts`
+/// <reference path="../types.d.ts" />
 
 import { Model } from './Model';
 

@@ -1,4 +1,5 @@
 // 📁 `src/utils/index.ts`
+/// <reference path="../../types.d.ts" />
 
 export * from './helper';
 export * from './dom';

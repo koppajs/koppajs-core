@@ -1,4 +1,5 @@
 // 📁 `src/utils/string.ts`
+/// <reference path="../../types.d.ts" />
 
 import { getValueByPath } from './helper';
 
