@@ -90,7 +90,7 @@ export class EventHandler {
     eventType: string,
   ): (event: Event) => void {
     if (typeof handler !== 'function') {
-      console.error('❌ createBoundHandler: Provided handler is not a function.', {
+      console.error('❌ Provided handler is not a function.', {
         handler,
         context,
         eventType,
@@ -117,14 +117,14 @@ export class EventHandler {
    */
   public setupEvents(events: Events, container: DocumentFragment, refs: Refs): void {
     if (!Array.isArray(events)) {
-      console.error('Events must be defined as an array of [eventType, target, handler].');
+      console.error('❌ Events must be defined as an array of [eventType, target, handler].');
       return;
     }
 
     events.forEach((eventDefinition: EventDefinition) => {
       if (!Array.isArray(eventDefinition) || eventDefinition.length !== 3) {
         console.error(
-          'Each event definition must be an array: [eventType, target, handler].',
+          '❌ Each event definition must be an array: [eventType, target, handler].',
           eventDefinition,
         );
         return;
@@ -133,7 +133,7 @@ export class EventHandler {
       const [eventType, target, handler] = eventDefinition;
 
       if (typeof eventType !== 'string' || typeof handler !== 'function') {
-        console.error('Invalid event definition. Expected [string, target, function]:', {
+        console.error('❌ Invalid event definition. Expected [string, target, function]:', {
           eventType,
           target,
           handler,
@@ -168,7 +168,7 @@ export class EventHandler {
             (node): node is Element => node.nodeType === Node.ELEMENT_NODE,
           );
         } else {
-          console.error('Invalid target:', target);
+          console.error('❌ Invalid target:', target);
           return;
         }
 
@@ -177,7 +177,7 @@ export class EventHandler {
           element.addEventListener(eventType, boundHandler);
         });
       } catch (error) {
-        console.error(`Error processing event target: "${target}"`, error);
+        console.error(`❌ Error processing event target: "${target}"`, error);
       }
     });
   }
@@ -246,7 +246,7 @@ export class EventHandler {
           });
           el.removeAttribute(`on${eventType}`);
         } else {
-          console.error(`Method ${methodName} for event ${eventType} not found.`);
+          console.error(`❌ Method ${methodName} for event ${eventType} not found.`);
         }
       });
     });

@@ -113,7 +113,7 @@ export default class Instance<T extends Record<string, any> = Record<string, any
         if (propOptions.default !== undefined) {
           this.data[propName] = propOptions.default;
         } else if (propOptions.required) {
-          console.error(`Required prop "${propName}" is missing.`);
+          console.error(`❌ Required prop "${propName}" is missing.`);
         }
       }
     }
@@ -162,13 +162,13 @@ export default class Instance<T extends Record<string, any> = Record<string, any
           isValidType = actualType === 'function';
           break;
         default:
-          console.error(`Invalid type definition for prop "${propName}".`);
+          console.error(`❌ Invalid type definition for prop "${propName}".`);
           return false;
       }
 
       if (!isValidType) {
         console.error(
-          `Prop "${propName}" should be of type "${expectedType}", but got "${actualType}".`,
+          `❌ Prop "${propName}" should be of type "${expectedType}", but got "${actualType}".`,
           pValue,
         );
         return false;
@@ -180,7 +180,7 @@ export default class Instance<T extends Record<string, any> = Record<string, any
       typeof pValue === 'string' &&
       !new RegExp(propOptions.regex).test(pValue)
     ) {
-      console.error(`Prop "${propName}" does not match regex "${propOptions.regex}".`);
+      console.error(`❌ Prop "${propName}" does not match regex "${propOptions.regex}".`);
       return false;
     }
 
@@ -292,7 +292,7 @@ export default class Instance<T extends Record<string, any> = Record<string, any
     await this.templateProcessor
       .processTemplate(this.container, this.data, this.refs)
       .catch((error) => {
-        console.error('❌ [traverse] Error in processTemplate:', error);
+        console.error('❌ Error in processTemplate:', error);
       });
 
     // Bind native and custom events.
@@ -391,7 +391,7 @@ export default class Instance<T extends Record<string, any> = Record<string, any
       // Resolve the ready promise to indicate initialization is complete.
       this.readyResolve!();
     } catch (error) {
-      console.error('❌ [Instance] Error during initialization:', error);
+      console.error('❌ Error during initialization:', error);
     }
   }
 }

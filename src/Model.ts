@@ -464,7 +464,7 @@ export class Model<T extends Record<string, any>> {
   } {
     const segments = path.split('.');
     if (segments.length === 0) {
-      throw new Error(`Invalid path: "${path}".`);
+      throw new Error(`❌ Invalid path: "${path}".`);
     }
 
     let grandParent: any = undefined;
@@ -479,7 +479,7 @@ export class Model<T extends Record<string, any>> {
     let temp: any = this.data;
     for (const seg of segments) {
       if (!temp[seg]) {
-        throw new Error(`Invalid path "${path}". Segment "${seg}" does not exist.`);
+        throw new Error(`❌ Invalid path "${path}". Segment "${seg}" does not exist.`);
       }
       temp = temp[seg];
     }
@@ -489,7 +489,7 @@ export class Model<T extends Record<string, any>> {
       grandParent = temp;
       parent = grandParent[parentPropertyName];
       if (!parent) {
-        throw new Error(`Invalid path. No parent object for property "${parentPropertyName}".`);
+        throw new Error(`❌ Invalid path. No parent object for property "${parentPropertyName}".`);
       }
     } else {
       parent = temp;

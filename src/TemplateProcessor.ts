@@ -60,7 +60,7 @@ export class TemplateProcessor {
         const result = evaluateExpression(expression.trim(), data);
         return result == null ? '' : String(result);
       } catch (error) {
-        console.error('❌ [replaceTemplateString] Error replacing', expression, ':', error);
+        console.error('❌ Error replacing', expression, ':', error);
         return '';
       }
     });
@@ -90,7 +90,7 @@ export class TemplateProcessor {
     const collection = evaluateExpression(collectionExp!, data);
 
     if (!collection || typeof collection !== 'object') {
-      console.error('❌ Error: Data source is not iterable:', collectionExp, collection);
+      console.error('❌ Data source is not iterable:', collectionExp, collection);
       return;
     }
 
@@ -180,7 +180,7 @@ export class TemplateProcessor {
         if (node instanceof HTMLElement) {
           if (node.hasAttribute('loop')) {
             this.applyLoop(node, data, refs).catch((error) => {
-              console.error('❌ [processNodeBatch] Error in applyLoop:', error);
+              console.error('❌ Error in applyLoop:', error);
             });
           } else if (node.hasAttribute('if')) {
             this.applyConditionalRendering(null, node, data);
@@ -233,7 +233,7 @@ export class TemplateProcessor {
 
     while (currentNode) {
       if (processedNodes.has(currentNode)) {
-        console.warn('⚠️ [processTemplate] Node already processed, skipping:', currentNode);
+        console.warn('⚠️ Node already processed, skipping:', currentNode);
         currentNode = walker.nextNode();
         continue;
       }
@@ -265,7 +265,7 @@ export class TemplateProcessor {
                   elementNode.setAttribute(attr.name, newValue);
                 }
               } catch (error) {
-                console.error(`❌ [traverse] Fehler bei Ersetzung für "${attr.name}":`, error);
+                console.error(`❌ Error replacing for "${attr.name}":`, error);
               }
             }
           }
