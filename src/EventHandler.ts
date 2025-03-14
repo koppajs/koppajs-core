@@ -48,10 +48,10 @@ export class EventHandler {
   /**
    * Creates a submit event handler that prevents default form submission.
    * @param {Function} handler - The function to be executed.
-   * @param {any} context - The context in which the function is executed.
+   * @param {Data} context - The context in which the function is executed.
    * @returns {Function} - The wrapped event handler.
    */
-  private createSubmitHandler(handler: Function, context: any) {
+  private createSubmitHandler(handler: Function, context: Data) {
     return (event: Event) => {
       event.preventDefault();
       handler.call(context, event);
@@ -61,10 +61,10 @@ export class EventHandler {
   /**
    * Creates an event handler for arrow functions.
    * @param {Function} handler - The handler function.
-   * @param {any} context - The execution context.
+   * @param {Data} context - The execution context.
    * @returns {Function} - The wrapped event handler.
    */
-  private createArrowHandler(handler: Function, context: any) {
+  private createArrowHandler(handler: Function, context: Data) {
     return function (event: Event) {
       event.preventDefault();
       handler.call(context, event);
@@ -73,24 +73,39 @@ export class EventHandler {
 
   /**
    * Creates a bound event handler based on the function type.
-   * @param {Function} handler - The event handler function.
-   * @param {any} context - The execution context.
-   * @param {string} eventType - The event type.
-   * @returns {Function} - The bound event handler function.
+   * - If `handler` is an arrow function, it will be wrapped correctly.
+   * - If `eventType` is "submit", a specialized submit handler is used.
+   * - Otherwise, the handler is bound to the provided context.
+   * - If `handler` is not a function, an error is logged, and a no-op function is returned.
+   *
+   * @param {Function} handler - The event handler function to bind.
+   * @param {any} context - The execution context (usually the component or data model).
+   * @param {string} eventType - The event type (e.g., "click", "submit").
+   * @returns {(event: Event) => void} - The bound event handler function.
    */
   private createBoundHandler(
     handler: Function,
     context: any,
     eventType: string,
   ): (event: Event) => void {
+    if (typeof handler !== 'function') {
+      console.error('❌ createBoundHandler: Provided handler is not a function.', {
+        handler,
+        context,
+        eventType,
+      });
+      return () => {}; // No-op function to prevent runtime errors
+    }
+
     if (isArrowFunction(handler)) {
       return this.createArrowHandler(handler, context);
-    } else if (eventType === 'submit') {
-      return this.createSubmitHandler(handler, context);
-    } else {
-      console.error('Invalid target:', context);
-      return () => {};
     }
+
+    if (eventType === 'submit') {
+      return this.createSubmitHandler(handler, context);
+    }
+
+    return handler.bind(context);
   }
 
   /**

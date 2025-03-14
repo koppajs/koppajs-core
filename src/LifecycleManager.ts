@@ -1,7 +1,5 @@
 // 📁 `src/LifecycleManager.ts`
 
-import { type RestrictedModel } from './Model';
-
 /**
  * Manages lifecycle hooks for application modules and invokes them at appropriate times.
  */
@@ -20,13 +18,10 @@ export class LifecycleManager {
    * Sets up lifecycle hooks for a given module by binding them to the provided data model.
    *
    * @template T - The type of the model data.
-   * @param {RestrictedModel<T>} data - The reactive data model to bind hooks to.
+   * @param {Data} data - The reactive data model to bind hooks to.
    * @param {Module} module - The module containing lifecycle hooks.
    */
-  public setupLifecycleHooks<T extends Record<string, any>>(
-    data: RestrictedModel<T>,
-    module: Module,
-  ): void {
+  public setupLifecycleHooks(data: Data, module: Module): void {
     for (const hook of [
       'created',
       'beforeMount',

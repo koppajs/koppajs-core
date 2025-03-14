@@ -1,6 +1,6 @@
 // 📁 `src/Instance.ts`
 
-import { Model, createRestrictedModel } from './Model';
+import { Model } from './Model';
 
 import { LifecycleManager } from './LifecycleManager';
 import { TemplateProcessor } from './TemplateProcessor';
@@ -288,9 +288,11 @@ export default class Instance<T extends Record<string, any> = Record<string, any
     this.processSlots(this.container);
 
     // Process the template with the provided data and references.
-    this.templateProcessor.processTemplate(this.container, this.data, this.refs).catch((error) => {
-      console.error('❌ [traverse] Error in processTemplate:', error);
-    });
+    await this.templateProcessor
+      .processTemplate(this.container, this.data, this.refs)
+      .catch((error) => {
+        console.error('❌ [traverse] Error in processTemplate:', error);
+      });
 
     // Bind native and custom events.
     this.eventHandler.bindNativeEvents(this.container);
@@ -345,11 +347,8 @@ export default class Instance<T extends Record<string, any> = Record<string, any
         }
       });
 
-      // Restrict direct modifications to the model to enforce controlled updates.
-      const restrictedModel = createRestrictedModel(model);
-
       // Assign processed data and module properties.
-      this.data = restrictedModel.data;
+      this.data = model.data;
       this.methods = module.methods ?? {};
       this.props = module.props ?? {};
       this.events = module.events ?? [];

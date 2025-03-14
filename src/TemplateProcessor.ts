@@ -210,11 +210,19 @@ export class TemplateProcessor {
   }
 
   /**
-   * Traverses the DOM and processes nodes asynchronously in batches for better performance.
-   * @param {Node} rootElement - The root element to start processing from.
-   * @param {Data} data - The data context for processing expressions.
+   * Traverses the DOM and processes template elements asynchronously in batches for better performance.
+   *
+   * - Identifies `{{}}` placeholders and replaces them with actual data values.
+   * - Detects and stores elements with `ref` attributes in `refs` for direct access.
+   * - Handles `if`, `else`, and `loop` directives for conditional and repeated rendering.
+   * - Skips processing of Web Components (custom elements with `-` in their tag name).
+   * - Uses a `TreeWalker` to efficiently traverse only relevant nodes.
+   * - Processes nodes in batches to optimize rendering performance.
+   *
+   * @param {Node} rootElement - The root element to start traversal from.
+   * @param {Data} data - The data context for evaluating template expressions.
    * @param {Refs} refs - Reference object to store identified elements.
-   * @returns {Promise<void>} - Resolves when all nodes have been processed.
+   * @returns {Promise<void>} - Resolves once all nodes have been processed.
    */
   public async processTemplate(rootElement: Node, data: Data, refs: Refs): Promise<void> {
     let walker: TreeWalker | null = this.createFilteredTreeWalker(rootElement);
@@ -243,6 +251,28 @@ export class TemplateProcessor {
 
         if (elementNode.hasAttribute('if') || elementNode.hasAttribute('else')) {
           pendingNodes.push({ node: elementNode, data });
+        }
+
+        for (let i = 0; i < elementNode.attributes.length; i++) {
+          const attr = elementNode.attributes[i];
+          if (attr) {
+            if (attr.name === 'ref') refs[attr.value] = elementNode;
+            if (attr.value.includes('{{')) {
+              try {
+                const newValue = this.replaceTemplateString(attr.value, data);
+                if (newValue !== attr.value) {
+                  elementNode.setAttribute(attr.name, newValue);
+                }
+              } catch (error) {
+                console.error(`❌ [traverse] Fehler bei Ersetzung für "${attr.name}":`, error);
+              }
+            }
+          }
+        }
+
+        if (elementNode.tagName.includes('-')) {
+          currentNode = this.skipNode(walker) || walker.nextNode();
+          continue;
         }
       } else if (currentNode.nodeType === Node.TEXT_NODE && currentNode instanceof Text) {
         pendingNodes.push({ node: currentNode, data });

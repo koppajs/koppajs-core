@@ -27,7 +27,7 @@ export class Model<T extends Record<string, any>> {
   private callback: Callback; // Callback invoked when a value changes.
   private observers: Set<() => void> = new Set(); // Set of registered observer functions.
   private watchList: Map<object, Set<string>>; // Tracks properties being watched.
-  private data: T; // Reactive data model.
+  public data: T; // Reactive data model.
   private proxyCache = new WeakMap<object, object>(); // Cache for Proxy objects.
 
   [key: string]: any; // Allow dynamic properties
@@ -586,43 +586,4 @@ export class Model<T extends Record<string, any>> {
       properties: Array.from(props), // Convert Set to Array for readability.
     }));
   }
-}
-
-/**
- * Type definition for a restricted model that prevents direct access to
- * watch/unwatch methods or the watch list.
- * @template T - The shape of the model data.
- */
-export type RestrictedModel<T extends Record<string, any>> = Omit<
-  Model<T>,
-  'watch' | 'unwatch' | 'getWatchList'
->;
-
-/**
- * Creates a restricted version of the Model, preventing direct access to
- * watch/unwatch methods or the watch list. This ensures that consumers
- * can interact with the model without modifying its internal tracking.
- * @template T - The shape of the model data.
- * @param {Model<T>} model - The original model instance.
- * @returns {T} - The restricted model instance.
- */
-export function createRestrictedModel<T extends Record<string, any>>(
-  model: Model<T>,
-): RestrictedModel<T> {
-  return new Proxy(model, {
-    get(target, property, receiver) {
-      if (property in model && ['watch', 'unwatch', 'getWatchList'].includes(property as string)) {
-        throw new Error(`Access to property "${String(property)}" is restricted.`);
-      }
-
-      return Reflect.get(target, property, receiver);
-    },
-    set(target, property, value, receiver) {
-      if (property in model && ['watch', 'unwatch', 'getWatchList'].includes(property as string)) {
-        throw new Error(`Setting property "${String(property)}" is restricted.`);
-      }
-
-      return Reflect.set(target, property, value, receiver);
-    },
-  });
 }
