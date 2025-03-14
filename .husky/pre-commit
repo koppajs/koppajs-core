@@ -8,30 +8,29 @@ if ! command -v pnpm &> /dev/null; then
   exit 1
 fi
 
-# Get staged files that match the relevant extensions
+# Get staged files that match relevant extensions
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|ts|tsx|vue|json|scss|css|md)$' || true)
 
-# If no relevant files are staged, exit early
 if [ -z "$STAGED_FILES" ]; then
-  echo "✅ No relevant staged files found. Skipping pre-commit hooks."
+  echo "✅ No relevant staged files. Skipping checks."
   exit 0
 fi
 
-# Format only staged files
+# Run Prettier for formatting only staged files
 echo "🖌 Running Prettier on staged files..."
-echo "$STAGED_FILES" | xargs pnpm prettier --write
+echo "$STAGED_FILES" | xargs pnpm format
 echo "$STAGED_FILES" | xargs git add  # Re-stage formatted files
 
-# Lint only staged files
+# Run ESLint for linting only staged files
 echo "🔍 Running ESLint on staged files..."
-echo "$STAGED_FILES" | xargs pnpm eslint --fix
+echo "$STAGED_FILES" | xargs pnpm lint
 if [ $? -ne 0 ]; then
-  echo "❌ Linting failed! Commit aborted."
+  echo "❌ ESLint failed! Commit aborted."
   exit 1
 fi
 echo "$STAGED_FILES" | xargs git add  # Re-stage linted files
 
-# Run tests only if relevant files are staged
+# Run tests
 echo "🧪 Running tests..."
 pnpm test
 if [ $? -ne 0 ]; then
