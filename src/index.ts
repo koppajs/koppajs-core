@@ -5,87 +5,125 @@ import Component from './Component';
 import Instance from './Instance';
 import { extendPrototypes, generateCompactUniqueId } from './utils';
 
-// Extend native prototypes with additional utility functions
+// Enhance native prototypes with additional utility functions
 extendPrototypes();
 
-// Unique identifier used to verify singleton initialization
+// Unique identifier to enforce singleton initialization
 const identifier = generateCompactUniqueId();
 
 /**
- * Singleton class representing the core instance of Koppa.js.
+ * Core class providing the main framework instance.
  *
- * It manages modules, components, and instances within the framework.
+ * Manages components, modules, and plugins while ensuring a single instance.
  */
-class Koppa {
-  /** Stores registered modules */
-  public modules: Record<string, Function | Object> = {};
-  /** Stores registered components */
+class Core {
+  /** Registered modules */
+  public modules: Record<string, any> = {};
+  /** Registered plugins */
+  public plugins: Record<string, any> = {};
+  /** Registered components */
   public components: Record<string, Component> = {};
-  /** Stores active instances */
+  /** Active component instances */
   public instances: Record<string, Instance> = {};
-  /** Holds the singleton instance of Koppa */
-  private static instance: Koppa;
+  /** Singleton instance */
+  private static instance: Core;
+  /** Queue for `take()` calls made before initialization */
+  private static queuedTakes: [any, string?][] = [];
 
   /**
-   * Creates or returns the singleton instance of Koppa.
-   * @param {string} [input] - A verification string for controlled initialization.
-   * @returns {Koppa} The singleton instance of Koppa.
+   * Creates or retrieves the singleton instance.
+   * If not yet initialized, processes any queued registrations.
+   *
+   * @param {string} [input] - Verification key for controlled initialization.
    */
   constructor(input?: string) {
-    if (Koppa.instance) {
-      return Koppa.instance; // Return existing instance if already created
-    }
+    if (Core.instance) return Core.instance;
 
-    // Ensure initialization only happens with the correct identifier
     if (identifier === input) {
       this.modules = {};
+      this.plugins = {};
       this.components = {};
       this.instances = {};
-      Koppa.instance = this; // Store singleton instance
+      Core.instance = this;
+
+      // Process any `take()` calls made before initialization
+      Core.queuedTakes.forEach(([arg1, arg2]) => this.take(arg1, arg2));
+      Core.queuedTakes = [];
     }
 
-    return Koppa.instance ?? this; // Fallback in case instance wasn't assigned
+    return Core.instance ?? this;
   }
 
   /**
-   * Retrieves the singleton instance of Koppa.
-   * @returns {Koppa} The singleton instance.
+   * Retrieves the singleton instance, creating it if necessary.
    */
-  public static getInstance(): Koppa {
-    return Koppa.instance ?? (Koppa.instance = new Koppa(identifier));
+  public static getInstance(): Core {
+    return Core.instance ?? (Core.instance = new Core(identifier));
   }
 
   /**
-   * Registers a module or component in Koppa.
-   * @param {ComponentSource | Function} arg1 - A component definition or a module function.
-   * @param {string} [arg2] - The name of the component, if applicable.
+   * Registers a module, plugin, or component.
+   * If the framework is not yet initialized, the registration is queued.
+   *
+   * @param {any} item - A module, plugin, or component definition.
+   * @param {string} [name] - Name of the component or plugin.
    */
-  public static take(arg1: ComponentSource | Function, arg2?: string): void {
-    const koppa = Koppa.getInstance();
-    if (koppa.isComponentSource(arg1)) {
-      koppa.components[arg2!] = new Component(arg2!, arg1);
+  public take(item: any, name?: string): void {
+    if (!Core.instance) {
+      Core.queuedTakes.push([item, name]);
+      return;
+    }
+
+    if (this.isComponentSource(item)) {
+      this.components[name!] = new Component(name!, item);
+    } else if (this.isPlugin(item)) {
+      item.install = item.install.bind(this);
+      this.plugins[name ?? item.name] = item;
     } else {
-      koppa.modules[arg1.name] = arg1;
+      this.modules[item.name] = item;
     }
   }
 
   /**
-   * Checks if the given object is a valid ComponentSource.
-   * @param {any} obj - The object to check.
-   * @returns {boolean} `true` if the object is a ComponentSource, otherwise `false`.
+   * Determines whether the given object is a valid ComponentSource.
+   *
+   * @param {any} obj - Object to check.
    */
   private isComponentSource(obj: any): obj is ComponentSource {
-    return (
-      obj &&
-      typeof obj.path === 'string' &&
-      typeof obj.template === 'string' &&
-      typeof obj.style === 'string' &&
-      typeof obj.script === 'string'
-    );
+    return obj && typeof obj.path === 'string' && typeof obj.template === 'string';
+  }
+
+  /**
+   * Determines whether the given object is a valid plugin.
+   * A plugin is identified by the presence of an `install` method.
+   *
+   * @param {any} obj - Object to check.
+   */
+  private isPlugin(obj: any): boolean {
+    return obj && typeof obj.install === 'function';
   }
 }
 
-// Ensure `window.koppa` always holds the singleton instance
-window.koppa = Koppa.getInstance();
+/**
+ * **Lazy-Loading Proxy**
+ *
+ * Allows `take()` calls before the framework is fully initialized.
+ * Defers Core instance creation until actually needed.
+ */
+const CoreProxy = new Proxy({} as Core, {
+  get(_target, prop) {
+    const instance = Core.getInstance();
 
-export default Koppa;
+    if (prop === 'take') {
+      return (...args: [any, string?]) => instance.take(...args);
+    }
+
+    return instance[prop as keyof Core];
+  },
+});
+
+// Ensure `window.core` always holds the singleton proxy instance
+window.koppa = CoreProxy;
+
+// Export the proxy instance
+export default CoreProxy;

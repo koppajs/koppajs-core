@@ -46,27 +46,25 @@ declare global {
   }
 
   /**
-   * Represents the global Koppa framework instance.
-   */
-  interface Koppa {
-    /** The root element of the application. */
-    rootElement?: string;
-
-    /** Registered modules in the framework. */
-    modules: Record<string, Function | Object>;
-
-    /** Registered components within the framework. */
-    components: Record<string, Component>;
-
-    /** Active component instances. */
-    instances: Record<string, Instance>;
-  }
-
-  /**
    * Extends the global Window interface to include the Koppa framework instance.
    */
   interface Window {
-    koppa: Koppa;
+    koppa: {
+      /** The root element of the application. */
+      rootElement?: string;
+
+      /** Registered modules in the framework. */
+      modules: Record<string, Function | Object>;
+
+      /** Registered plugins in the framework. */
+      plugins: Record<string, Function | Object>;
+
+      /** Registered components within the framework. */
+      components: Record<string, Component>;
+
+      /** Active component instances. */
+      instances: Record<string, Instance>;
+    };
   }
 
   /**
