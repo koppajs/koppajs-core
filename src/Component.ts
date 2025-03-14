@@ -2,7 +2,7 @@
 /// <reference path="../types.d.ts" />
 
 import Instance from './Instance';
-import { v4 as uuidv4 } from 'uuid';
+import { generateCompactUniqueId } from './utils';
 
 /**
  * Represents a custom web component that integrates with the Koppa framework.
@@ -43,7 +43,7 @@ export default class Component {
          * Initializes the component instance and attaches styles and templates.
          */
         async connectedCallback() {
-          this.instanceId = uuidv4(); // Generate a unique identifier for the component instance
+          this.instanceId = generateCompactUniqueId(); // Generate a unique identifier for the component instance
           const parentInstance = component.getParentInstance(this); // Retrieve the parent instance if available
 
           // Ensure the template has content before cloning it

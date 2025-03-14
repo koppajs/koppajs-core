@@ -36,11 +36,9 @@ export default defineConfig({
       rollupOptions: {
         // Ensure no HTML entry is required
         input: path.resolve(__dirname, "../src/index.ts"), // Make sure this file exists!
-        external: ["uuid"], // List dependencies that should NOT be bundled
+        external: [],
         output: {
-          globals: {
-            uuid: "uuid",
-          },
+          globals: {},
         },
       },
     },

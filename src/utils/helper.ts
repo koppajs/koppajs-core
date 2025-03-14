@@ -31,3 +31,7 @@ export function getValueByPath(obj: any, path: string): any {
     return undefined;
   }
 }
+
+export function generateCompactUniqueId(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 8)}`;
+}
