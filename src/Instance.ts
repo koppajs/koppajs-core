@@ -212,6 +212,14 @@ export default class Instance<T extends Record<string, any> = Record<string, any
     (watchSet as Set<string>).forEach((path: string) => model.watch(path));
   }
 
+  private take(pluginName: string) {
+    const plugin = window.koppa.plugins[pluginName];
+    if (plugin && typeof plugin.setup === 'function') {
+      return plugin.setup.call(this.data);
+    }
+    return undefined;
+  }
+
   /**
    * Processes the slot elements within the component and replaces them
    * with the provided content from the child nodes of the current component.
@@ -330,6 +338,7 @@ export default class Instance<T extends Record<string, any> = Record<string, any
           $refs: this.refs,
           $parent: this.parent,
           $emit: this.emit,
+          $take: this.take,
         },
         window.koppa.modules,
       );

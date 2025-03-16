@@ -110,7 +110,6 @@ class Core {
    */
   private registerModule(module: { name: string; [key: string]: any }): void {
     this.modules[module.name] = module;
-    console.info(`Modul "${module.name}" wurde registriert.`);
   }
 
   /**
@@ -127,7 +126,6 @@ class Core {
       take: this.take,
     });
     this.plugins[plugin.name] = plugin;
-    console.info(`Plugin "${plugin.name}" (v${plugin.version ?? 'n/a'}) wurde installiert.`);
   }
 
   /**
@@ -154,14 +152,13 @@ class Core {
         name!,
         item,
       );
-      console.info(`Komponente "${name}" wurde registriert.`);
     } else if (this.isPlugin(item)) {
       // If the item is a plugin (i.e., has an install method)
       this.registerPlugin(item);
     } else if (item && item.name) {
       this.registerModule(item);
     } else {
-      console.error('❌ Unbekannter Typ für Registrierung:', item);
+      console.error('❌ Unknown type for registration:', item);
     }
   }
 

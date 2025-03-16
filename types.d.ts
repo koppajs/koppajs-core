@@ -2,7 +2,6 @@
 
 import Component from './src/Component';
 import Instance from './src/Instance';
-import Core from './src/index'; // Add this line to import Core
 
 declare global {
   /**
@@ -39,7 +38,10 @@ declare global {
     /** Inserts a new element after the current element. */
     after(newNode: HTMLElement | string): void;
 
-    /** Gets or sets an attribute on the element. */
+    /**
+     * Gets or sets an attribute on the element.
+     * Returns undefined if no attribute is set.
+     */
     attr(attrName: string, attrValue?: string): string | undefined;
 
     /** Optional property for storing instance-specific data. */
@@ -51,9 +53,10 @@ declare global {
    */
   interface Window {
     koppa: {
-      /** Registered modules in the framework. */ modules: Record<string, Function | Object>;
+      /** Registered modules in the framework. */
+      modules: Record<string, Function | Object>;
 
-      /** Registered plugins in the framework. */
+      /** Installed plugins in the framework. */
       plugins: Record<string, IPlugin>;
 
       /** Registered components within the framework. */
@@ -74,52 +77,69 @@ declare global {
     /** The template used for rendering the instance. */
     template: HTMLTemplateElement;
 
-    /** The associated JavaScript logic. */
+    /** The associated JavaScript logic as a string. */
     script: string;
 
     /** Reference to the parent instance, if applicable. */
     parentInstance?: Instance;
   }
 
+  /**
+   * Interface representing the core of the framework.
+   */
   interface ICore {
     /**
-     * Enthält alle registrierten Module.
+     * Contains all registered modules.
      */
     modules: Record<string, Function | Object>;
 
     /**
-     * Enthält alle installierten Plugins.
+     * Contains all installed plugins.
      */
     plugins: Record<string, IPlugin>;
 
     /**
-     * Enthält alle registrierten Komponenten.
+     * Contains all registered components.
      */
     components: Record<string, Component>;
 
     /**
-     * Enthält alle aktiven Instanzen der Komponenten.
+     * Contains all active component instances.
      */
     instances: Record<string, Instance>;
 
     /**
-     * Einheitliche Methode zur Registrierung von Komponenten, Modulen oder Plugins.
-     * Je nach übergebenem Parameter wird intern zwischen den verschiedenen Typen unterschieden.
+     * Unified method for registering components, modules, or plugins.
+     * Internally distinguishes between types based on the parameters.
      *
-     * @param item - Das zu registrierende Element.
-     * @param name - Optionaler Name, der vor allem bei Komponenten benötigt wird.
+     * @param item - The item to register.
+     * @param name - An optional name, primarily used for components.
      */
     take(item: any, name?: string): void;
   }
 
+  /**
+   * Interface representing a plugin for the framework.
+   */
   interface IPlugin {
+    /** The unique name of the plugin. */
     name: string;
+    /** The version of the plugin. */
     version?: string;
+    /** A brief description of the plugin. */
     description?: string;
     /**
-     * Die Installationsmethode, die den Core als Kontext erhält.
+     * Installs the plugin globally, receiving the core context.
+     *
+     * @param core - The global core context.
      */
     install(core: Record<string, Function>): void;
+    /**
+     * Optional setup method that is called when the plugin is integrated
+     * into a component. It returns an object containing helper methods
+     * that can be used within the component.
+     */
+    setup?(): Record<string, Function>;
   }
 
   /**
@@ -161,7 +181,7 @@ declare global {
     /** The HTML template of the component. */
     template: string;
 
-    /** The associated JavaScript logic. */
+    /** The associated JavaScript logic as a string. */
     script: string;
 
     /** The CSS styling of the component. */
@@ -207,6 +227,14 @@ declare global {
 
     /** Function to emit events to the parent instance. */
     $emit?: (eventName: string, ...args: any[]) => void;
+
+    /**
+     * Method to retrieve a plugin's setup API by name.
+     *
+     * @param pluginName - The name of the plugin.
+     * @returns An object containing helper methods provided by the plugin.
+     */
+    $take: (pluginName: string) => Record<string, Function>;
   }
 
   /**
