@@ -234,7 +234,7 @@ declare global {
      * @param pluginName - The name of the plugin.
      * @returns An object containing helper methods provided by the plugin.
      */
-    $take: (pluginName: string) => Record<string, Function>;
+    $take: (pluginName: string) => Record<string, Function> | undefined;
   }
 
   /**

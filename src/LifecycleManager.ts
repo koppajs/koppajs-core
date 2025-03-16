@@ -49,7 +49,20 @@ export class LifecycleManager {
    */
   public callHook(hook: LifecycleHook): void {
     const instanceHook = this.hooks[hook];
-    this.core.callPluginHook.call(instanceHook?.[1], hook);
-    instanceHook?.[0]();
+    if (instanceHook) {
+      const [hookFunction, hookContext] = instanceHook;
+      // Ensure callPluginHook exists and is a function before invoking it
+      if (typeof this.core.callPluginHook === 'function') {
+        if (hookContext) {
+          // If a context is provided, call the function with the context using .call
+          this.core.callPluginHook.call(hookContext, hook);
+        } else {
+          // If no context is provided, call the function normally
+          this.core.callPluginHook(hook);
+        }
+      }
+      // Execute the actual hook function
+      hookFunction();
+    }
   }
 }
