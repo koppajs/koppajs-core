@@ -77,11 +77,14 @@ export default class Instance<T extends Record<string, any> = Record<string, any
   /** Handles events propagated from child components */
   public handleEventFromChild!: (eventName: string, ...args: any[]) => void;
 
+  private core: Record<string, Function>; // The core context
+
   /**
    * Initializes an instance with the provided configuration.
    * @param {InstanceInitBundle} bundle - Initialization parameters for the instance.
    */
-  constructor(bundle: InstanceInitBundle) {
+  constructor(core: Record<string, Function>, bundle: InstanceInitBundle) {
+    this.core = core;
     this.element = bundle.element;
     this.template = bundle.template;
     this.script = bundle.script;
@@ -362,7 +365,7 @@ export default class Instance<T extends Record<string, any> = Record<string, any
       bindMethods(this.data, this.methods);
 
       // Initialize lifecycle management and event handling.
-      this.lifecycleManager = new LifecycleManager();
+      this.lifecycleManager = new LifecycleManager(this.core);
       this.templateProcessor = new TemplateProcessor();
       this.eventHandler = new EventHandler(this.parent, this.data);
 

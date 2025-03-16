@@ -8,12 +8,16 @@ export class LifecycleManager {
   /**
    * Stores registered lifecycle hooks mapped by their hook name.
    */
-  private hooks: Partial<Record<LifecycleHook, Function>> = {};
+  private hooks: Partial<Record<LifecycleHook, [Function, Data]>> = {};
+
+  private core: Record<string, Function>; // The core context
 
   /**
    * Initializes a new instance of the LifecycleManager.
    */
-  constructor() {}
+  constructor(core: Record<string, Function>) {
+    this.core = core;
+  }
 
   /**
    * Sets up lifecycle hooks for a given module by binding them to the provided data model.
@@ -33,7 +37,7 @@ export class LifecycleManager {
     ] as LifecycleHook[]) {
       if (typeof module[hook] === 'function') {
         // Bind the hook function to the provided data model and store it
-        this.hooks[hook] = module[hook]!.bind(data);
+        this.hooks[hook] = [module[hook]!.bind(data), data];
       }
     }
   }
@@ -44,6 +48,8 @@ export class LifecycleManager {
    * @param {LifecycleHook} hook - The name of the lifecycle hook to invoke.
    */
   public callHook(hook: LifecycleHook): void {
-    this.hooks[hook]?.();
+    const instanceHook = this.hooks[hook];
+    this.core.callPluginHook.call(instanceHook?.[1], hook);
+    instanceHook?.[0]();
   }
 }

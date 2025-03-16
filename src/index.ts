@@ -15,20 +15,24 @@ const identifier = generateCompactUniqueId();
  * Core class providing the main framework instance.
  *
  * Manages components, modules, and plugins while ensuring a single instance.
+ * It also holds the global plugin hooks for extending lifecycle behavior.
  */
 class Core {
-  /** Registered modules */
-  public modules: Record<string, any> = {};
-  /** Registered plugins */
-  public plugins: Record<string, any> = {};
-  /** Registered components */
+  // Registered modules as self-contained units providing specific functionality
+  public modules: Record<string, Function | Object> = {};
+  // Registered plugins that extend or modify the core behavior
+  public plugins: Record<string, IPlugin> = {};
+  // Registered custom components
   public components: Record<string, Component> = {};
-  /** Active component instances */
+  // Active component instances
   public instances: Record<string, Instance> = {};
-  /** Singleton instance */
+  // Singleton instance
   private static instance: Core;
-  /** Queue for `take()` calls made before initialization */
+  // Queue for `take()` calls made before initialization
   private static queuedTakes: [any, string?][] = [];
+
+  // Global plugin hooks; each hook maps to an array of functions to be executed
+  private pluginHooks: Partial<Record<LifecycleHook, Function[]>> = {};
 
   /**
    * Creates or retrieves the singleton instance.
@@ -55,18 +59,86 @@ class Core {
   }
 
   /**
+   * Asynchronously calls all functions registered for the specified lifecycle hook.
+   *
+   * Iterates over each hook function and awaits its result if it returns a Promise.
+   *
+   * @param {LifecycleHook} hook - The name of the lifecycle hook.
+   * @param {...any} args - Arguments to pass to each hook function.
+   * @returns {Promise<void>} A promise that resolves when all hook functions have been executed.
+   */
+  private async callPluginHook(instanceData: Data, hook: LifecycleHook): Promise<void> {
+    const hooks = this.pluginHooks[hook];
+    if (!hooks) return;
+    for (const hookFn of hooks) {
+      const result = hookFn.call(instanceData);
+      // Await the result only if it is a Promise (even if it's Promise<void>)
+      if (result && typeof result.then === 'function') {
+        await result;
+      }
+    }
+  }
+
+  /**
+   * Registers a new function to be called when the specified lifecycle hook is fired.
+   *
+   * @param {LifecycleHook} hook - The lifecycle hook to register the function for.
+   * @param {(...args: any[]) => any} hookFn - The callback function to register.
+   */
+  public registerPluginHook(hook: LifecycleHook, hookFn: (...args: any[]) => any): void {
+    if (!this.pluginHooks[hook]) {
+      this.pluginHooks[hook] = [];
+    }
+    this.pluginHooks[hook]!.push(hookFn);
+  }
+
+  /**
    * Retrieves the singleton instance, creating it if necessary.
+   *
+   * @returns {Core} The singleton Core instance.
    */
   public static getInstance(): Core {
     return Core.instance ?? (Core.instance = new Core(identifier));
   }
 
   /**
-   * Registers a module, plugin, or component.
-   * If the framework is not yet initialized, the registration is queued.
+   * Registers a module.
    *
-   * @param {any} item - A module, plugin, or component definition.
-   * @param {string} [name] - Name of the component or plugin.
+   * Modules are self-contained units that provide specific functionality or data processing.
+   *
+   * @param {object} module - A module object that contains a name and additional properties.
+   */
+  private registerModule(module: { name: string; [key: string]: any }): void {
+    this.modules[module.name] = module;
+    console.info(`Modul "${module.name}" wurde registriert.`);
+  }
+
+  /**
+   * Registers a plugin.
+   *
+   * Plugins receive the core context and can perform global extensions or modifications.
+   *
+   * @param {IPlugin} plugin - A plugin conforming to the IPlugin interface.
+   */
+  private registerPlugin(plugin: IPlugin): void {
+    // Immediately install the plugin so that it integrates with the core.
+    plugin.install({
+      registerPluginHook: this.registerPluginHook,
+      take: this.take,
+    });
+    this.plugins[plugin.name] = plugin;
+    console.info(`Plugin "${plugin.name}" (v${plugin.version ?? 'n/a'}) wurde installiert.`);
+  }
+
+  /**
+   * Unified method for registering components, modules, or plugins.
+   *
+   * If the item has an install method, it is treated as a plugin;
+   * if it is recognized as a ComponentSource, it is registered as a component;
+   * otherwise, if it has a name, it is registered as a module.
+   *
+   * @param {any} item - The item to register.
+   * @param {string} [name] - Optional name used primarily for components.
    */
   public take(item: any, name?: string): void {
     if (!Core.instance) {
@@ -75,12 +147,21 @@ class Core {
     }
 
     if (this.isComponentSource(item)) {
-      this.components[name!] = new Component(name!, item);
+      this.components[name!] = new Component(
+        {
+          callPluginHook: this.callPluginHook,
+        },
+        name!,
+        item,
+      );
+      console.info(`Komponente "${name}" wurde registriert.`);
     } else if (this.isPlugin(item)) {
-      item.install = item.install.bind(this);
-      this.plugins[name ?? item.name] = item;
+      // If the item is a plugin (i.e., has an install method)
+      this.registerPlugin(item);
+    } else if (item && item.name) {
+      this.registerModule(item);
     } else {
-      this.modules[item.name] = item;
+      console.error('❌ Unbekannter Typ für Registrierung:', item);
     }
   }
 
@@ -88,6 +169,7 @@ class Core {
    * Determines whether the given object is a valid ComponentSource.
    *
    * @param {any} obj - Object to check.
+   * @returns {boolean} True if the object is a valid ComponentSource, false otherwise.
    */
   private isComponentSource(obj: any): obj is ComponentSource {
     return obj && typeof obj.path === 'string' && typeof obj.template === 'string';
@@ -95,9 +177,11 @@ class Core {
 
   /**
    * Determines whether the given object is a valid plugin.
+   *
    * A plugin is identified by the presence of an `install` method.
    *
    * @param {any} obj - Object to check.
+   * @returns {boolean} True if the object is a valid plugin, false otherwise.
    */
   private isPlugin(obj: any): boolean {
     return obj && typeof obj.install === 'function';
@@ -105,10 +189,10 @@ class Core {
 }
 
 /**
- * **Lazy-Loading Proxy**
+ * Lazy-Loading Proxy
  *
- * Allows `take()` calls before the framework is fully initialized.
- * Defers Core instance creation until actually needed.
+ * Allows `take()` calls before the framework is fully initialized by deferring
+ * the creation of the Core instance until it is actually needed.
  */
 const CoreProxy = new Proxy({} as Core, {
   get(_target, prop) {
@@ -122,8 +206,5 @@ const CoreProxy = new Proxy({} as Core, {
   },
 });
 
-// Ensure `window.core` always holds the singleton proxy instance
 window.koppa = CoreProxy;
-
-// Export the proxy instance
 export default CoreProxy;

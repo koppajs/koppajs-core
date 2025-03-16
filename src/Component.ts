@@ -11,13 +11,25 @@ export default class Component {
   public name: string; // The name of the custom component
   private source: ComponentSource; // The source object containing template, style, and script definitions
   private template: HTMLTemplateElement = document.createElement('template'); // A template element for rendering the component
+  private core: Record<string, Function>; // The core context
 
   /**
    * Creates an instance of Component and registers it as a custom element.
-   * @param {string} componentName - The name of the custom component.
-   * @param {ComponentSource} source - The source object containing the component's template, style, and script.
+   *
+   * This constructor initializes the component by accepting a global core context,
+   * the unique name for the custom element, and a source object containing the template,
+   * style, and script definitions. The core context is used for dependency injection,
+   * providing access to global functions, configuration, or event handling that may be required
+   * throughout the component’s lifecycle. After assigning the component name and source, it
+   * immediately calls the registerComponent method to define the element with the browser’s
+   * custom elements registry.
+   *
+   * @param {Record<string, Function>} core - The global core context containing shared functions and state.
+   * @param {string} componentName - The unique name of the custom component.
+   * @param {ComponentSource} source - The source object that holds the component's template, style, and script.
    */
-  constructor(componentName: string, source: ComponentSource) {
+  constructor(core: Record<string, Function>, componentName: string, source: ComponentSource) {
+    this.core = core;
     this.source = source;
     this.name = componentName;
     this.registerComponent();
@@ -61,7 +73,7 @@ export default class Component {
 
           // Clone the template and create an instance of the component
           const template = component.template.cloneNode(true) as HTMLTemplateElement;
-          const instance = (window.koppa.instances[this.instanceId] = new Instance({
+          const instance = (window.koppa.instances[this.instanceId] = new Instance(component.core, {
             element: this,
             template,
             script: component.source.script,

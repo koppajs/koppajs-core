@@ -2,6 +2,7 @@
 
 import Component from './src/Component';
 import Instance from './src/Instance';
+import Core from './src/index'; // Add this line to import Core
 
 declare global {
   /**
@@ -50,14 +51,10 @@ declare global {
    */
   interface Window {
     koppa: {
-      /** The root element of the application. */
-      rootElement?: string;
-
-      /** Registered modules in the framework. */
-      modules: Record<string, Function | Object>;
+      /** Registered modules in the framework. */ modules: Record<string, Function | Object>;
 
       /** Registered plugins in the framework. */
-      plugins: Record<string, Function | Object>;
+      plugins: Record<string, IPlugin>;
 
       /** Registered components within the framework. */
       components: Record<string, Component>;
@@ -82,6 +79,47 @@ declare global {
 
     /** Reference to the parent instance, if applicable. */
     parentInstance?: Instance;
+  }
+
+  interface ICore {
+    /**
+     * Enthält alle registrierten Module.
+     */
+    modules: Record<string, Function | Object>;
+
+    /**
+     * Enthält alle installierten Plugins.
+     */
+    plugins: Record<string, IPlugin>;
+
+    /**
+     * Enthält alle registrierten Komponenten.
+     */
+    components: Record<string, Component>;
+
+    /**
+     * Enthält alle aktiven Instanzen der Komponenten.
+     */
+    instances: Record<string, Instance>;
+
+    /**
+     * Einheitliche Methode zur Registrierung von Komponenten, Modulen oder Plugins.
+     * Je nach übergebenem Parameter wird intern zwischen den verschiedenen Typen unterschieden.
+     *
+     * @param item - Das zu registrierende Element.
+     * @param name - Optionaler Name, der vor allem bei Komponenten benötigt wird.
+     */
+    take(item: any, name?: string): void;
+  }
+
+  interface IPlugin {
+    name: string;
+    version?: string;
+    description?: string;
+    /**
+     * Die Installationsmethode, die den Core als Kontext erhält.
+     */
+    install(core: Record<string, Function>): void;
   }
 
   /**
