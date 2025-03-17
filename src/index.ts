@@ -67,17 +67,17 @@ class Core {
    * @param {...any} args - Arguments to pass to each hook function.
    * @returns {Promise<void>} A promise that resolves when all hook functions have been executed.
    */
-  private async callPluginHook(instanceData: Data, hook: LifecycleHook): Promise<void> {
+  private callPluginHook = async (instanceContext: Data, hook: LifecycleHook): Promise<void> => {
     const hooks = this.pluginHooks[hook];
     if (!hooks) return;
     for (const hookFn of hooks) {
-      const result = hookFn.call(instanceData);
+      const result = hookFn.call(instanceContext);
       // Await the result only if it is a Promise (even if it's Promise<void>)
       if (result && typeof result.then === 'function') {
         await result;
       }
     }
-  }
+  };
 
   /**
    * Registers a new function to be called when the specified lifecycle hook is fired.
@@ -85,12 +85,12 @@ class Core {
    * @param {LifecycleHook} hook - The lifecycle hook to register the function for.
    * @param {(...args: any[]) => any} hookFn - The callback function to register.
    */
-  public registerPluginHook(hook: LifecycleHook, hookFn: (...args: any[]) => any): void {
+  public registerPluginHook = (hook: LifecycleHook, hookFn: (...args: any[]) => any): void => {
     if (!this.pluginHooks[hook]) {
       this.pluginHooks[hook] = [];
     }
     this.pluginHooks[hook]!.push(hookFn);
-  }
+  };
 
   /**
    * Retrieves the singleton instance, creating it if necessary.
@@ -138,7 +138,7 @@ class Core {
    * @param {any} item - The item to register.
    * @param {string} [name] - Optional name used primarily for components.
    */
-  public take(item: any, name?: string): void {
+  public take = (item: any, name?: string): void => {
     if (!Core.instance) {
       Core.queuedTakes.push([item, name]);
       return;
@@ -160,7 +160,7 @@ class Core {
     } else {
       console.error('❌ Unknown type for registration:', item);
     }
-  }
+  };
 
   /**
    * Determines whether the given object is a valid ComponentSource.
@@ -186,22 +186,26 @@ class Core {
 }
 
 /**
- * Lazy-Loading Proxy
+ * Lazy-Loading Proxy for Core.
  *
- * Allows `take()` calls before the framework is fully initialized by deferring
- * the creation of the Core instance until it is actually needed.
+ * This proxy defers the creation of the Core instance until it is needed.
+ * It also enables calls to `take()` even before the framework is fully initialized.
+ *
+ * When instantiating via "new CoreProxy(...)", the proxy always returns the singleton instance.
  */
-const CoreProxy = new Proxy({} as Core, {
-  get(_target, prop) {
+const CoreProxy = new Proxy(Core, {
+  construct(_target, _args) {
+    // Always return the singleton instance when the proxy is constructed.
+    return Core.getInstance();
+  },
+  get(_target, prop, _receiver) {
     const instance = Core.getInstance();
-
     if (prop === 'take') {
       return (...args: [any, string?]) => instance.take(...args);
     }
-
     return instance[prop as keyof Core];
   },
-});
+}) as unknown as CoreProxyType;
 
 window.koppa = CoreProxy;
 export default CoreProxy;
