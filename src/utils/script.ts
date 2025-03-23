@@ -1,5 +1,4 @@
 // 📁 `src/utils/script.ts`
-/// <reference path="../../types.d.ts" />
 
 /**
  * Converts a string representation of code into an executable function within a given context and module scope.

@@ -1,5 +1,4 @@
 // 📁 `src/utils/dom.ts`
-/// <reference path="../../types.d.ts" />
 
 const domExtensions: { [key: string]: PropertyDescriptor } = {
   select: {

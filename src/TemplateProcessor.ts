@@ -1,5 +1,4 @@
 // 📁 `src/TemplateProcessor.ts`
-/// <reference path="../types.d.ts" />
 
 import { containsHTML, evaluateExpression } from './utils';
 

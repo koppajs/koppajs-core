@@ -1,5 +1,4 @@
 // 📁 `src/Components.ts`
-/// <reference path="../types.d.ts" />
 
 import Instance from './Instance';
 import { generateCompactUniqueId } from './utils';

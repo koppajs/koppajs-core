@@ -1,18 +1,17 @@
 {
-  "name": "@koppajs/core-ts-vite",
+  "name": "@koppajs/koppajs-core",
   "version": "3.0.0",
   "private": true,
   "type": "module",
-  "types": "./types.d.ts",
+  "types": "./dist/globals.d.ts",
   "main": "./dist/index.cjs.js",
   "module": "./dist/index.es.js",
   "files": [
-    "dist",
-    "./types.d.ts"
+    "dist"
   ],
   "exports": {
     ".": {
-      "types": "./types.d.ts",
+      "types": "./dist/globals.d.ts",
       "import": "./dist/index.es.js",
       "require": "./dist/index.cjs.js"
     }
@@ -20,7 +19,7 @@
   "sideEffects": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/koppajs/core-ts-vite"
+    "url": "https://github.com/koppajs/koppajs-core"
   },
   "description": "Koppa.js is a lightweight, high-performance frontend framework designed for building modern web applications without relying on a virtual DOM. It offers a modular architecture, reactivity, and seamless integration with TypeScript and Vite.",
   "keywords": [
@@ -46,7 +45,7 @@
   "scripts": {
     "clean": "rimraf node_modules dist pnpm-lock.yaml",
     "build": "tsc --project config/tsconfig.json && vite build --config config/vite.config.ts",
-    "rebuild": "rimraf dist && pnpm run build",
+    "rebuild": "pnpm run clean && pnpm run build",
     "test": "vitest --config config/vitest.config.ts --run",
     "test:coverage": "vitest --config config/vitest.config.ts --coverage",
     "test:watch": "vitest --config config/vitest.config.ts --watch",
@@ -57,7 +56,7 @@
     "format:styles": "stylelint '**/*.{css,scss}' --config config/stylelint.config.js --fix || exit 0",
     "format": "pnpm run format:scripts && pnpm run format:styles",
     "prepare": "husky",
-    "list-structure": "git ls-files > project-structure.txt",
+    "list-structure": "git ls-files > ---project-structure",
     "dump-code": "node scripts/dump-code.js",
     "analyze-code": "node scripts/analyze-code.js"
   },
@@ -78,7 +77,6 @@
     "@vitest/coverage-v8": "^1.6.0",
     "@vitest/ui": "^1.6.0",
     "commitlint": "^19.8.0",
-    "dts-bundle-generator": "^9.5.1",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
@@ -93,7 +91,6 @@
     "stylelint-order": "^6.0.4",
     "terser": "^5.16.1",
     "ts-node": "^10.9.1",
-    "vite": "^6.2.1",
     "vitest": "^1.6.0"
   },
   "overrides": {

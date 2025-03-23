@@ -1,10 +1,10 @@
+/// <reference types="vitest" />
 import path from "path";
 import { fileURLToPath } from "url";
-import { defineConfig } from "vite";
+import { defineConfig, type UserConfig } from "vite";
 import packageJson from "../package.json" assert { type: "json" };
 import { nodeResolve } from "@rollup/plugin-node-resolve";
 import commonJS from "@rollup/plugin-commonjs";
-import terser from "@rollup/plugin-terser"; // Minification for both ES and CJS outputs
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,7 +26,7 @@ const getLibraryName = () => {
 
 const libName = getLibraryName();
 
-export default defineConfig({
+export default defineConfig(<UserConfig>{
   plugins: [nodeResolve(), commonJS()],
   build: {
     minify: "terser", // Use Terser for code minification
@@ -43,7 +43,7 @@ export default defineConfig({
       output: {
         dir: path.resolve(__dirname, "../dist"), // Output directory for build artifacts
         entryFileNames: "index.[format].js", // Dynamic file naming based on the module format
-        plugins: [terser()], // Apply Terser plugin for additional minification during output
+        plugins: [],
       },
     },
   },

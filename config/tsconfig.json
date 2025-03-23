@@ -8,6 +8,7 @@
     "allowJs": false, // Disable JS support (enforce TypeScript-only)
     "jsx": "preserve", // Keep JSX as-is
     "declaration": true, // Generate `.d.ts` files for type definitions
+    "emitDeclarationOnly": true, // Only generate `.d.ts` files
     "sourceMap": true, // Generate source maps for debugging
     "outDir": "../dist", // Output directory
     "rootDir": "../src", // Source directory
@@ -45,7 +46,7 @@
     /* Global Type Declarations */
     "types": ["vite/client", "node"] // Include global type definitions
   },
-  "include": ["../types.d.ts", "../src/**/*.ts"], // Files to include in compilation
+  "include": ["../src/**/*.ts", "../src/globals.d.ts"],
   "exclude": [
     "../.git",
     "../.husky",

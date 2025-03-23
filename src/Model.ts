@@ -1,5 +1,4 @@
 // 📁 `src/Model.ts`
-/// <reference path="../types.d.ts" />
 
 /**
  * Type definition for a callback function triggered when a value changes.
