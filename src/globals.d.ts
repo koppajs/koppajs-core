@@ -6,7 +6,7 @@ import type InstanceClass from './Instance';
 declare global {
   type Component = ComponentClass;
   type Instance = InstanceClass;
-  
+
   interface HTMLElement {
     // Selects the first matching child element.
     select(selector: string): HTMLElement | null | void;

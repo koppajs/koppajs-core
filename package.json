@@ -3,15 +3,17 @@
   "version": "3.0.0",
   "private": true,
   "type": "module",
-  "types": "./dist/globals.d.ts",
+  "types": "./dist/index.d.ts",
   "main": "./dist/index.cjs.js",
   "module": "./dist/index.es.js",
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "package.json"
   ],
   "exports": {
     ".": {
-      "types": "./dist/globals.d.ts",
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.es.js",
       "require": "./dist/index.cjs.js"
     }
@@ -44,16 +46,18 @@
   "homepage": "https://koppajs.org",
   "scripts": {
     "clean": "rimraf node_modules dist pnpm-lock.yaml",
-    "build": "tsc --project config/tsconfig.json && vite build --config config/vite.config.ts",
+    "typecheck": "tsc --project config/tsconfig.typecheck.json",
+    "build": "pnpm run typecheck && vite build --config config/vite.config.ts",
+    "postbuild": "node scripts/postbuild.js",
     "rebuild": "pnpm run clean && pnpm run build",
     "test": "vitest --config config/vitest.config.ts --run",
     "test:coverage": "vitest --config config/vitest.config.ts --coverage",
     "test:watch": "vitest --config config/vitest.config.ts --watch",
     "lint:scripts": "pnpm eslint . --config config/eslint.config.js --fix",
-    "lint:styles": "stylelint '**/*.{css,scss}' --config config/stylelint.config.js --fix || exit 0",
+    "lint:styles": "stylelint '**/*.{css,scss}' --config config/stylelint.config.js --fix || true",
     "lint": "pnpm run lint:scripts && pnpm run lint:styles",
     "format:scripts": "prettier --ignore-path config/.prettierignore --config config/prettier.config.js --write .",
-    "format:styles": "stylelint '**/*.{css,scss}' --config config/stylelint.config.js --fix || exit 0",
+    "format:styles": "stylelint '**/*.{css,scss}' --config config/stylelint.config.js --fix || true",
     "format": "pnpm run format:scripts && pnpm run format:styles",
     "prepare": "husky",
     "list-structure": "git ls-files > ---project-structure",

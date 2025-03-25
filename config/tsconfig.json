@@ -9,7 +9,7 @@
     "jsx": "preserve", // Keep JSX as-is
     "declaration": true, // Generate `.d.ts` files for type definitions
     "emitDeclarationOnly": true, // Only generate `.d.ts` files
-    "sourceMap": true, // Generate source maps for debugging
+    "sourceMap": false, // Generate source maps for debugging
     "outDir": "../dist", // Output directory
     "rootDir": "../src", // Source directory
     "removeComments": true, // Remove comments in the output
@@ -17,6 +17,7 @@
     "isolatedModules": true, // Ensure modules are compiled independently
 
     /* Strict Type-Checking */
+    "noEmit": true,
     "strict": true, // Enable all strict type-checking options
     "noImplicitAny": true, // Disallow implicit `any`
     "strictNullChecks": true, // Enforce null safety
@@ -37,16 +38,16 @@
     "esModuleInterop": true, // Enable CommonJS/ES module interop
     "skipLibCheck": true, // Skip `.d.ts` type checking for performance
     "forceConsistentCasingInFileNames": true, // Enforce consistent casing in file names
-    "baseUrl": "./", // Base directory for module resolution
+    "baseUrl": "../", // Base directory for module resolution
     "paths": {
-      "@/*": ["./src/*"],
-      "~/*": ["./src/*"]
+      "@/*": ["src/*"],
+      "~/*": ["src/*"]
     }, // Define module aliases
 
     /* Global Type Declarations */
     "types": ["vite/client", "node"] // Include global type definitions
   },
-  "include": ["../src/**/*.ts", "../src/globals.d.ts"],
+  "include": ["../src/**/*.ts", "../src/**/*.d.ts"],
   "exclude": [
     "../.git",
     "../.husky",
