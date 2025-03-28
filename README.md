@@ -155,16 +155,82 @@ Supported: HTML, JavaScript, TypeScript, CSS & SCSS
 
 This `.kpa` file contains **template, logic, and styles** in a single file.
 
+
 ## 🔄 Lifecycle Hooks
 
-Every component in koppajs goes through the following phases:
+Components in **KoppaJS** follow a well-defined lifecycle, allowing developers to hook into critical phases — for setup, DOM manipulation, optimization, or cleanup. Lifecycle hooks can be declared as functions in any component and will be invoked automatically at the appropriate stage.
 
-1. **created()** – Before DOM binding.
-2. **beforeMount()** – Just before being added to the DOM.
-3. **mounted()** – Once the component is in the DOM.
-4. **updated()** – Triggered when data changes.
-5. **beforeDestroy()** – Before the component is removed.
-6. **destroyed()** – After complete removal from the DOM.
+### 📘 Lifecycle Hook Overview
+
+| Hook              | When it is called                                      | Typical Use Cases                                                                       |
+|-------------------|--------------------------------------------------------|------------------------------------------------------------------------------------------|
+| `created()`       | Immediately after instantiation, **before** any DOM processing | Initialize state, logging, access `this.$parent`, dynamic API calls                     |
+| `processed()`     | **After template processing**, **before event binding** | Enrich DOM structure, add classes/attributes, define anchor points for event delegation |
+| `beforeMount()`   | Just **before the component is inserted into the DOM** | Layout preparation, final props transformation, DOM scans                               |
+| `mounted()`       | After the component is added to the DOM                | DOM measurements, third-party integrations (charts, maps), focus control, animations    |
+| `beforeUpdate()`  | Before a re-render caused by reactive data change      | Save scroll positions, compare DOM states, snapshot internal state                      |
+| `updated()`       | After a re-render completes due to data change         | Restart animations, reset state, run post-update logic                                  |
+| `beforeDestroy()` | Just before the component is removed from the DOM      | Cleanup intervals, unsubscribe listeners, persist data                                  |
+| `destroyed()`     | After complete removal from the DOM                    | Final logging, global deregistration, memory cleanup                                    |
+
+---
+
+### 🔍 Notable Detail
+
+#### 🧬 `processed()` – A Strategic Extension Point
+
+The `processed()` hook is a unique feature of KoppaJS. It is invoked **after the full template has been parsed and interpolated**, but **before any events are bound or the final DOM is inserted**.
+
+This makes it ideal for:
+
+- Enriching the DOM before event listeners are attached
+- Dynamically setting classes or attributes required by event handlers
+- Structuring `ref` anchors for later interactions
+
+> **Example**: You assign an `.active` class to a button in `processed()`, and the click listener is then bound after. This ensures your event handler targets the **final, correct DOM structure**.
+
+---
+
+### 🛠 Example Usage in a Component
+
+```ts
+export default {
+  data: () => ({ count: 0 }),
+
+  created() {
+    console.log('🔧 Component is being created...');
+  },
+
+  processed() {
+    this.$refs.counter?.classList.add('ready');
+  },
+
+  beforeMount() {
+    console.log('⚙️ About to mount');
+  },
+
+  mounted() {
+    console.log('🎉 Mounted to DOM');
+  },
+
+  beforeUpdate() {
+    console.log('🔄 Before update');
+  },
+
+  updated() {
+    console.log('✅ Update finished');
+  },
+
+  beforeDestroy() {
+    console.log('🧹 Cleaning up');
+  },
+
+  destroyed() {
+    console.log('☠️ Fully destroyed');
+  }
+}
+```
+
 
 ## ⚡ koppajs vs. Other Frameworks
 

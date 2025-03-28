@@ -70,9 +70,11 @@ export interface LifecycleHooks {
   created?: Function;
   beforeMount?: Function;
   mounted?: Function;
+  beforeUpdate?: Function;
   updated?: Function;
   beforeDestroy?: Function;
   destroyed?: Function;
+  processed?: Function;
 }
 
 /**
@@ -82,9 +84,11 @@ export type LifecycleHook =
   | 'created'
   | 'beforeMount'
   | 'mounted'
+  | 'beforeUpdate'
   | 'updated'
   | 'beforeDestroy'
-  | 'destroyed';
+  | 'destroyed'
+  | 'processed';
 
 /**
  * Structure of a component module returned by `stringToCode`.

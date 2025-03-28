@@ -112,9 +112,11 @@ declare global {
     | 'created'
     | 'beforeMount'
     | 'mounted'
+    | 'beforeUpdate'
     | 'updated'
     | 'beforeDestroy'
-    | 'destroyed';
+    | 'destroyed'
+    | 'processed';
 
   interface Module extends LifecycleHooks {
     data: Data;
@@ -128,9 +130,11 @@ declare global {
     created?: Function;
     beforeMount?: Function;
     mounted?: Function;
+    beforeUpdate?: Function;
     updated?: Function;
     beforeDestroy?: Function;
     destroyed?: Function;
+    processed?: Function;
   }
 }
 

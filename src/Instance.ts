@@ -305,9 +305,14 @@ export default class Instance<T extends Record<string, any> = Record<string, any
         console.error('❌ Error in processTemplate:', error);
       });
 
+    this.lifecycleManager.callHook('processed');
+
     // Bind native and custom events.
     this.eventHandler.bindNativeEvents(this.container);
     this.eventHandler.setupEvents(this.events, this.container, this.refs);
+
+    if (this.isMounted)
+      this.lifecycleManager.callHook(this.isMounted ? 'beforeUpdate' : 'beforeMount');
 
     // Efficiently replace the current element's content with the processed template.
     this.element.replaceChildren(this.container);
@@ -388,7 +393,6 @@ export default class Instance<T extends Record<string, any> = Record<string, any
 
       // Execute lifecycle hooks for component creation and mounting.
       this.lifecycleManager.callHook('created');
-      this.lifecycleManager.callHook('beforeMount');
 
       // Perform the initial render.
       await this.render();
