@@ -46,7 +46,7 @@
   "homepage": "https://koppajs.org",
   "scripts": {
     "clean": "rimraf node_modules dist pnpm-lock.yaml",
-    "typecheck": "tsc --project config/tsconfig.typecheck.json",
+    "typecheck": "tsc --project config/tsconfig.json",
     "build": "pnpm run typecheck && vite build --config config/vite.config.ts",
     "postbuild": "node scripts/postbuild.js",
     "rebuild": "pnpm run clean && pnpm run build",
