@@ -30,9 +30,11 @@ export class LifecycleManager {
       'created',
       'beforeMount',
       'mounted',
+      'beforeUpdate',
       'updated',
       'beforeDestroy',
       'destroyed',
+      'processed',
     ] as LifecycleHook[]) {
       if (typeof module[hook] === 'function') {
         // Bind the hook function to the provided data model and store it
