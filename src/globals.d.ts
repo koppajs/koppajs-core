@@ -108,21 +108,29 @@ declare global {
 
   interface CoreCtx {
     registerHook: (hookName: string, callback: HookCallback<any>) => void;
-    take?: CoreType['take'];
+    take: CoreType['take'];
   }
 
-  type ComponentCtx = Record<string, any>;
+  type InstanceCtx = Record<string, any>;
 
-  interface IPlugin {
+  type DataCtx = Record<string, any>;
+
+  // Basic‐Extension‐Interface
+  interface IBaseExtension {
     name: string;
     install(context: CoreCtx): (() => any) | void;
-    setup?(context: ComponentCtx): Record<string, any> | (() => any) | void;
   }
 
-  interface IModule {
-    name: string;
-    initialize(context: CoreCtx): (() => any) | void;
-    attach?(): Record<string, any> | (() => any);
+  // Plugin‐Extension-Interface
+  interface IPlugin extends IBaseExtension {
+    setup(context: DataCtx): Record<string, any> | (() => any);
+    attach: never;
+  }
+
+  // Module‐Extension-Interface
+  interface IModule extends IBaseExtension {
+    attach(): Record<string, any> | (() => any);
+    setup: never;
   }
 
   interface ComponentSource {
@@ -130,6 +138,9 @@ declare global {
     script: string;
     style: string;
   }
+
+  // Extension-Interface
+  type IExtension = ComponentSource | IPlugin | IModule;
 
   /** Shorthand for mapping method names to functions. */
   type Methods = Record<string, Function>;

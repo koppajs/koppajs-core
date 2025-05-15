@@ -335,16 +335,12 @@ export default class Instance<T extends Record<string, any> = Record<string, any
       await this.parent?.readyPromise;
 
       // Convert the script into an executable module with references to essential objects.
-      const module = await stringToCode(
-        this.script,
-        {
-          $refs: this.refs,
-          $parent: this.parent,
-          $emit: this.emit,
-          $take: this.take,
-        },
-        ExtensionRegistry.modules,
-      );
+      const module = await stringToCode(this.script, {
+        $refs: this.refs,
+        $parent: this.parent,
+        $emit: this.emit,
+        $take: this.take,
+      });
 
       // Create a reactive data model with an observer triggering re-renders on change.
       const model: Model<T> = new Model(module.data as T, (_oldValue?: any, _newValue?: any) => {

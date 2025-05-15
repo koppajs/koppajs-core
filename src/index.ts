@@ -9,6 +9,10 @@ import ExtensionRegistry from './ExtensionRegistry';
 // Enhance native prototypes with additional utility functions
 extendPrototypes();
 
+type TakeArgs =
+  | [extension: ComponentSource, name: string] // ComponentSource braucht zwingend einen Namen
+  | [extension: IPlugin | IModule]; // Plugin/Module kommt allein
+
 // Unique identifier to enforce singleton initialization
 const identifier = generateCompactUniqueId();
 
@@ -16,8 +20,7 @@ class Core {
   // Singleton instance
   private static instance: Core;
   // Queue for `take()` calls made before initialization
-  private static queuedTakes: [extension: ComponentSource | IPlugin | IModule, name?: string][] =
-    [];
+  private static queuedTakes: TakeArgs[] = [];
 
   constructor(input?: string) {
     if (Core.instance) return Core.instance;
@@ -26,7 +29,7 @@ class Core {
       Core.instance = this;
 
       // Process any `take()` calls made before initialization
-      Core.queuedTakes.forEach(([arg1, arg2]) => this.take(arg1, arg2));
+      Core.queuedTakes.forEach((args) => this.take(...args));
       Core.queuedTakes = [];
     }
 
@@ -37,47 +40,53 @@ class Core {
     return Core.instance ?? (Core.instance = new Core(identifier));
   }
 
-  public take(extension: ComponentSource | IPlugin | IModule, name?: string): void {
-    // 1) ComponentSource
-    if (name && this.isComponentSource(extension)) {
+  public take(extension: ComponentSource, name: string): void;
+  public take(extension: IPlugin | IModule): void;
+  public take(...args: TakeArgs): void;
+  public take(extension: IExtension, name?: string) {
+    // 1) Component-Fall
+    if (this.isComponentSource(extension)) {
+      if (!name) {
+        console.error('ComponentSource erfordert einen Namen beim Aufruf von take()');
+        return;
+      }
       ExtensionRegistry.components[name] = new Component(name, extension);
       return;
     }
 
-    // 2) Plugin
-    if (this.isPlugin(extension)) {
+    // 2) Plugin- oder Module-Fall
+    if (this.isPlugin(extension) || this.isModule(extension)) {
       const ctx: CoreCtx = {
         registerHook: GlobalHooks.register,
         take: this.take,
       };
+
       const cleanup = extension.install(ctx);
-      ExtensionRegistry.plugins[extension.name] = extension;
+
+      if (this.isPlugin(extension)) {
+        ExtensionRegistry.plugins[extension.name] = extension;
+      } else {
+        ExtensionRegistry.modules[extension.name] = extension;
+      }
+
       cleanup?.();
       return;
     }
 
-    // 3) Module
-    if (this.isModule(extension)) {
-      const ctx: CoreCtx = { registerHook: GlobalHooks.register };
-      const cleanup = extension.initialize(ctx); // oder attach()
-      ExtensionRegistry.modules[extension.name] = extension;
-      cleanup?.();
-      return;
-    }
-
+    // 3) Unbekannter Typ
     console.error('❌ Unknown extension type:', extension);
   }
 
-  private isComponentSource(extension: any): extension is ComponentSource {
-    const { template, script, style } = extension ?? {};
+  private isComponentSource(ext: any): ext is ComponentSource {
+    const { template, script, style } = ext ?? {};
     return typeof template === 'string' && typeof script === 'string' && typeof style === 'string';
   }
 
   private isPlugin(ext: any): ext is IPlugin {
-    return ext?.type === 'plugin' && typeof ext.install === 'function';
+    return typeof ext.setup === 'function' && ext.attach === undefined;
   }
   private isModule(ext: any): ext is IModule {
-    return ext?.type === 'module' && typeof ext.initialize === 'function';
+    return typeof ext.attach === 'function' && ext.setup === undefined;
   }
 }
 
@@ -89,7 +98,7 @@ const CoreProxy = new Proxy(Core, {
   get(_target, prop, _receiver) {
     const instance = Core.getInstance();
     if (prop === 'take') {
-      return (...args: [any, string?]) => instance.take(...args);
+      return instance.take;
     }
     return instance[prop as keyof Core];
   },

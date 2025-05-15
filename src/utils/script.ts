@@ -1,5 +1,8 @@
 // 📁 `src/utils/script.ts`
 
+import ExtensionRegistry from '../ExtensionRegistry';
+
+const modules = ExtensionRegistry.modules;
 /**
  * Converts a string representation of code into an executable function within a given context and module scope.
  *
@@ -9,11 +12,7 @@
  *
  * @returns {Promise<Module>} - A promise resolving to the executed module output.
  */
-export async function stringToCode(
-  strg: string,
-  context: Context,
-  modules: Record<string, Function | Object>,
-): Promise<Module> {
+export async function stringToCode(strg: string, context: Context): Promise<Module> {
   /**
    * Dynamically creates a function from the provided string, injecting the given context and modules.
    *
