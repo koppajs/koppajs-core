@@ -62,7 +62,8 @@
     "prepare": "husky",
     "list-structure": "git ls-files > ---project-structure",
     "dump-code": "node scripts/dump-code.js",
-    "analyze-code": "node scripts/analyze-code.js"
+    "analyze-code": "node scripts/analyze-code.js",
+    "build:dts": "dts-bundle-generator --project config/tsconfig.json --out-file dist/index.d.ts src/index.ts"
   },
   "peerDependencies": {
     "typescript": "^5.7.2",
@@ -81,6 +82,7 @@
     "@vitest/coverage-v8": "^1.6.0",
     "@vitest/ui": "^1.6.0",
     "commitlint": "^19.8.0",
+    "dts-bundle-generator": "^9.5.1",
     "eslint": "^9.16.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",

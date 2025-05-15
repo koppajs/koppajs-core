@@ -110,7 +110,7 @@ export interface IPlugin {
   version?: string; // Optional version string
   description?: string; // Optional description
   install(core: {
-    registerPluginHook: (hook: LifecycleHook, fn: Function) => void;
+    registerGlobalHook: (hook: LifecycleHook, fn: Function) => void;
     take: (item: any, name?: string) => void;
   }): void; // Install function receives core context
   setup?(): Record<string, Function>; // Optional setup API available in component instances

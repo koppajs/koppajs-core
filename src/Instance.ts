@@ -6,6 +6,7 @@ import { LifecycleManager } from './LifecycleManager';
 import { TemplateProcessor } from './TemplateProcessor';
 import { EventHandler } from './EventHandler';
 import { bindMethods, kebabToCamel, stringToCode } from './utils';
+import ExtensionRegistry from './ExtensionRegistry';
 
 /**
  * Class representing a single instance of a component.
@@ -76,18 +77,20 @@ export default class Instance<T extends Record<string, any> = Record<string, any
   /** Handles events propagated from child components */
   public handleEventFromChild!: (eventName: string, ...args: any[]) => void;
 
-  private core: Record<string, Function>; // The core context
-
   /**
    * Initializes an instance with the provided configuration.
    * @param {InstanceInitBundle} bundle - Initialization parameters for the instance.
    */
-  constructor(core: Record<string, Function>, bundle: InstanceInitBundle) {
-    this.core = core;
-    this.element = bundle.element;
-    this.template = bundle.template;
-    this.script = bundle.script;
-    this.parent = bundle.parentInstance;
+  constructor(
+    element: HTMLElement,
+    template: HTMLTemplateElement,
+    script: string,
+    parentInstance?: Instance,
+  ) {
+    this.element = element;
+    this.template = template;
+    this.script = script;
+    this.parent = parentInstance;
 
     this.readyPromise = new Promise<void>((resolve) => (this.readyResolve = resolve));
   }
@@ -212,11 +215,7 @@ export default class Instance<T extends Record<string, any> = Record<string, any
   }
 
   private take(pluginName: string) {
-    const plugin = window.koppa.plugins[pluginName];
-    if (plugin && typeof plugin.setup === 'function') {
-      return plugin.setup.call(this.data);
-    }
-    return undefined;
+    return ExtensionRegistry.plugins[pluginName].setup?.(this.data);
   }
 
   /**
@@ -305,20 +304,20 @@ export default class Instance<T extends Record<string, any> = Record<string, any
         console.error('❌ Error in processTemplate:', error);
       });
 
-    this.lifecycleManager.callHook('processed');
+    await this.lifecycleManager.callHook('processed');
 
     // Bind native and custom events.
     this.eventHandler.bindNativeEvents(this.container);
     this.eventHandler.setupEvents(this.events, this.container, this.refs);
 
     if (this.isMounted)
-      this.lifecycleManager.callHook(this.isMounted ? 'beforeUpdate' : 'beforeMount');
+      await this.lifecycleManager.callHook(this.isMounted ? 'beforeUpdate' : 'beforeMount');
 
     // Efficiently replace the current element's content with the processed template.
     this.element.replaceChildren(this.container);
 
     // Trigger lifecycle hook if the component is already mounted.
-    if (this.isMounted) this.lifecycleManager.callHook('updated');
+    if (this.isMounted) await this.lifecycleManager.callHook('updated');
 
     this.isRendering = false;
   }
@@ -344,7 +343,7 @@ export default class Instance<T extends Record<string, any> = Record<string, any
           $emit: this.emit,
           $take: this.take,
         },
-        window.koppa.modules,
+        ExtensionRegistry.modules,
       );
 
       // Create a reactive data model with an observer triggering re-renders on change.
@@ -378,7 +377,7 @@ export default class Instance<T extends Record<string, any> = Record<string, any
       bindMethods(this.data, this.methods);
 
       // Initialize lifecycle management and event handling.
-      this.lifecycleManager = new LifecycleManager(this.core);
+      this.lifecycleManager = new LifecycleManager();
       this.templateProcessor = new TemplateProcessor();
       this.eventHandler = new EventHandler(this.parent, this.data);
 
@@ -389,17 +388,17 @@ export default class Instance<T extends Record<string, any> = Record<string, any
       this.setupWatchList(model);
 
       // Register lifecycle hooks from the module.
-      this.lifecycleManager.setupLifecycleHooks(this.data, module);
+      this.lifecycleManager.setupLifecycleHooks(module);
 
       // Execute lifecycle hooks for component creation and mounting.
-      this.lifecycleManager.callHook('created');
+      await this.lifecycleManager.callHook('created');
 
       // Perform the initial render.
       await this.render();
 
       // If this is the first mount, trigger the mounted lifecycle hook.
       if (!this.isMounted) {
-        this.lifecycleManager.callHook('mounted');
+        await this.lifecycleManager.callHook('mounted');
         this.isMounted = true;
       }
 

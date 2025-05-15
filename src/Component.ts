@@ -1,5 +1,6 @@
 // 📁 `src/Components.ts`
 
+import ExtensionRegistry from './ExtensionRegistry';
 import Instance from './Instance';
 import { generateCompactUniqueId } from './utils';
 
@@ -10,7 +11,6 @@ export default class Component {
   public name: string; // The name of the custom component
   private source: ComponentSource; // The source object containing template, style, and script definitions
   private template: HTMLTemplateElement = document.createElement('template'); // A template element for rendering the component
-  private core: Record<string, Function>; // The core context
 
   /**
    * Creates an instance of Component and registers it as a custom element.
@@ -23,12 +23,10 @@ export default class Component {
    * immediately calls the registerComponent method to define the element with the browser’s
    * custom elements registry.
    *
-   * @param {Record<string, Function>} core - The global core context containing shared functions and state.
    * @param {string} componentName - The unique name of the custom component.
    * @param {ComponentSource} source - The source object that holds the component's template, style, and script.
    */
-  constructor(core: Record<string, Function>, componentName: string, source: ComponentSource) {
-    this.core = core;
+  constructor(componentName: string, source: ComponentSource) {
     this.source = source;
     this.name = componentName;
     this.registerComponent();
@@ -72,12 +70,12 @@ export default class Component {
 
           // Clone the template and create an instance of the component
           const template = component.template.cloneNode(true) as HTMLTemplateElement;
-          const instance = (window.koppa.instances[this.instanceId] = new Instance(component.core, {
-            element: this,
+          const instance = (ExtensionRegistry.instances[this.instanceId] = new Instance(
+            this,
             template,
-            script: component.source.script,
+            component.source.script,
             parentInstance,
-          }));
+          ));
           await instance.init(); // Initialize the instance
         }
 
@@ -85,17 +83,17 @@ export default class Component {
          * Lifecycle method called when the component is removed from the DOM.
          * Cleans up the instance and removes unused styles.
          */
-        disconnectedCallback() {
-          const instance = window.koppa.instances[this.instanceId!];
-          instance?.lifecycleManager.callHook('beforeDestroy'); // Trigger beforeDestroy hook
+        async disconnectedCallback() {
+          const instance = ExtensionRegistry.instances[this.instanceId!];
+          await instance?.lifecycleManager.callHook('beforeDestroy'); // Trigger beforeDestroy hook
 
           // Remove styles if there are no more instances of the component in the DOM
           if (!document.body.select(component.name)) {
             document.head.select(`style#${component.name}`)?.remove();
           }
 
-          delete window.koppa.instances[this.instanceId!]; // Remove the instance from global storage
-          instance?.lifecycleManager.callHook('destroyed'); // Trigger destroyed hook
+          delete ExtensionRegistry.instances[this.instanceId!]; // Remove the instance from global storage
+          await instance?.lifecycleManager.callHook('destroyed'); // Trigger destroyed hook
         }
       },
     );
@@ -108,10 +106,10 @@ export default class Component {
    */
   private getParentInstance(element: HTMLElement): Instance | undefined {
     // Build a selector list of all registered Koppa components
-    const selector = Object.keys(window.koppa.components)
+    const selector = Object.keys(ExtensionRegistry.components)
       .map((tag) => tag.toLowerCase())
       .join(',');
     const parent = element.closest(selector) as HTMLElement | null;
-    return parent?.instance ? window.koppa.instances[parent.instance] : undefined;
+    return parent?.instance ? ExtensionRegistry.instances[parent.instance] : undefined;
   }
 }
