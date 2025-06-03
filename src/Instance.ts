@@ -5,8 +5,9 @@ import { Model } from './Model';
 import { LifecycleManager } from './LifecycleManager';
 import { TemplateProcessor } from './TemplateProcessor';
 import { EventHandler } from './EventHandler';
-import { bindMethods, kebabToCamel, stringToCode } from './utils';
+import { bindMethods, compileCode, kebabToCamel } from './utils';
 import ExtensionRegistry from './ExtensionRegistry';
+import { ComponentController, ComponentInstance } from './types';
 
 /**
  * Class representing a single instance of a component.
@@ -22,10 +23,10 @@ export default class Instance<T extends Record<string, any> = Record<string, any
   public template: HTMLTemplateElement;
 
   /** Inline script defining the component's behavior */
-  private script: string;
+  private componentController: ComponentController;
 
   /** Reference to the parent instance, if applicable */
-  public parent?: Instance;
+  public parent?: Instance | ComponentInstance;
 
   /** Document fragment used as a container for rendering */
   private container?: DocumentFragment;
@@ -84,12 +85,12 @@ export default class Instance<T extends Record<string, any> = Record<string, any
   constructor(
     element: HTMLElement,
     template: HTMLTemplateElement,
-    script: string,
-    parentInstance?: Instance,
+    componentController: ComponentController,
+    parentInstance?: Instance | ComponentInstance,
   ) {
     this.element = element;
     this.template = template;
-    this.script = script;
+    this.componentController = componentController;
     this.parent = parentInstance;
 
     this.readyPromise = new Promise<void>((resolve) => (this.readyResolve = resolve));
@@ -335,7 +336,7 @@ export default class Instance<T extends Record<string, any> = Record<string, any
       await this.parent?.readyPromise;
 
       // Convert the script into an executable module with references to essential objects.
-      const module = await stringToCode(this.script, {
+      const module = await compileCode(this.script, {
         $refs: this.refs,
         $parent: this.parent,
         $emit: this.emit,

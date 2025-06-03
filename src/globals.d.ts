@@ -178,15 +178,13 @@ declare global {
     regex?: string;
   }
 
-  /** Map of ref names to actual HTMLElements inside a component. */
-  type Refs = Record<string, HTMLElement>;
   /** List of property paths to observe for reactive updates. */
   type WatchList = string[];
 
   /**
    * Execution context available inside compiled component scripts.
    */
-  interface Context {
+  interface Context_old {
     /** Access to elements marked with `ref` */
     $refs: Refs;
     /** Optional reference to the parent component instance */
