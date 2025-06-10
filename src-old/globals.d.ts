@@ -6,7 +6,7 @@ import type InstanceClass from './Instance';
 import { HookCallback } from './utils/HookRegistry';
 
 // declare global {
-  {
+{
   /**
    * Alias for the Component class exported from './Component'.
    * This allows referring to the type simply as `Component` throughout the app.
