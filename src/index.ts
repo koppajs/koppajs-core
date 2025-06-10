@@ -2,7 +2,7 @@
 
 import Component from './Component';
 import { extendPrototypes } from './utils';
-import { GlobalHooks } from './utils/GlobalHooks';
+import { GlobalHooks } from './utils/global-hooks';
 import ExtensionRegistry from './utils/extension-registry';
 import { ComponentSource, CoreCallable, CoreCtx, IModule, IPlugin, TakeArgs } from './types';
 
@@ -44,7 +44,7 @@ function performTake(...args: TakeArgs): void {
 
   if (isPlugin(ext) || isModule(ext)) {
     const ctx: CoreCtx = {
-      registerHook: GlobalHooks.register,
+      registerHook: GlobalHooks.on,
       take: Core.take,
     };
 
