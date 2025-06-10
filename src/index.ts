@@ -1,110 +1,92 @@
-// 📁 `src/index.ts`
-/// <reference path="./globals.d.ts" />
+// src/index.ts
 
 import Component from './Component';
-import { extendPrototypes, generateCompactUniqueId } from './utils';
+import { extendPrototypes } from './utils';
 import { GlobalHooks } from './utils/GlobalHooks';
-import ExtensionRegistry from './ExtensionRegistry';
+import ExtensionRegistry from './utils/extension-registry';
+import { ComponentSource, CoreCallable, CoreCtx, IModule, IPlugin, TakeArgs } from './types';
 
-// Enhance native prototypes with additional utility functions
 extendPrototypes();
 
-type TakeArgs =
-  | [extension: ComponentSource, name: string] // ComponentSource braucht zwingend einen Namen
-  | [extension: IPlugin | IModule]; // Plugin/Module kommt allein
+let initialized = false;
+let queuedTakes: TakeArgs[] = [];
 
-// Unique identifier to enforce singleton initialization
-const identifier = generateCompactUniqueId();
-
-class Core {
-  // Singleton instance
-  private static instance: Core;
-  // Queue for `take()` calls made before initialization
-  private static queuedTakes: TakeArgs[] = [];
-
-  constructor(input?: string) {
-    if (Core.instance) return Core.instance;
-
-    if (identifier === input) {
-      Core.instance = this;
-
-      // Process any `take()` calls made before initialization
-      Core.queuedTakes.forEach((args) => this.take(...args));
-      Core.queuedTakes = [];
-    }
-
-    return Core.instance ?? this;
-  }
-
-  public static getInstance(): Core {
-    return Core.instance ?? (Core.instance = new Core(identifier));
-  }
-
-  public take(extension: ComponentSource, name: string): void;
-  public take(extension: IPlugin | IModule): void;
-  public take(...args: TakeArgs): void;
-  public take(extension: IExtension, name?: string) {
-    // 1) Component-Fall
-    if (this.isComponentSource(extension)) {
-      if (!name) {
-        console.error('ComponentSource erfordert einen Namen beim Aufruf von take()');
-        return;
-      }
-      ExtensionRegistry.components[name] = new Component(name, extension);
-      return;
-    }
-
-    // 2) Plugin- oder Module-Fall
-    if (this.isPlugin(extension) || this.isModule(extension)) {
-      const ctx: CoreCtx = {
-        registerHook: GlobalHooks.register,
-        take: this.take,
-      };
-
-      const cleanup = extension.install(ctx);
-
-      if (this.isPlugin(extension)) {
-        ExtensionRegistry.plugins[extension.name] = extension;
-      } else {
-        ExtensionRegistry.modules[extension.name] = extension;
-      }
-
-      cleanup?.();
-      return;
-    }
-
-    // 3) Unbekannter Typ
-    console.error('❌ Unknown extension type:', extension);
-  }
-
-  private isComponentSource(ext: any): ext is ComponentSource {
-    const { template, script, style } = ext ?? {};
-    return typeof template === 'string' && typeof script === 'string' && typeof style === 'string';
-  }
-
-  private isPlugin(ext: any): ext is IPlugin {
-    return typeof ext.setup === 'function' && ext.attach === undefined;
-  }
-  private isModule(ext: any): ext is IModule {
-    return typeof ext.attach === 'function' && ext.setup === undefined;
-  }
+// 🔍 Typprüfungen
+function isComponentSource(ext: any): ext is ComponentSource {
+  return (
+    typeof ext?.template === 'string' &&
+    typeof ext?.script === 'string' &&
+    typeof ext?.style === 'string'
+  );
 }
 
-const CoreProxy = new Proxy(Core, {
-  construct(_target, _args) {
-    // Always return the singleton instance when the proxy is constructed.
-    return Core.getInstance();
-  },
-  get(_target, prop, _receiver) {
-    const instance = Core.getInstance();
-    if (prop === 'take') {
-      return instance.take;
+function isPlugin(ext: any): ext is IPlugin {
+  return typeof ext?.setup === 'function' && ext?.attach === undefined;
+}
+
+function isModule(ext: any): ext is IModule {
+  return typeof ext?.attach === 'function' && ext?.setup === undefined;
+}
+
+// 🔧 take()-Logik
+function performTake(...args: TakeArgs): void {
+  const ext = args[0];
+  const name = args[1];
+
+  if (isComponentSource(ext)) {
+    if (!name) {
+      console.error('ComponentSource erfordert einen Namen beim Aufruf von take()');
+      return;
     }
-    return instance[prop as keyof Core];
-  },
-}) as unknown as CoreProxyType;
+    new Component(name, ext);
+    return;
+  }
 
-export type CoreType = Core;
-export type CoreProxyType = (new (input?: string) => CoreType) & CoreType;
+  if (isPlugin(ext) || isModule(ext)) {
+    const ctx: CoreCtx = {
+      registerHook: GlobalHooks.register,
+      take: Core.take,
+    };
 
-export default CoreProxy;
+    const cleanup = ext.install(ctx);
+
+    if (isPlugin(ext)) {
+      ExtensionRegistry.plugins[ext.name] = ext;
+    } else {
+      ExtensionRegistry.modules[ext.name] = ext;
+    }
+
+    cleanup?.();
+    return;
+  }
+
+  console.error('❌ Unknown extension type:', ext);
+}
+
+// 📦 Hauptfunktion: Initialisierung
+function initialize(): void {
+  if (initialized) return;
+  initialized = true;
+
+  queuedTakes.forEach((args) => performTake(...args));
+  queuedTakes = [];
+
+  console.log('🚀 Core initialized');
+}
+
+// 📞 Callable Singleton
+const Core: CoreCallable = (() => {
+  const callable = (() => initialize()) as CoreCallable;
+
+  callable.take = (...args: TakeArgs) => {
+    if (initialized) {
+      performTake(...args);
+    } else {
+      queuedTakes.push(args);
+    }
+  };
+
+  return callable;
+})();
+
+export default Core;

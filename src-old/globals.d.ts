@@ -5,7 +5,8 @@ import type ComponentClass from './Component';
 import type InstanceClass from './Instance';
 import { HookCallback } from './utils/HookRegistry';
 
-declare global {
+// declare global {
+  {
   /**
    * Alias for the Component class exported from './Component'.
    * This allows referring to the type simply as `Component` throughout the app.
@@ -227,15 +228,10 @@ declare global {
    * Shape of the object returned by compiling component scripts via `stringToCode`.
    */
   interface Module extends LifecycleHooks {
-    /** Initial reactive data model */
     data: Data;
-    /** Methods bound to the data context */
     methods?: Methods;
-    /** Prop definitions for validation */
     props?: Props;
-    /** Declarative event bindings */
     events?: Events;
-    /** List of additional paths to watch reactively */
     watchList?: WatchList;
   }
 }
