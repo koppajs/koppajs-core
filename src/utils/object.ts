@@ -1,4 +1,4 @@
-// 📁 `src/utils/object.ts`
+// src/utils/object.ts
 
 const objectExtensions: { [key: string]: PropertyDescriptor } = {};
 

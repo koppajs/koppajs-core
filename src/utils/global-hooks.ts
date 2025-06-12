@@ -1,4 +1,4 @@
-// ./utils/glonbal-hooks.ts
+// src/utils/global-hooks.ts
 
 import { createHookRegistry } from './hook-registry';
 

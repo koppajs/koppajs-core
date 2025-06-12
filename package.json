@@ -47,8 +47,9 @@
   "scripts": {
     "clean": "rimraf node_modules dist pnpm-lock.yaml",
     "typecheck": "tsc --project config/tsconfig.json",
-    "build": "pnpm run typecheck && vite build --config config/vite.config.ts",
-    "postbuild": "node scripts/postbuild.js",
+    "build:dts": "dts-bundle-generator --project config/tsconfig.json --out-file dist/index.d.ts src/index.ts",
+    "build": "pnpm run typecheck && vite build --config config/vite.config.ts && pnpm run build:dts",
+    "postbuild-off": "node scripts/postbuild.js",
     "rebuild": "pnpm run clean && pnpm run build",
     "test": "vitest --config config/vitest.config.ts --run",
     "test:coverage": "vitest --config config/vitest.config.ts --coverage",
@@ -62,8 +63,7 @@
     "prepare": "husky",
     "list-structure": "git ls-files > ---project-structure",
     "dump-code": "node scripts/dump-code.js",
-    "analyze-code": "node scripts/analyze-code.js",
-    "build:dts": "dts-bundle-generator --project config/tsconfig.json --out-file dist/index.d.ts src/index.ts"
+    "analyze-code": "node scripts/analyze-code.js"
   },
   "peerDependencies": {
     "typescript": "^5.7.2",

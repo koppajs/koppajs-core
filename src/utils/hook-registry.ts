@@ -1,13 +1,6 @@
 // src/utils/hook-registry.ts
 
-export type HookCallback<T> = (context: T) => void | Promise<void>;
-
-export interface HookRegistry<T> {
-  on: (name: string, callback: HookCallback<T>) => void;
-  off: (name: string, callback: HookCallback<T>) => void;
-  emit: (name: string, context: T) => Promise<void>;
-  clear: () => void;
-}
+import type { HookCallback, HookRegistry } from '../types';
 
 export function createHookRegistry<T = any>(): HookRegistry<T> {
   const registry = new Map<string, Set<HookCallback<T>>>();

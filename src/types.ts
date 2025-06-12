@@ -1,3 +1,10 @@
+// src/types.ts
+
+/// <reference path="./globals.d.ts" />
+/// <reference types="vite/client" />
+
+export type ModelCallback = (oldValue?: any, newValue?: any) => void;
+
 export type TakeArgs = [ComponentSource, string] | [IPlugin | IModule];
 
 export interface CoreCallable {
@@ -10,12 +17,17 @@ export interface CoreCallable {
 
 export type HookCallback<T> = (context?: T) => any | Promise<any>;
 
+export interface HookRegistry<T> {
+  on: (name: string, callback: HookCallback<T>) => void;
+  off: (name: string, callback: HookCallback<T>) => void;
+  emit: (name: string, context: T) => Promise<void>;
+  clear: () => void;
+}
+
 export interface CoreCtx {
   registerHook: (hookName: string, callback: HookCallback<any>) => void;
   take: CoreCallable['take'];
 }
-
-type DataCtx = Record<string, any>;
 
 // Basic‐Extension‐Interface
 export interface IBaseExtension {
@@ -25,7 +37,7 @@ export interface IBaseExtension {
 
 // Plugin‐Extension-Interface
 export interface IPlugin extends IBaseExtension {
-  setup(context: DataCtx): Record<string, any> | (() => any);
+  setup(context: Data): Record<string, any> | (() => any);
   attach: never;
 }
 
@@ -52,17 +64,19 @@ interface PropsDefinition {
   regex?: string;
 }
 
-type EventDefinition = [
+export type EventDefinition = [
   string,
   string | Element | Window | { ref: string; selector?: string },
   Function,
 ];
 
 export type Data = Record<string, any>;
-type Methods = Record<string, Function>;
-type Props = Record<string, PropsDefinition>;
-type Events = Array<EventDefinition>;
-type WatchList = string[];
+export type Methods = Record<string, Function>;
+export type Props = Record<string, PropsDefinition>;
+export type Events = Array<EventDefinition>;
+export type WatchList = string[];
+
+export type Refs = Record<string, HTMLElement>;
 
 export type LifecycleHook =
   | 'created'
@@ -85,10 +99,41 @@ interface LifecycleHooks {
   processed?: Function;
 }
 
-export interface Module extends LifecycleHooks {
+export interface Lifecycle<T> {
+  on: (name: LifecycleHook, fn: (this: T) => void | Promise<void>) => void;
+  off: (name: LifecycleHook, fn: (this: T) => void | Promise<void>) => void;
+  clear: () => void;
+  emit(hook: LifecycleHook): Promise<void>;
+}
+
+export type CompiledScript = (context: ComponentContext) => ComponentController;
+
+export interface ComponentController extends LifecycleHooks {
   data: Data;
   methods?: Methods;
   props?: Props;
   events?: Events;
   watchList?: WatchList;
+}
+
+export interface ComponentContext {
+  $refs: Refs;
+  $parent?: ComponentInstance;
+  $emit: (parent: ComponentInstance | undefined, eventName: string, ...args: any[]) => void;
+  $take: (pluginName: string) => Record<string, Function> | Function | void | undefined;
+  $handleEventFromChild: (
+    parent: ComponentInstance | undefined,
+    data: Data,
+    eventName: string,
+    ...args: any[]
+  ) => void;
+}
+
+export interface ComponentInstance
+  extends ComponentContext,
+    Omit<ComponentController, keyof LifecycleHooks> {
+  element: HTMLElement;
+  template: HTMLTemplateElement;
+  readyPromise: Promise<void>;
+  lifecycle: Lifecycle<Data>;
 }

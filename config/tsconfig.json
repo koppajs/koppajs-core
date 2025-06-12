@@ -44,10 +44,11 @@
       "~/*": ["src/*"]
     }, // Define module aliases
 
-    /* Global Type Declarations */
-    "types": ["vite/client", "node"] // Include global type definitions
+    /* Type Declarations */
+    "types": [],
+    "typeRoots": ["../src/types", "../node_modules/@types"]
   },
-  "include": ["../src/**/*.ts", "../src/**/*.d.ts"],
+  "include": ["../src/**/*.ts", "../src/globals.d.ts"],
   "exclude": [
     "../.git",
     "../.husky",

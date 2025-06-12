@@ -1,4 +1,6 @@
-// 📁 `src/utils/helper.ts`
+// src/utils/helper.ts
+
+import type { Data, Methods } from '../types';
 
 export function isArrowFunction(func: Function): boolean {
   return typeof func === 'function' && !func.hasOwnProperty('prototype');

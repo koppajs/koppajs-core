@@ -1,4 +1,4 @@
-// 📁 `src/utils/dom.ts`
+// src/utils/dom.ts
 
 const domExtensions: { [key: string]: PropertyDescriptor } = {
   select: {

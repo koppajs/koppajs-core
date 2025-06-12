@@ -1,17 +1,17 @@
 // src/index.ts
 
-import Component from './Component';
 import { extendPrototypes } from './utils';
 import { GlobalHooks } from './utils/global-hooks';
 import ExtensionRegistry from './utils/extension-registry';
-import { ComponentSource, CoreCallable, CoreCtx, IModule, IPlugin, TakeArgs } from './types';
+import { registerComponent } from './component';
+
+import type { ComponentSource, CoreCallable, CoreCtx, IModule, IPlugin, TakeArgs } from './types';
 
 extendPrototypes();
 
 let initialized = false;
 let queuedTakes: TakeArgs[] = [];
 
-// 🔍 Typprüfungen
 function isComponentSource(ext: any): ext is ComponentSource {
   return (
     typeof ext?.template === 'string' &&
@@ -28,7 +28,6 @@ function isModule(ext: any): ext is IModule {
   return typeof ext?.attach === 'function' && ext?.setup === undefined;
 }
 
-// 🔧 take()-Logik
 function performTake(...args: TakeArgs): void {
   const ext = args[0];
   const name = args[1];
@@ -38,7 +37,8 @@ function performTake(...args: TakeArgs): void {
       console.error('ComponentSource erfordert einen Namen beim Aufruf von take()');
       return;
     }
-    new Component(name, ext);
+
+    registerComponent(name, ext);
     return;
   }
 
@@ -63,7 +63,6 @@ function performTake(...args: TakeArgs): void {
   console.error('❌ Unknown extension type:', ext);
 }
 
-// 📦 Hauptfunktion: Initialisierung
 function initialize(): void {
   if (initialized) return;
   initialized = true;
@@ -74,7 +73,6 @@ function initialize(): void {
   console.log('🚀 Core initialized');
 }
 
-// 📞 Callable Singleton
 const Core: CoreCallable = (() => {
   const callable = (() => initialize()) as CoreCallable;
 

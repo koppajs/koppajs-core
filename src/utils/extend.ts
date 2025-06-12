@@ -1,4 +1,4 @@
-// 📁 `src/utils/extend.ts`
+// src/utils/extend.ts
 
 import objectExtensions from './object';
 import domExtensions from './dom';

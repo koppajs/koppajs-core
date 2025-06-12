@@ -1,4 +1,4 @@
-// 📁 `src/utils/string.ts`
+// src/utils/string.ts
 
 import { getValueByPath } from './helper';
 

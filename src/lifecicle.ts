@@ -1,8 +1,9 @@
 // src/lifecycle.ts
 
-import { Data, LifecycleHook, Module } from './types';
 import { GlobalHooks } from './utils/global-hooks';
-import { createHookRegistry, HookRegistry } from './utils/hook-registry';
+import { createHookRegistry } from './utils/hook-registry';
+
+import type { Data, LifecycleHook, ComponentController, Lifecycle } from './types';
 
 const lifecycleHooks: LifecycleHook[] = [
   'created',
@@ -15,19 +16,12 @@ const lifecycleHooks: LifecycleHook[] = [
   'processed',
 ];
 
-export interface Lifecycle<T> {
-  on: (name: LifecycleHook, fn: (this: T) => void | Promise<void>) => void;
-  off: (name: LifecycleHook, fn: (this: T) => void | Promise<void>) => void;
-  clear: () => void;
-  emit(hook: LifecycleHook): Promise<void>;
-}
-
-export function createLifecycle(module: Module): Lifecycle<Data> {
-  const { data } = module;
+export function createLifecycle(componentController: ComponentController): Lifecycle<Data> {
+  const { data } = componentController;
   const hooks = createHookRegistry<Data>();
 
   for (const hook of lifecycleHooks) {
-    const fn = module[hook];
+    const fn = componentController[hook];
     if (typeof fn === 'function') {
       hooks.on(hook, fn.bind(data));
     }
