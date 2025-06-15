@@ -2,11 +2,12 @@
 
 import { bindNativeEvents, emit, handleEventFromChild, setupEvents } from './event-handler';
 import { createLifecycle } from './lifecicle';
-import { Model } from './Model';
+import { createModel } from './model';
 import { processTemplate } from './template-processor';
 import { bindMethods, compileCode, ExtensionRegistry, kebabToCamel } from './utils';
 
 import type { ComponentInstance, ComponentSource, Data, Events, Props, Refs } from './types';
+import Core from '.';
 
 function getParentInstance(el: Element): ComponentInstance | undefined {
   const rootNode = el.getRootNode();
@@ -163,19 +164,57 @@ export function registerComponent(componentName: string, source: ComponentSource
         let isRendering = false;
         let lastRenderedData = '';
 
-        const take = (pluginName: string) => ExtensionRegistry.plugins[pluginName]?.setup?.(data);
-
+        // Ready promise setup
         const ready: { promise: Promise<void>; resolve: () => void } = (() => {
           let resolve: () => void;
           const promise = new Promise<void>((res) => (resolve = res));
           return { promise, resolve: resolve! };
         })();
 
+        // Style injection
         if (!document.head.querySelector(`style#style-${componentName}`)) {
           const style = document.createElement('style');
           style.id = `style-${componentName}`;
           style.textContent = source.style;
           document.head.appendChild(style);
+        }
+
+        // WICHTIG: take function mit this-binding
+        const take = (pluginName: string) => {
+          const plugin = ExtensionRegistry.plugins[pluginName];
+
+          if (!plugin || typeof plugin.setup !== 'function') {
+            console.warn(`Plugin "${pluginName}" not found or has no setup method`);
+            return undefined;
+          }
+
+          // setup() mit data als this-Context aufrufen
+          try {
+            // WICHTIG: call mit data als this
+            return plugin.setup.call(data);
+          } catch (error) {
+            console.error(`Plugin "${pluginName}" setup failed:`, error);
+            return undefined;
+          }
+        };
+
+        // WICHTIG: Sammle alle Module und führe attach() aus
+        const attachedModules: Record<string, any> = {};
+
+        for (const [moduleName, module] of Object.entries(ExtensionRegistry.modules)) {
+          if (typeof module.attach === 'function') {
+            // attach() mit Component Context ausführen
+            const attached = module.attach.call({
+              element: this,
+              parent,
+              core: { take: Core.take },
+            });
+
+            // Füge das Modul mit $ prefix hinzu
+            if (attached) {
+              attachedModules[`$${moduleName}`] = attached;
+            }
+          }
         }
 
         const render = async () => {
@@ -201,15 +240,25 @@ export function registerComponent(componentName: string, source: ComponentSource
           isRendering = false;
         };
 
+        // Erweitere den Context für compiledScript
         const controller = compiledScript({
           $refs: refs,
           $parent: parent,
           $emit: emit,
           $take: take,
           $handleEventFromChild: handleEventFromChild,
+          ...attachedModules, // Alle Module hinzufügen
         });
 
-        const model = new Model(controller.data ?? {}, async () => await render());
+        // Model setup
+        const model = createModel(controller.data ?? {}, async () => await render());
+
+        // Observer hinzufügen
+        model.addObserver(() => {
+          requestAnimationFrame(() => render());
+        });
+
+        // Setze die Daten und Methoden
         data = model.data;
         const methods = controller.methods || {};
         const props = controller.props || {};
@@ -224,9 +273,11 @@ export function registerComponent(componentName: string, source: ComponentSource
           data,
         });
 
+        // Watch setup
         watchList = Array.from(new Set([...watchList, ...Object.keys(props)]));
         watchList.forEach((path) => model.watch(path));
 
+        // Lifecycle setup
         const lifecycle = createLifecycle(controller);
         await lifecycle.emit('created');
 
@@ -249,8 +300,8 @@ export function registerComponent(componentName: string, source: ComponentSource
           $parent: parent,
           $emit: emit,
           $take: take,
-          readyPromise: ready.promise,
           $handleEventFromChild: handleEventFromChild,
+          readyPromise: ready.promise,
           lifecycle,
         } satisfies ComponentInstance;
 

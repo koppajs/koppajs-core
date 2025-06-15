@@ -67,7 +67,7 @@ async function dumpCode() {
     for (const file of files) {
       try {
         const fileData = await fs.readFile(file, 'utf-8');
-        content += `\n\n===== FILE: ${path.relative(SRC_DIR, file)} =====\n${fileData}`;
+        content += `\n\n===FILE:${path.relative(SRC_DIR, file)}===\n${fileData}`;
       } catch (readError) {
         console.warn(`⚠️ Skipping file: ${file} (Error: ${readError.message})`);
       }

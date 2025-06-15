@@ -37,14 +37,22 @@ export interface IBaseExtension {
 
 // Plugin‐Extension-Interface
 export interface IPlugin extends IBaseExtension {
-  setup(context: Data): Record<string, any> | (() => any);
+  setup(this: Data): Record<string, any> | (() => any);
   attach: never;
+}
+
+export interface ModuleContext {
+  element: HTMLElement;
+  parent?: ComponentInstance;
+  core: {
+    take: CoreCallable['take'];
+  };
 }
 
 // Module‐Extension-Interface
 export interface IModule extends IBaseExtension {
-  attach(): Record<string, any> | (() => any);
-  setup: never;
+  attach(this: ModuleContext): Record<string, any> | void;
+  setup?: never;
 }
 
 // Component-Source-Interface
@@ -120,13 +128,15 @@ export interface ComponentContext {
   $refs: Refs;
   $parent?: ComponentInstance;
   $emit: (parent: ComponentInstance | undefined, eventName: string, ...args: any[]) => void;
-  $take: (pluginName: string) => Record<string, Function> | Function | void | undefined;
+  $take: (pluginName: string) => Record<string, any> | Function | void | undefined;
   $handleEventFromChild: (
     parent: ComponentInstance | undefined,
     data: Data,
     eventName: string,
     ...args: any[]
   ) => void;
+  // Dynamische Module Properties
+  [key: `$${string}`]: any;
 }
 
 export interface ComponentInstance

@@ -48,8 +48,10 @@ function performTake(...args: TakeArgs): void {
       take: Core.take,
     };
 
+    // Install aufrufen
     const cleanup = ext.install(ctx);
 
+    // In Registry speichern
     if (isPlugin(ext)) {
       ExtensionRegistry.plugins[ext.name] = ext;
     } else {
