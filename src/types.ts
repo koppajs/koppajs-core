@@ -17,6 +17,7 @@ export interface CoreCallable {
 
 export type HookCallback<T> = (context?: T) => any | Promise<any>;
 
+/** @public */
 export interface HookRegistry<T> {
   on: (name: string, callback: HookCallback<T>) => void;
   off: (name: string, callback: HookCallback<T>) => void;
