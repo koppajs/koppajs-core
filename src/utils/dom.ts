@@ -1,6 +1,7 @@
 // src/utils/dom.ts
 
-const domExtensions: { [key: string]: PropertyDescriptor } = {
+/** @public */
+export const domExtensions: { [key: string]: PropertyDescriptor } = {
   select: {
     get(this: HTMLElement): (s: string) => HTMLElement | null {
       return (s: string) =>
@@ -110,5 +111,3 @@ const domExtensions: { [key: string]: PropertyDescriptor } = {
     },
   },
 };
-
-export default domExtensions;

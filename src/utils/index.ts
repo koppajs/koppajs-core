@@ -6,6 +6,6 @@ export * from './object';
 export * from './string';
 export * from './script';
 export * from './hook-registry';
-export { default as ExtensionRegistry } from './extension-registry';
+export { ExtensionRegistry } from './extension-registry';
 export * from './global-hooks';
-export { default as extendPrototypes } from './extend';
+export { extend } from './extend';

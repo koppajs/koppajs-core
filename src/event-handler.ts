@@ -12,7 +12,7 @@ export function emit(
   const fn = parent?.$handleEventFromChild as ((e: string, ...a: any[]) => void) | undefined;
   if (fn) fn(eventName, ...args);
 }
-
+/** @public */
 export function handleEventFromChild(
   parent: ComponentInstance | undefined,
   data: Data,

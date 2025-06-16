@@ -1,13 +1,13 @@
 // src/index.ts
 
-import { extendPrototypes } from './utils';
+import { extend } from './utils';
 import { GlobalHooks } from './utils/global-hooks';
-import ExtensionRegistry from './utils/extension-registry';
+import { ExtensionRegistry } from './utils/extension-registry';
 import { registerComponent } from './component';
 
 import type { ComponentSource, CoreCallable, CoreCtx, IModule, IPlugin, TakeArgs } from './types';
 
-extendPrototypes();
+extend();
 
 let initialized = false;
 let queuedTakes: TakeArgs[] = [];
@@ -75,7 +75,8 @@ function initialize(): void {
   console.log('🚀 Core initialized');
 }
 
-const Core: CoreCallable = (() => {
+/** @public */
+export const Core: CoreCallable = (() => {
   const callable = (() => initialize()) as CoreCallable;
 
   callable.take = (...args: TakeArgs) => {
@@ -88,5 +89,3 @@ const Core: CoreCallable = (() => {
 
   return callable;
 })();
-
-export default Core;

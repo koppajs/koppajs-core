@@ -45,10 +45,12 @@
   "license": "MIT",
   "homepage": "https://koppajs.org",
   "scripts": {
+    "generate:types": "pnpm tsx scripts/generate-module-types.ts",
+    "generate:public": "pnpm tsx scripts/generate-public-api.ts",
+    "types:build": "pnpm generate:types && pnpm generate:public",
     "clean": "rimraf node_modules dist pnpm-lock.yaml",
     "typecheck": "tsc --project config/tsconfig.json",
-    "build:dts": "dts-bundle-generator --project config/tsconfig.json --out-file dist/index.d.ts src/index.ts",
-    "build": "pnpm run typecheck && vite build --config config/vite.config.ts && pnpm run build:dts",
+    "build": "pnpm run typecheck && vite build --config config/vite.config.ts && pnpm run types:build",
     "postbuild-off": "node scripts/postbuild.js",
     "rebuild": "pnpm run clean && pnpm run build",
     "test": "vitest --config config/vitest.config.ts --run",
@@ -96,7 +98,9 @@
     "stylelint-config-sass-guidelines": "^12.1.0",
     "stylelint-order": "^6.0.4",
     "terser": "^5.16.1",
+    "ts-morph": "^26.0.0",
     "ts-node": "^10.9.1",
+    "tsx": "^4.20.3",
     "vitest": "^1.6.0"
   },
   "overrides": {

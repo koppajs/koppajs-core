@@ -7,7 +7,7 @@ import { processTemplate } from './template-processor';
 import { bindMethods, compileCode, ExtensionRegistry, kebabToCamel } from './utils';
 
 import type { ComponentInstance, ComponentSource, Data, Events, Props, Refs } from './types';
-import Core from '.';
+import { Core } from '.';
 
 function getParentInstance(el: Element): ComponentInstance | undefined {
   const rootNode = el.getRootNode();
@@ -15,6 +15,7 @@ function getParentInstance(el: Element): ComponentInstance | undefined {
   return (parent as HTMLElement)?.instance;
 }
 
+/** @public */
 export function processSlots({
   container,
   host,

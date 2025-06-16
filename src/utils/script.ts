@@ -1,4 +1,4 @@
-import ExtensionRegistry from './extension-registry';
+import { ExtensionRegistry } from './extension-registry';
 import type { CompiledScript, ComponentContext, ComponentController } from '../types';
 
 export function compileCode(strg: string): CompiledScript {

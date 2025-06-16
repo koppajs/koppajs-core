@@ -156,6 +156,7 @@ async function processNodeBatch(
 
 // --- Hauptfunktion ---
 
+/** @public */
 export async function processTemplate(root: Node, data: Data, refs: Refs): Promise<void> {
   const walker = createFilteredTreeWalker(root);
   const processed = new Set<Node>();

@@ -2,7 +2,7 @@
 
 import type { IModule, IPlugin } from '../types';
 
-export default {
+export const ExtensionRegistry = {
   modules: {} as Record<string, IModule>,
   plugins: {} as Record<string, IPlugin>,
 };
