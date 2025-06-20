@@ -50,7 +50,6 @@
     "clean": "rimraf node_modules dist pnpm-lock.yaml",
     "typecheck": "tsc --project config/tsconfig.json",
     "build": "pnpm run typecheck && vite build --config config/vite.config.ts && pnpm generate:public",
-    "postbuild-off": "node scripts/postbuild.js",
     "rebuild": "pnpm run clean && pnpm run build",
     "test": "vitest --config config/vitest.config.ts --run",
     "test:coverage": "vitest --config config/vitest.config.ts --coverage",
