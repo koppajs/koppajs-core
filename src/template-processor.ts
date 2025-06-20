@@ -4,8 +4,6 @@ import { containsHTML, evaluateExpression, isValidLoopMatch } from './utils';
 
 import type { Data, Refs } from './types';
 
-// --- Hilfsfunktionen ---
-
 function createFilteredTreeWalker(rootElement: Node): TreeWalker {
   const filter: NodeFilter = {
     acceptNode(node: Node): number {
@@ -162,8 +160,6 @@ async function processNodeBatch(
     }
   }
 }
-
-// --- Hauptfunktion ---
 
 export async function processTemplate(root: Node, data: Data, refs: Refs): Promise<void> {
   const walker = createFilteredTreeWalker(root);
