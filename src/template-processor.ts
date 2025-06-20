@@ -1,6 +1,6 @@
 // src/template-processor.ts
 
-import { containsHTML, evaluateExpression } from './utils';
+import { containsHTML, evaluateExpression, isValidLoopMatch } from './utils';
 
 import type { Data, Refs } from './types';
 
@@ -51,7 +51,7 @@ async function applyLoop(element: HTMLElement, data: Data, refs: Refs): Promise<
   if (toplevelIf) element.removeAttribute('if');
 
   const match = loopDefinition.match(/^(\w+)\s+in\s+(\w+)$/);
-  if (!match) {
+  if (!isValidLoopMatch(match)) {
     console.error('❌ Invalid loop definition:', loopDefinition);
     return;
   }
@@ -59,43 +59,46 @@ async function applyLoop(element: HTMLElement, data: Data, refs: Refs): Promise<
   const [, itemVar, collectionExp] = match;
   const raw = evaluateExpression(collectionExp, data);
 
-  if (!raw || typeof raw !== 'object') {
+  if (!raw || typeof raw !== 'object' || raw === null) {
     console.error('❌ Data source is not iterable:', collectionExp, raw);
     return;
   }
 
   const isArray = Array.isArray(raw);
-  const collection: Record<string, unknown> = raw;
+  if (isArray) {
+    console.error('❌ Loop source must be a plain object, not an array:', collectionExp, raw);
+    return;
+  }
 
-  const keys = Object.keys(collection);
-  const totalCount = keys.length;
+  const entries = Object.entries(raw);
+  const totalCount = entries.length;
   const fragment = document.createDocumentFragment();
 
-  for (let i = 0; i < totalCount; i++) {
-    const key = keys[i];
-    const value = collection[key];
-
-    const index = isArray ? Number(key) : undefined;
-    const objKey = isArray ? undefined : key;
-
+  let index = 0;
+  for (const [key, value] of entries) {
     const localData = {
       ...data,
       [itemVar]: value,
       index,
-      key: objKey,
+      key,
       isFirst: index === 0,
       isLast: index === totalCount - 1,
-      isEven: typeof index === 'number' ? index % 2 === 0 : false,
-      isOdd: typeof index === 'number' ? index % 2 !== 0 : false,
+      isEven: index % 2 === 0,
+      isOdd: index % 2 !== 0,
     };
 
-    if (toplevelIf && !evaluateExpression(toplevelIf, localData)) continue;
+    if (toplevelIf && !evaluateExpression(toplevelIf, localData)) {
+      index++;
+      continue;
+    }
 
     const cloned = element.cloneNode(true);
     if (cloned instanceof HTMLElement) {
       await processTemplate(cloned, localData, refs);
       fragment.appendChild(cloned);
     }
+
+    index++;
   }
 
   if (fragment.childNodes.length > 0 && element.parentNode) {

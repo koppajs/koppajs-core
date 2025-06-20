@@ -21,3 +21,9 @@ export function isHTMLElementWithInstance(
 ): el is HTMLElement & { instance: ComponentInstance } {
   return el instanceof HTMLElement && 'instance' in el;
 }
+
+export function isValidLoopMatch(
+  match: RegExpMatchArray | null,
+): match is [string, string, string] {
+  return !!match && match.length === 3 && Boolean(match[1]) && Boolean(match[2]);
+}

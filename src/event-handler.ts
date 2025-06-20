@@ -92,13 +92,15 @@ export function setupEvents(
       if (target === 'window' || target === window) {
         elements = [window];
       } else if (typeof target === 'string') {
-        if (target.startsWith('$refs.')) {
+        if (target.startsWith('$refs.') && target.length > 6) {
           const [refName, ...selectorParts] = target.slice(6).split(' ');
-          const ref = refs[refName];
-          if (ref) {
-            elements = selectorParts.length
-              ? Array.from(ref.querySelectorAll(selectorParts.join(' ')))
-              : [ref];
+          if (refName && refName in refs) {
+            const ref = refs[refName];
+            if (ref && ref instanceof Element) {
+              elements = selectorParts.length
+                ? Array.from(ref.querySelectorAll(selectorParts.join(' ')))
+                : [ref];
+            }
           }
         } else {
           elements = Array.from(container.querySelectorAll(target));
