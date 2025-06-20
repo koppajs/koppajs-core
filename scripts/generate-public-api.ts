@@ -25,12 +25,14 @@ files.forEach((file) => console.log('–', file.getFilePath()));
 await fs.mkdir(path.dirname(DIST_FILE), { recursive: true });
 
 const exportLines: string[] = [];
+let errorCount = 0;
 
 for (const sourceFile of files) {
   const filePath = sourceFile.getFilePath();
   const fileName = sourceFile.getBaseNameWithoutExtension();
 
-  if (filePath.includes('/types/') || fileName === 'types') continue;
+  const isGeneratedTypes = filePath.includes('/types/') && !filePath.endsWith('/types.ts');
+  if (isGeneratedTypes) continue;
 
   const exports = sourceFile.getExportedDeclarations();
 
@@ -57,11 +59,20 @@ for (const sourceFile of files) {
     }
 
     if (isPublic) {
-      const relativePath = path
-        .relative(path.dirname(DIST_FILE), sourceFile.getFilePath())
-        .replace(/\\/g, '/')
-        .replace(/\.ts$/, '');
-      exportLines.push(`export { ${name} } from './${relativePath}';`);
+      const relativePath = path.relative(path.dirname(DIST_FILE), sourceFile.getFilePath());
+      const normalizedPath = relativePath.replace(/\\/g, '/').replace(/\.ts$/, '');
+      const cleanedPath = normalizedPath.startsWith('src/')
+        ? `../${normalizedPath}`
+        : normalizedPath;
+
+      const symbolExists = sourceFile.getExportSymbols().some((sym) => sym.getName() === name);
+      if (!symbolExists) {
+        console.error(`❌ Fehler: Symbol '${name}' nicht in ${fileName} gefunden.`);
+        errorCount++;
+        return;
+      }
+
+      exportLines.push(`export { ${name} } from '${cleanedPath}';`);
       console.log(`📤 Public export: ${name} from ${fileName}`);
     }
   });
