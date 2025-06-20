@@ -1,6 +1,13 @@
 // src/component.ts
 
-import { bindNativeEvents, emit, handleEventFromChild, setupEvents } from './event-handler';
+import {
+  bindNativeEvents,
+  cleanupAllEventsFor,
+  cleanupElementAndChildren,
+  emit,
+  handleEventFromChild,
+  setupEvents,
+} from './event-handler';
 import { createModel } from './model';
 import { processTemplate } from './template-processor';
 import {
@@ -237,6 +244,17 @@ export function registerComponent(componentName: string, source: ComponentSource
           }
         }
 
+        const observer = new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            mutation.removedNodes.forEach((node) => {
+              if (node instanceof HTMLElement) cleanupElementAndChildren(node);
+            });
+          }
+        });
+
+        observer.observe(this, { subtree: true, childList: true });
+        this._eventObserver = observer; // für späteren disconnect
+
         const render = async () => {
           if (isRendering) return;
           const currentData = JSON.stringify(data);
@@ -251,8 +269,8 @@ export function registerComponent(componentName: string, source: ComponentSource
           await hookEmit('global', 'processed', data);
           await hookEmit(lifecycleRegistry, 'processed');
 
-          bindNativeEvents(data, container);
-          setupEvents(data, events, container, refs);
+          bindNativeEvents(data, container, this);
+          setupEvents(data, events, container, refs, this);
 
           await hookEmit('global', isMounted ? 'beforeUpdate' : 'beforeMount', data);
           await hookEmit(lifecycleRegistry, isMounted ? 'beforeUpdate' : 'beforeMount');
@@ -342,12 +360,14 @@ export function registerComponent(componentName: string, source: ComponentSource
 
       async disconnectedCallback() {
         const instance = this.instance!;
-
         await hookEmit('global', 'beforeDestroy', instance.data);
         await hookEmit(instance.lifecycleRegistry, 'beforeDestroy');
 
-        if (!document.body.querySelector(componentName)) {
-          document.head.querySelector(`style#style-${componentName}`)?.remove();
+        this._eventObserver?.disconnect();
+        cleanupAllEventsFor(this);
+
+        if (!document.body.querySelector(this.tagName.toLowerCase())) {
+          document.head.querySelector(`style#style-${this.tagName.toLowerCase()}`)?.remove();
         }
 
         await hookEmit('global', 'destroyed', instance.data);

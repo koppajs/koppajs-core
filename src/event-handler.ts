@@ -4,6 +4,55 @@ import { isArrowFunction } from './utils';
 
 import type { ComponentInstance, Data, EventDefinition, Events, Refs } from './types';
 
+const elementEventMap = new WeakMap<
+  HTMLElement,
+  Array<{ el: Element | Window; event: string; handler: EventListener }>
+>();
+
+export function cleanupElementAndChildren(root: Element): void {
+  const stack: Element[] = [root];
+
+  while (stack.length > 0) {
+    const el = stack.pop()!;
+    const typeMap = elementEventMap.get(el as HTMLElement);
+    if (typeMap) {
+      for (const { event, handler } of typeMap) {
+        el.removeEventListener(event, handler);
+      }
+      elementEventMap.delete(el as HTMLElement);
+    }
+
+    // Tiefer gehen – alle Kinder pushen
+    stack.push(...Array.from(el.children));
+  }
+}
+
+export function cleanupAllEventsFor(componentEl: HTMLElement) {
+  const entries = elementEventMap.get(componentEl);
+  if (!entries) return;
+
+  for (const { el, event, handler } of entries) {
+    try {
+      el.removeEventListener(event, handler);
+    } catch (e) {
+      console.warn('🧽 Failed to remove handler:', e);
+    }
+  }
+
+  elementEventMap.delete(componentEl);
+}
+
+function registerEvent(
+  componentEl: HTMLElement,
+  el: Element | Window,
+  event: string,
+  handler: EventListener,
+) {
+  if (!elementEventMap.has(componentEl)) elementEventMap.set(componentEl, []);
+  elementEventMap.get(componentEl)!.push({ el, event, handler });
+  el.addEventListener(event, handler);
+}
+
 export function emit(
   parent: ComponentInstance | undefined,
   eventName: string,
@@ -67,65 +116,44 @@ export function setupEvents(
   events: Events,
   container: DocumentFragment,
   refs: Refs,
+  componentEl: HTMLElement,
 ): void {
-  if (!Array.isArray(events)) {
-    console.error('❌ Events must be defined as an array of [eventType, target, handler].');
-    return;
-  }
+  if (!Array.isArray(events)) return;
 
-  events.forEach((eventDefinition: EventDefinition) => {
-    if (!Array.isArray(eventDefinition) || eventDefinition.length !== 3) {
-      console.error('❌ Each event definition must be [type, target, handler].', eventDefinition);
-      return;
-    }
-
-    const [eventType, target, handler] = eventDefinition;
-
-    if (typeof eventType !== 'string' || typeof handler !== 'function') {
-      console.error('❌ Invalid event definition.', { eventType, target, handler });
-      return;
-    }
+  events.forEach(([type, target, handler]) => {
+    if (typeof type !== 'string' || typeof handler !== 'function') return;
 
     let elements: (Element | Window)[] = [];
 
-    try {
-      if (target === 'window' || target === window) {
-        elements = [window];
-      } else if (typeof target === 'string') {
-        if (target.startsWith('$refs.') && target.length > 6) {
-          const [refName, ...selectorParts] = target.slice(6).split(' ');
-          if (refName && refName in refs) {
-            const ref = refs[refName];
-            if (ref && ref instanceof Element) {
-              elements = selectorParts.length
-                ? Array.from(ref.querySelectorAll(selectorParts.join(' ')))
-                : [ref];
-            }
-          }
-        } else {
-          elements = Array.from(container.querySelectorAll(target));
+    if (target === 'window') {
+      elements = [window];
+    } else if (typeof target === 'string') {
+      if (target.startsWith('$refs.')) {
+        const [refName, ...rest] = target.slice(6).split(' ');
+        const ref = refs[refName];
+        if (ref) {
+          elements = rest.length ? Array.from(ref.querySelectorAll(rest.join(' '))) : [ref];
         }
-      } else if (target instanceof Element) {
-        elements = [target];
-      } else if (target instanceof NodeList || target instanceof HTMLCollection) {
-        elements = Array.from(target).filter((n): n is Element => n.nodeType === Node.ELEMENT_NODE);
       } else {
-        console.error('❌ Invalid event target:', target);
-        return;
+        elements = Array.from(container.querySelectorAll(target));
       }
+    } else if (target instanceof Element || target instanceof Window) {
+      elements = [target];
+    }
 
-      elements.forEach((el) => {
-        const bound = createBoundHandler(handler, data, eventType);
-        el.addEventListener(eventType, bound);
-      });
-    } catch (err) {
-      console.error(`❌ Error binding event "${eventType}" on`, target, err);
+    for (const el of elements) {
+      const bound = createBoundHandler(handler, data, type);
+      registerEvent(componentEl, el, type, bound);
     }
   });
 }
 
-export function bindNativeEvents(data: Data, fragment: DocumentFragment): void {
-  const supported = [
+export function bindNativeEvents(
+  data: Data,
+  fragment: DocumentFragment,
+  componentEl: HTMLElement,
+): void {
+  const events = [
     'click',
     'input',
     'change',
@@ -173,18 +201,17 @@ export function bindNativeEvents(data: Data, fragment: DocumentFragment): void {
     'transitionend',
   ];
 
-  supported.forEach((eventType) => {
-    fragment.querySelectorAll(`[on${eventType}]`).forEach((el) => {
-      const name = el.getAttribute(`on${eventType}`);
-      if (name && data[name]) {
-        el.addEventListener(eventType, (e) => {
+  for (const type of events) {
+    for (const el of fragment.querySelectorAll(`[on${type}]`)) {
+      const handlerName = el.getAttribute(`on${type}`);
+      if (handlerName && typeof data[handlerName] === 'function') {
+        const bound = (e: Event) => {
           e.preventDefault();
-          data[name](e);
-        });
-        el.removeAttribute(`on${eventType}`);
-      } else {
-        console.error(`❌ Method ${name} for event ${eventType} not found.`);
+          data[handlerName](e);
+        };
+        el.removeAttribute(`on${type}`);
+        registerEvent(componentEl, el, type, bound);
       }
-    });
-  });
+    }
+  }
 }
