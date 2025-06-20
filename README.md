@@ -47,6 +47,8 @@ No virtual DOM. No reactive blackboxes. Just clarity and performance.
 koppajs-core/
 ├── LICENSE                   # MIT license file
 ├── README.md                 # Project documentation
+├── CONTRIBUTING.md           # ...
+├── CHANGELOG.md              # ...
 ├── package.json              # Package metadata and scripts
 ├── config/                   # Tooling configs (Vite, Vitest, ESLint, TypeScript)
 ├── dist/                     # Compiled output (ESM, CJS, types)
