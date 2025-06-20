@@ -158,3 +158,5 @@ dist
 # Ignore all files that start with "---" AND do NOT contain a dot
 ---*
 !---*.*
+
+src/types
