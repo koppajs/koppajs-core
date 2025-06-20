@@ -124,6 +124,34 @@ Use **Vitest** for writing and running unit tests.
 
 ---
 
+## ✅ Testing Guidelines
+
+Each function must be tested thoroughly and consistently.  
+KoppaJS follows a clear 3-step strategy for every test case.
+
+### 🧪 Test Structure
+
+- **One `describe()` per function**
+
+  - Keeps test structure modular and clean
+  - Matches file/function name for traceability
+
+- **Three `it()` blocks per function**
+  - ✅ **Valid case** — ensures expected behavior with valid input
+  - ❌ **Error case** — checks that invalid input throws or fails gracefully
+  - ⚠️ **Edge case** — input is valid type but leads to a logically wrong or undefined result
+
+### 📌 Principles
+
+- Tests must be **independent**, **explicit**, and **readable**
+- Use **realistic** inputs that reflect actual framework usage
+- Avoid `as any` unless needed for intentional edge-case testing
+- Keep test files parallel to source files (e.g. `src/utils/helper.ts` → `test/utils/helper.test.ts`)
+
+> Aim for clarity over quantity. A well-tested function needs **three thoughtful tests**, not thirty shallow ones.
+
+---
+
 ## 🧱 Architecture Principles
 
 - Functional and modular — no classes or factories
