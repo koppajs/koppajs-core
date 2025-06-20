@@ -4,7 +4,6 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-// Stabile Pfadauflösung relativ zum Skript
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -12,12 +11,10 @@ const SRC_DIR = path.join(__dirname, '../src');
 const DIST_FILE = path.join(__dirname, '../dist/index.d.ts');
 
 const project = new Project({
-  useInMemoryFileSystem: false,
-  skipAddingFilesFromTsConfig: true,
+  tsConfigFilePath: path.join(__dirname, '../config/tsconfig.morph.json'),
 });
 
-project.addSourceFilesAtPaths(`${SRC_DIR}/**/*.ts`);
-const files = project.getSourceFiles();
+const files = project.getSourceFiles().filter((f) => !f.getBaseName().endsWith('.d.ts'));
 
 console.log('📂 Geladene Dateien:');
 files.forEach((file) => console.log('–', file.getFilePath()));
@@ -35,21 +32,19 @@ for (const sourceFile of files) {
   if (isGeneratedTypes) continue;
 
   const exports = sourceFile.getExportedDeclarations();
-
   if (exports.size === 0) {
-    console.warn(`⚠️  Keine Exporte gefunden in: ${fileName}`);
+    console.warn(`⚠️  Keine Exporte in: ${fileName}`);
+    continue;
   }
 
-  exports.forEach((decls, name) => {
-    console.log(`🔍 Gefundener Export: ${name} in ${fileName}`);
-
+  for (const [name, decls] of exports.entries()) {
     let isPublic = false;
 
     for (const decl of decls) {
       if ('getJsDocs' in decl && typeof decl.getJsDocs === 'function') {
         const docs = decl.getJsDocs();
         const hasPublicTag = docs.some((doc) =>
-          doc.getTags().some((tag) => tag.getTagName() === 'public'),
+          doc.getTags().some((tag) => tag.getTagName().toLowerCase() === 'public'),
         );
         if (hasPublicTag) {
           isPublic = true;
@@ -67,16 +62,20 @@ for (const sourceFile of files) {
 
       const symbolExists = sourceFile.getExportSymbols().some((sym) => sym.getName() === name);
       if (!symbolExists) {
-        console.error(`❌ Fehler: Symbol '${name}' nicht in ${fileName} gefunden.`);
+        console.error(`❌ Symbol '${name}' nicht gefunden in ${fileName}`);
         errorCount++;
-        return;
+        continue;
       }
 
       exportLines.push(`export { ${name} } from '${cleanedPath}';`);
       console.log(`📤 Public export: ${name} from ${fileName}`);
     }
-  });
+  }
 }
 
-await fs.writeFile(DIST_FILE, exportLines.join('\n'), 'utf-8');
-console.log('✅ Öffentliche API geschrieben: dist/index.d.ts');
+if (exportLines.length > 0) {
+  await fs.writeFile(DIST_FILE, exportLines.join('\n') + '\n', 'utf-8');
+  console.log('✅ index.d.ts geschrieben');
+} else {
+  console.warn('⚠️  Keine öffentlichen Exporte gefunden. Datei wurde nicht erzeugt.');
+}

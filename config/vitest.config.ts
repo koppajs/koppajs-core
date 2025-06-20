@@ -1,11 +1,16 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from 'vitest/config';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
+  plugins: [tsconfigPaths({ projects: ['./config/tsconfig.test.json'] })],
   test: {
-    environment: "node", // Nutzt Node als Testumgebung
-    include: ["test/**/*.test.ts"], // Nur Dateien im "test/"-Ordner mit ".test.ts" berücksichtigen
+    environment: 'node',
+    include: ['test/**/*.test.ts'],
     coverage: {
-      include: ["src/**/*.ts"], // Nur Code aus dem "src/"-Ordner in die Coverage einbeziehen
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      include: ['src/**/*.ts'],
+      exclude: ['**/*.d.ts', 'src/types.ts', 'src/types/**'],
     },
   },
 });

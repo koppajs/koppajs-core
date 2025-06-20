@@ -54,6 +54,7 @@
     "test": "vitest --config config/vitest.config.ts --run",
     "test:coverage": "vitest --config config/vitest.config.ts --coverage",
     "test:watch": "vitest --config config/vitest.config.ts --watch",
+    "test:ci": "vitest --config config/vitest.config.ts --run --coverage",
     "lint:scripts": "pnpm eslint . --config config/eslint.config.js --fix",
     "lint:styles": "stylelint '**/*.{css,scss}' --config config/stylelint.config.js --fix || true",
     "lint": "pnpm run lint:scripts && pnpm run lint:styles",
@@ -72,7 +73,7 @@
   },
   "peerDependencies": {
     "typescript": "^5.7.2",
-    "vite": "^6.0.3"
+    "vite": "^6.3.5"
   },
   "devDependencies": {
     "@commitlint/config-conventional": "^19.8.0",
@@ -104,7 +105,9 @@
     "ts-morph": "^26.0.0",
     "ts-node": "^10.9.1",
     "tsx": "^4.20.3",
-    "vitest": "^1.6.0"
+    "vite": "6.3.5",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.4"
   },
   "overrides": {
     "glob": "^11.0.0"

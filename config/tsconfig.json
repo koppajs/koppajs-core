@@ -45,21 +45,20 @@
     }, // Define module aliases
 
     /* Type Declarations */
-    "types": [],
-    "typeRoots": ["../src/types", "../node_modules/@types"]
+    "typeRoots": ["../node_modules/@types"],
+    "types": ["node"]
   },
   "include": ["../src/**/*.ts", "../src/globals.d.ts"],
   "exclude": [
-    "../.git",
-    "../.husky",
-    "../config",
-    "../node_modules",
-    "../script",
-    "../dist",
-    "../test/**",
-    "../.idea",
-    "../.vscode",
-    "../.history/**",
-    "../**/*_del"
+    "../.git/",
+    "../.husky/",
+    "../.vscode/",
+    "../.idea/",
+    "../config/",
+    "../node_modules/",
+    "../scripts/",
+    "../dist/",
+    "../test/",
+    "../src/types/"
   ] // Files and directories to exclude
 }

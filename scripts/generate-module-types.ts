@@ -11,8 +11,9 @@ const SRC_DIR = path.join(__dirname, '../src');
 const TYPES_DIR = path.join(SRC_DIR, 'types');
 
 const project = new Project({
-  useInMemoryFileSystem: false,
-  skipAddingFilesFromTsConfig: true,
+  tsConfigFilePath: path.join(__dirname, '../config/tsconfig.morph.json'),
+  // useInMemoryFileSystem: false,
+  // skipAddingFilesFromTsConfig: true,
 });
 
 project.addSourceFilesAtPaths(`${SRC_DIR}/**/*.ts`);
