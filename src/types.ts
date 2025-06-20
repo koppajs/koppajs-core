@@ -15,17 +15,12 @@ export interface CoreCallable {
   };
 }
 
-export type HookCallback<T> = (context?: T) => any | Promise<any>;
+export type LifecycleRegistry = Map<LifecycleHook, Set<HookCallback>>;
 
-export interface HookRegistry<T> {
-  on: (name: string, callback: HookCallback<T>) => void;
-  off: (name: string, callback: HookCallback<T>) => void;
-  emit: (name: string, context: T) => Promise<void>;
-  clear: () => void;
-}
+export type HookCallback = (context?: Data) => Promise<void>;
 
 export interface CoreCtx {
-  registerHook: (hookName: string, callback: HookCallback<any>) => void;
+  registerHook: (hookName: LifecycleHook, callback: HookCallback) => void;
   take: CoreCallable['take'];
 }
 
@@ -107,9 +102,9 @@ interface LifecycleHooks {
   processed?: Function;
 }
 
-export interface Lifecycle<T> {
-  on: (name: LifecycleHook, fn: (this: T) => void | Promise<void>) => void;
-  off: (name: LifecycleHook, fn: (this: T) => void | Promise<void>) => void;
+export interface Lifecycle {
+  on: (name: LifecycleHook, fn: (this: Data) => void | Promise<void>) => void;
+  off: (name: LifecycleHook, fn: (this: Data) => void | Promise<void>) => void;
   clear: () => void;
   emit(hook: LifecycleHook): Promise<void>;
 }
@@ -145,5 +140,6 @@ export interface ComponentInstance
   element: HTMLElement;
   template: HTMLTemplateElement;
   readyPromise: Promise<void>;
-  lifecycle: Lifecycle<Data>;
+  // lifecycle: Lifecycle;
+  lifecycleRegistry: LifecycleRegistry;
 }

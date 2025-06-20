@@ -1,14 +1,15 @@
 // src/component.ts
 
 import { bindNativeEvents, emit, handleEventFromChild, setupEvents } from './event-handler';
-import { createLifecycle } from './lifecicle';
 import { createModel } from './model';
 import { processTemplate } from './template-processor';
 import {
   bindMethods,
   compileCode,
+  createHookRegistry,
   ExtensionRegistry,
   getExpectedPropTypeName,
+  hookEmit,
   isHTMLElementWithInstance,
   kebabToCamel,
 } from './utils';
@@ -173,6 +174,8 @@ export function registerComponent(componentName: string, source: ComponentSource
         let isRendering = false;
         let lastRenderedData = '';
 
+        const lifecycleRegistry = createHookRegistry();
+
         // Ready promise setup
         const ready: { promise: Promise<void>; resolve: () => void } = (() => {
           let resolve: () => void;
@@ -237,15 +240,15 @@ export function registerComponent(componentName: string, source: ComponentSource
           processSlots({ container, host: this });
 
           await processTemplate(container, data, refs);
-          await lifecycle.emit('processed');
+          await hookEmit(lifecycleRegistry, 'processed', data);
 
           bindNativeEvents(data, container);
           setupEvents(data, events, container, refs);
 
-          await lifecycle.emit(isMounted ? 'beforeUpdate' : 'beforeMount');
+          await hookEmit(lifecycleRegistry, isMounted ? 'beforeUpdate' : 'beforeMount', data);
           this.replaceChildren(container);
 
-          if (isMounted) await lifecycle.emit('updated');
+          if (isMounted) await hookEmit(lifecycleRegistry, 'updated', data);
           isRendering = false;
         };
 
@@ -286,14 +289,12 @@ export function registerComponent(componentName: string, source: ComponentSource
         watchList = Array.from(new Set([...watchList, ...Object.keys(props)]));
         watchList.forEach((path) => model.watch(path));
 
-        // Lifecycle setup
-        const lifecycle = createLifecycle(controller);
-        await lifecycle.emit('created');
+        await hookEmit(lifecycleRegistry, 'created', data);
 
         await render();
 
         if (!isMounted) {
-          await lifecycle.emit('mounted');
+          await hookEmit(lifecycleRegistry, 'mounted', data);
           isMounted = true;
         }
 
@@ -311,20 +312,22 @@ export function registerComponent(componentName: string, source: ComponentSource
           $take: take,
           $handleEventFromChild: handleEventFromChild,
           readyPromise: ready.promise,
-          lifecycle,
+          lifecycleRegistry,
         } satisfies ComponentInstance;
 
         ready.resolve();
       }
 
       async disconnectedCallback() {
-        await this.instance?.lifecycle.emit('beforeDestroy');
+        const instance = this.instance!;
+
+        await hookEmit(instance.lifecycleRegistry, 'beforeDestroy', instance.data);
 
         if (!document.body.querySelector(componentName)) {
           document.head.querySelector(`style#style-${componentName}`)?.remove();
         }
 
-        await this.instance?.lifecycle.emit('destroyed');
+        await hookEmit(instance.lifecycleRegistry, 'destroyed', instance.data);
       }
     },
   );

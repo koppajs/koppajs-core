@@ -1,31 +1,44 @@
 // src/utils/hook-registry.ts
 
-import type { HookCallback, HookRegistry } from '../types';
+import type { Data, HookCallback, LifecycleHook, LifecycleRegistry } from '../types';
 
-export function createHookRegistry<T = any>(): HookRegistry<T> {
-  const registry = new Map<string, Set<HookCallback<T>>>();
+export function createHookRegistry(): LifecycleRegistry {
+  return new Map();
+}
 
-  return {
-    on(name, callback) {
-      if (!registry.has(name)) {
-        registry.set(name, new Set());
-      }
-      registry.get(name)!.add(callback);
-    },
+/**
+ * Registers a hook callback for the given event name.
+ * Creates the internal Set if it doesn't exist yet.
+ */
+export function hookOn(registry: LifecycleRegistry, name: LifecycleHook, cb: HookCallback): void {
+  if (!registry.has(name)) registry.set(name, new Set());
+  registry.get(name)!.add(cb);
+}
 
-    off(name, callback) {
-      registry.get(name)?.delete(callback);
-    },
+/**
+ * Unregisters a specific hook callback for the given event name.
+ */
+export function hookOff(registry: LifecycleRegistry, name: LifecycleHook, cb: HookCallback): void {
+  registry.get(name)?.delete(cb);
+}
 
-    async emit(name, context) {
-      const listeners = Array.from(registry.get(name) ?? []);
-      for (const fn of listeners) {
-        await fn(context);
-      }
-    },
+/**
+ * Emits an event to all registered callbacks for the given name.
+ */
+export async function hookEmit(
+  registry: LifecycleRegistry,
+  name: LifecycleHook,
+  context: Data = {},
+): Promise<void> {
+  const listeners = Array.from(registry.get(name) ?? []);
+  for (const fn of listeners) {
+    await fn(context);
+  }
+}
 
-    clear() {
-      registry.clear();
-    },
-  };
+/**
+ * Clears all registered hooks in the registry.
+ */
+export function hookClear(registry: LifecycleRegistry): void {
+  registry.clear();
 }

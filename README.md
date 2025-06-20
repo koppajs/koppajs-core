@@ -57,7 +57,6 @@ koppajs-core/
 │   ├── event-handler.ts      # Event delegation, bubbling, and custom dispatch
 │   ├── globals.d.ts          # Global declarations (for `.kpa` files and types)
 │   ├── index.ts              # Public API entry for bundling
-│   ├── lifecicle.ts          # Lifecycle hook management (internal)
 │   ├── model.ts              # Reactive data layer using Proxy
 │   ├── template-processor.ts # Slot processing and template cloning logic
 │   ├── types.ts              # Combined export for legacy/shared types
