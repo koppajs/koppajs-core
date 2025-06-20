@@ -9,10 +9,9 @@ export function emit(
   eventName: string,
   ...args: any[]
 ): void {
-  const fn = parent?.$handleEventFromChild as ((e: string, ...a: any[]) => void) | undefined;
-  if (fn) fn(eventName, ...args);
+  parent?.$handleEventFromChild?.(parent, parent?.data, eventName, ...args);
 }
-/** @public */
+
 export function handleEventFromChild(
   parent: ComponentInstance | undefined,
   data: Data,
@@ -25,8 +24,7 @@ export function handleEventFromChild(
     data[handlerName](...args);
   }
 
-  const fn = parent?.$handleEventFromChild as ((e: string, ...a: any[]) => void) | undefined;
-  if (fn) fn(eventName, ...args);
+  parent?.$handleEventFromChild?.(parent, data, eventName, ...args);
 }
 
 export function createSubmitHandler(handler: Function, context: Data) {
@@ -96,7 +94,7 @@ export function setupEvents(
       } else if (typeof target === 'string') {
         if (target.startsWith('$refs.')) {
           const [refName, ...selectorParts] = target.slice(6).split(' ');
-          const ref = refs[refName as string];
+          const ref = refs[refName];
           if (ref) {
             elements = selectorParts.length
               ? Array.from(ref.querySelectorAll(selectorParts.join(' ')))

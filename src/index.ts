@@ -1,32 +1,16 @@
 // src/index.ts
 
-import { extend } from './utils';
+import { extend, isComponentSource, isModule, isPlugin } from './utils';
 import { GlobalHooks } from './utils/global-hooks';
 import { ExtensionRegistry } from './utils/extension-registry';
 import { registerComponent } from './component';
 
-import type { ComponentSource, CoreCallable, CoreCtx, IModule, IPlugin, TakeArgs } from './types';
+import type { CoreCallable, CoreCtx, TakeArgs } from './types';
 
 extend();
 
 let initialized = false;
 let queuedTakes: TakeArgs[] = [];
-
-function isComponentSource(ext: any): ext is ComponentSource {
-  return (
-    typeof ext?.template === 'string' &&
-    typeof ext?.script === 'string' &&
-    typeof ext?.style === 'string'
-  );
-}
-
-function isPlugin(ext: any): ext is IPlugin {
-  return typeof ext?.setup === 'function' && ext?.attach === undefined;
-}
-
-function isModule(ext: any): ext is IModule {
-  return typeof ext?.attach === 'function' && ext?.setup === undefined;
-}
 
 function performTake(...args: TakeArgs): void {
   const ext = args[0];
@@ -75,17 +59,16 @@ function initialize(): void {
   console.log('🚀 Core initialized');
 }
 
-/** @public */
-export const Core: CoreCallable = (() => {
-  const callable = (() => initialize()) as CoreCallable;
-
-  callable.take = (...args: TakeArgs) => {
-    if (initialized) {
-      performTake(...args);
-    } else {
-      queuedTakes.push(args);
-    }
-  };
+export const Core = (() => {
+  const callable = Object.assign(() => initialize(), {
+    take: (...args: TakeArgs) => {
+      if (initialized) {
+        performTake(...args);
+      } else {
+        queuedTakes.push(args);
+      }
+    },
+  }) satisfies CoreCallable;
 
   return callable;
 })();

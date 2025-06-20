@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const SRC_DIR = path.join(__dirname, '../src');
-const DIST_FILE = path.join(__dirname, '../dist/types.d.ts');
+const DIST_FILE = path.join(__dirname, '../dist/index.d.ts');
 
 const project = new Project({
   useInMemoryFileSystem: false,
@@ -68,4 +68,4 @@ for (const sourceFile of files) {
 }
 
 await fs.writeFile(DIST_FILE, exportLines.join('\n'), 'utf-8');
-console.log('✅ Öffentliche API geschrieben: dist/types.d.ts');
+console.log('✅ Öffentliche API geschrieben: dist/index.d.ts');

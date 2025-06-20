@@ -4,7 +4,14 @@ import { bindNativeEvents, emit, handleEventFromChild, setupEvents } from './eve
 import { createLifecycle } from './lifecicle';
 import { createModel } from './model';
 import { processTemplate } from './template-processor';
-import { bindMethods, compileCode, ExtensionRegistry, kebabToCamel } from './utils';
+import {
+  bindMethods,
+  compileCode,
+  ExtensionRegistry,
+  getExpectedPropTypeName,
+  isHTMLElementWithInstance,
+  kebabToCamel,
+} from './utils';
 
 import type { ComponentInstance, ComponentSource, Data, Events, Props, Refs } from './types';
 import { Core } from '.';
@@ -12,10 +19,14 @@ import { Core } from '.';
 function getParentInstance(el: Element): ComponentInstance | undefined {
   const rootNode = el.getRootNode();
   const parent = el.parentElement ?? (rootNode instanceof ShadowRoot ? rootNode.host : undefined);
-  return (parent as HTMLElement)?.instance;
+
+  if (isHTMLElementWithInstance(parent)) {
+    return parent.instance;
+  }
+
+  return undefined;
 }
 
-/** @public */
 export function processSlots({
   container,
   host,
@@ -70,10 +81,7 @@ export function validateProp({
 
   if (!propOptions) return true;
 
-  const expectedType =
-    typeof propOptions.type === 'string'
-      ? propOptions.type.toLowerCase()
-      : (propOptions.type as unknown as Function).name.toLowerCase();
+  const expectedType = getExpectedPropTypeName(propOptions.type);
 
   const actualType = Array.isArray(pValue) ? 'array' : typeof pValue;
 
@@ -127,7 +135,7 @@ function processProps({
       !hasDefinedProps ||
       (props[propName] && validateProp({ propName, propValue: value, props }))
     ) {
-      (data as Record<string, any>)[propName] = value;
+      data[propName] = value;
     }
   });
 

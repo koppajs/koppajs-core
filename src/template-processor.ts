@@ -43,53 +43,59 @@ function replaceTemplateString(template: string, data: Data): string {
 
 async function applyLoop(element: HTMLElement, data: Data, refs: Refs): Promise<void> {
   const loopDefinition = element.getAttribute('loop');
+  if (!loopDefinition) return;
+
   element.removeAttribute('loop');
 
   const toplevelIf = element.getAttribute('if');
-  element.removeAttribute('if');
+  if (toplevelIf) element.removeAttribute('if');
 
-  const match = loopDefinition!.match(/^(\w+)\s+in\s+(\w+)$/);
+  const match = loopDefinition.match(/^(\w+)\s+in\s+(\w+)$/);
   if (!match) {
     console.error('❌ Invalid loop definition:', loopDefinition);
     return;
   }
 
-  const [_, itemVar, collectionExp] = match;
-  const collection = evaluateExpression(collectionExp!, data);
+  const [, itemVar, collectionExp] = match;
+  const raw = evaluateExpression(collectionExp, data);
 
-  if (!collection || typeof collection !== 'object') {
-    console.error('❌ Data source is not iterable:', collectionExp, collection);
+  if (!raw || typeof raw !== 'object') {
+    console.error('❌ Data source is not iterable:', collectionExp, raw);
     return;
   }
 
-  const isArray = Array.isArray(collection);
-  const entries: [string | number, any][] = isArray
-    ? Array.from(collection.entries())
-    : Object.entries(collection);
+  const isArray = Array.isArray(raw);
+  const collection: Record<string, unknown> = raw;
 
-  const totalCount = entries.length;
+  const keys = Object.keys(collection);
+  const totalCount = keys.length;
   const fragment = document.createDocumentFragment();
 
-  for (const [key, value] of entries) {
-    const index = isArray ? (key as number) : undefined;
+  for (let i = 0; i < totalCount; i++) {
+    const key = keys[i];
+    const value = collection[key];
+
+    const index = isArray ? Number(key) : undefined;
     const objKey = isArray ? undefined : key;
 
     const localData = {
       ...data,
-      [itemVar!]: value,
+      [itemVar]: value,
       index,
       key: objKey,
       isFirst: index === 0,
       isLast: index === totalCount - 1,
-      isEven: index! % 2 === 0,
-      isOdd: index! % 2 !== 0,
+      isEven: typeof index === 'number' ? index % 2 === 0 : false,
+      isOdd: typeof index === 'number' ? index % 2 !== 0 : false,
     };
 
     if (toplevelIf && !evaluateExpression(toplevelIf, localData)) continue;
 
-    const cloned = element.cloneNode(true) as HTMLElement;
-    await processTemplate(cloned, localData, refs);
-    fragment.appendChild(cloned);
+    const cloned = element.cloneNode(true);
+    if (cloned instanceof HTMLElement) {
+      await processTemplate(cloned, localData, refs);
+      fragment.appendChild(cloned);
+    }
   }
 
   if (fragment.childNodes.length > 0 && element.parentNode) {
@@ -156,7 +162,6 @@ async function processNodeBatch(
 
 // --- Hauptfunktion ---
 
-/** @public */
 export async function processTemplate(root: Node, data: Data, refs: Refs): Promise<void> {
   const walker = createFilteredTreeWalker(root);
   const processed = new Set<Node>();
@@ -172,8 +177,8 @@ export async function processTemplate(root: Node, data: Data, refs: Refs): Promi
 
     processed.add(current);
 
-    if (current.nodeType === Node.ELEMENT_NODE) {
-      const el = current as HTMLElement;
+    if (current.nodeType === Node.ELEMENT_NODE && current instanceof HTMLElement) {
+      const el: HTMLElement = current;
 
       if (el.hasAttribute('loop')) {
         pending.push({ node: el, data });

@@ -1,6 +1,5 @@
 // src/utils/dom.ts
 
-/** @public */
 export const domExtensions: { [key: string]: PropertyDescriptor } = {
   select: {
     get(this: HTMLElement): (s: string) => HTMLElement | null {
@@ -68,15 +67,22 @@ export const domExtensions: { [key: string]: PropertyDescriptor } = {
     get(this: HTMLElement): (callback?: (sibling: HTMLElement) => void) => HTMLElement[] {
       return (callback) => {
         if (!this.parentNode) return [];
+
         const siblings: HTMLElement[] = [];
         let sibling: ChildNode | null = this.parentNode.firstChild;
+
         while (sibling) {
-          if (sibling.nodeType === 1 && sibling !== this) {
-            callback?.(sibling as HTMLElement);
-            siblings.push(sibling as HTMLElement);
+          if (
+            sibling.nodeType === Node.ELEMENT_NODE &&
+            sibling !== this &&
+            sibling instanceof HTMLElement
+          ) {
+            callback?.(sibling);
+            siblings.push(sibling);
           }
           sibling = sibling.nextSibling;
         }
+
         return siblings;
       };
     },

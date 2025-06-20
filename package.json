@@ -67,6 +67,11 @@
     "dump-code": "node scripts/dump-code.js",
     "analyze-code": "node scripts/analyze-code.js"
   },
+  "packageManager": "pnpm@10.12.1",
+  "engines": {
+    "node": ">=20.18.0",
+    "pnpm": ">=10.12.1"
+  },
   "peerDependencies": {
     "typescript": "^5.7.2",
     "vite": "^6.0.3"
