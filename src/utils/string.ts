@@ -4,23 +4,24 @@ import { getValueByPath } from './helper';
 
 /**
  * Converts a kebab-case string to camelCase.
- * @param {string} s - The kebab-case string to convert.
- * @returns {string} - The converted camelCase string.
+ *
+ * @param s - The kebab-case string to convert
+ * @returns The converted camelCase string
  */
 export function kebabToCamel(s: string): string {
   return s.replace(/-./g, (x) => x[1]!.toUpperCase());
 }
 
 /**
- * Evaluates a JavaScript expression in a controlled and restricted manner.
+ * Evaluates a JavaScript expression in a controlled, restricted scope.
  *
- * - The function prevents access to potentially dangerous global objects like `window`, `document`, etc.
- * - If the expression is a simple variable path (e.g., `someVar.prop`), it is safely resolved from the provided data object.
- * - Otherwise, the expression is evaluated inside a restricted function scope with only the provided `data` as context.
+ * - Blocks access to dangerous globals (`window`, `document`, `eval`, etc.)
+ * - Supports simple property paths like `foo.bar.baz`
+ * - Executes complex expressions using `Function` but only with safe variables
  *
- * @param {string} expression - The JavaScript expression to evaluate.
- * @param {Record<string, any>} [data={}] - An optional data object containing variables accessible in the expression.
- * @returns {any} - The evaluated result or `false` if evaluation is not allowed or an error occurs.
+ * @param expression - The JS expression to evaluate
+ * @param data - Optional context object providing accessible variables
+ * @returns The result of the evaluation, or `false` on error or forbidden access
  */
 export function evaluateExpression(expression: string, data: Record<string, any> = {}): any {
   try {
