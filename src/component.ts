@@ -9,6 +9,7 @@ import {
   createHookRegistry,
   ExtensionRegistry,
   getExpectedPropTypeName,
+  GlobalHooks,
   hookEmit,
   isHTMLElementWithInstance,
   kebabToCamel,
@@ -240,14 +241,17 @@ export function registerComponent(componentName: string, source: ComponentSource
           processSlots({ container, host: this });
 
           await processTemplate(container, data, refs);
+          await GlobalHooks.emit('processed', data);
           await hookEmit(lifecycleRegistry, 'processed', data);
 
           bindNativeEvents(data, container);
           setupEvents(data, events, container, refs);
 
+          await GlobalHooks.emit(isMounted ? 'beforeUpdate' : 'beforeMount', data);
           await hookEmit(lifecycleRegistry, isMounted ? 'beforeUpdate' : 'beforeMount', data);
           this.replaceChildren(container);
 
+          await GlobalHooks.emit('updated', data);
           if (isMounted) await hookEmit(lifecycleRegistry, 'updated', data);
           isRendering = false;
         };
@@ -289,11 +293,13 @@ export function registerComponent(componentName: string, source: ComponentSource
         watchList = Array.from(new Set([...watchList, ...Object.keys(props)]));
         watchList.forEach((path) => model.watch(path));
 
+        await GlobalHooks.emit('created', data);
         await hookEmit(lifecycleRegistry, 'created', data);
 
         await render();
 
         if (!isMounted) {
+          await GlobalHooks.emit('mounted', data);
           await hookEmit(lifecycleRegistry, 'mounted', data);
           isMounted = true;
         }
@@ -321,12 +327,14 @@ export function registerComponent(componentName: string, source: ComponentSource
       async disconnectedCallback() {
         const instance = this.instance!;
 
+        await GlobalHooks.emit('beforeDestroy', instance.data);
         await hookEmit(instance.lifecycleRegistry, 'beforeDestroy', instance.data);
 
         if (!document.body.querySelector(componentName)) {
           document.head.querySelector(`style#style-${componentName}`)?.remove();
         }
 
+        await GlobalHooks.emit('destroyed', instance.data);
         await hookEmit(instance.lifecycleRegistry, 'destroyed', instance.data);
       }
     },
