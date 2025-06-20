@@ -1,105 +1,56 @@
 <div align="center">
   <img src="./src/assets/images/logo-long.png" width="600" alt="KoppaJS Logo">
+  <p><strong>Version 3.0.0</strong></p>
 </div>
 
-# ⚡ KoppaJS – The UI framework for pragmatic developers
+# KoppaJS — The UI framework for pragmatic developers who care about code
 
-> _“Not another frontend framework?”_  
-> Yes – but this one is different. **KoppaJS** is built for developers who want full control, blazing speed, and no unnecessary abstraction.
+> **KoppaJS** isn’t just another frontend framework.  
+> It’s built for developers who demand speed, clarity, and full control — without the overhead of bloated abstractions or hidden reactivity layers.  
+> If you’re looking for a UI framework that’s **transparent**, **lightweight**, and truly **pragmatic**,  
+> **KoppaJS** is your ideal companion for modern web development.
 
----
-
-## 🌟 Vision
-
-**KoppaJS** is a lightweight, high-performance alternative to traditional UI frameworks.  
-It puts **clarity**, **speed**, and **modularity** first — empowering developers to build reactive, maintainable apps without layers of hidden complexity.
-
----
-
-## 📌 What is KoppaJS?
+## What is KoppaJS?
 
 A UI framework made for:
 
-- 🧑‍💻 Indie developers
-- 🚀 Startups
-- 🛠 Freelancers
-- …and anyone who wants performance without overhead
+- Indie developers
+- Startups
+- Freelancers
+- ... and anyone who wants performance without overhead
 
 No virtual DOM. No reactivity blackboxes.  
 **Just clean code, direct DOM access, and total control.**
 
----
+## Why KoppaJS?
 
-## 🔥 Why KoppaJS?
+- **Clarity First** – Readable code, minimal API, no magic
+- **Direct DOM Access** – No virtual DOM, no overhead
+- **Functional & Modular** – Flat functions instead of classes
+- **Hooks & Extensibility** – Lifecycle, plugins, modules
+- **Single File Components** – `.kpa` = template, logic and style in one
+- **Proxy-based Reactivity** – Lightweight and instant
+- **Modern Tooling** – TypeScript, Vite, Vitest, pnpm
 
-- 🧠 **Clarity First** – Readable code, minimal API, no magic
-- ⚡ **Direct DOM Access** – No virtual DOM, no overhead
-- 🧩 **Functional & Modular** – Flat functions instead of classes
-- 🪝 **Hooks & Extensibility** – Lifecycle, plugins, modules
-- 📦 **Single File Components** – `.kpa` = template, logic, style in one
-- 🧬 **Proxy-based Reactivity** – Lightweight and instant
-- 🛠 **Modern Tooling** – TypeScript, Vite, Vitest, pnpm
+## Vision
 
----
+**KoppaJS** is not just a UI framework — it’s a mindset.
 
-## 🚀 Get Started
+A commitment to simplicity, transparency, and full developer control.  
+It replaces bloated abstractions with clean, functional code that you fully understand and own.
 
-### 1. 📦 Install
+Forget virtual DOMs, opaque reactivity systems, and complex class hierarchies.  
+KoppaJS empowers you to build **fast**, **modular**, and **maintainable** apps using the web’s native power — without magic, without compromise.
 
-```bash
-pnpm add @koppajs/koppajs-core
-```
+It’s not about doing more. It’s about doing less — better.
 
----
+## Get Started
 
-### 2. ✨ Create a Component
+**... from Example Project**: [here->](https://github.com/koppajs/koppajs-example)
 
-#### `hello.kpa`
+## License
 
-```html
-[template]
-<div>
-  <h1>{{ title }}</h1>
-  <button onClick="changeTitle">Change</button>
-</div>
-[/template] [ts] return { data: { title: "Hello KoppaJS" }, methods: { changeTitle() { this.title =
-"It works!"; } } }; [/ts]
-```
-
----
-
-### 3. 🧩 Register & Mount
-
-#### `src/index.ts`
-
-```ts
-import { register, mount } from '@koppajs/koppajs-core';
-import Hello from './hello.kpa';
-
-register('hello-component', Hello);
-mount('hello-component', document.body);
-```
-
----
-
-### 4. ▶️ Start Dev Server
-
-```bash
-pnpm vite
-```
-
-> ℹ️ `.kpa` loader plugin for Vite coming soon.
-
----
-
-> 🧭 Looking for a UI framework that's **transparent**, **lightweight**, and built for **speed and control**?  
-> **KoppaJS** is your pragmatic companion in modern web development.
-
----
-
-## 📜 License
-
-This project is licensed under the **Apache License Version 2.0**.  
+This project is licensed under the [**Apache License Version 2.0**](https://www.apache.org/licenses/LICENSE-2.0).  
 You are free to **use, modify, distribute, and extend** KoppaJS — even in commercial projects.
 
-© 2025 · **Bensch Web Services**
+Copyright © 2025 · **Bensch Web Services**

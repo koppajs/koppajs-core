@@ -17,7 +17,7 @@ export interface CoreCallable {
 
 export type LifecycleRegistry = Map<LifecycleHook, Set<HookCallback>>;
 
-export type HookCallback = (context?: Data) => Promise<void>;
+export type HookCallback = (context?: Data | undefined) => Promise<void>;
 
 export interface CoreCtx {
   registerHook: (hookName: LifecycleHook, callback: HookCallback) => void;
@@ -81,15 +81,18 @@ export type WatchList = string[];
 
 export type Refs = Record<string, HTMLElement>;
 
-export type LifecycleHook =
-  | 'created'
-  | 'beforeMount'
-  | 'mounted'
-  | 'beforeUpdate'
-  | 'updated'
-  | 'beforeDestroy'
-  | 'destroyed'
-  | 'processed';
+export const lifecycleHooks = [
+  'created',
+  'beforeMount',
+  'mounted',
+  'beforeUpdate',
+  'updated',
+  'beforeDestroy',
+  'destroyed',
+  'processed',
+] as const;
+
+export type LifecycleHook = (typeof lifecycleHooks)[number];
 
 interface LifecycleHooks {
   created?: Function;

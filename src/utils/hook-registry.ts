@@ -6,11 +6,18 @@ export function createHookRegistry(): LifecycleRegistry {
   return new Map();
 }
 
+const globalHookRegistry = createHookRegistry();
+
 /**
  * Registers a hook callback for the given event name.
  * Creates the internal Set if it doesn't exist yet.
  */
-export function hookOn(registry: LifecycleRegistry, name: LifecycleHook, cb: HookCallback): void {
+export function hookOn(
+  registry: LifecycleRegistry | 'global',
+  name: LifecycleHook,
+  cb: HookCallback,
+): void {
+  if (registry === 'global') registry = globalHookRegistry;
   if (!registry.has(name)) registry.set(name, new Set());
   registry.get(name)!.add(cb);
 }
@@ -18,7 +25,12 @@ export function hookOn(registry: LifecycleRegistry, name: LifecycleHook, cb: Hoo
 /**
  * Unregisters a specific hook callback for the given event name.
  */
-export function hookOff(registry: LifecycleRegistry, name: LifecycleHook, cb: HookCallback): void {
+export function hookOff(
+  registry: LifecycleRegistry | 'global',
+  name: LifecycleHook,
+  cb: HookCallback,
+): void {
+  if (registry === 'global') registry = globalHookRegistry;
   registry.get(name)?.delete(cb);
 }
 
@@ -26,10 +38,11 @@ export function hookOff(registry: LifecycleRegistry, name: LifecycleHook, cb: Ho
  * Emits an event to all registered callbacks for the given name.
  */
 export async function hookEmit(
-  registry: LifecycleRegistry,
+  registry: LifecycleRegistry | 'global',
   name: LifecycleHook,
-  context: Data = {},
+  context?: Data,
 ): Promise<void> {
+  if (registry === 'global') registry = globalHookRegistry;
   const listeners = Array.from(registry.get(name) ?? []);
   for (const fn of listeners) {
     await fn(context);
@@ -39,6 +52,7 @@ export async function hookEmit(
 /**
  * Clears all registered hooks in the registry.
  */
-export function hookClear(registry: LifecycleRegistry): void {
+export function hookClear(registry: LifecycleRegistry | 'global'): void {
+  if (registry === 'global') registry = globalHookRegistry;
   registry.clear();
 }

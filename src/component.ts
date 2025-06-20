@@ -9,13 +9,21 @@ import {
   createHookRegistry,
   ExtensionRegistry,
   getExpectedPropTypeName,
-  GlobalHooks,
   hookEmit,
+  hookOn,
   isHTMLElementWithInstance,
   kebabToCamel,
 } from './utils';
 
-import type { ComponentInstance, ComponentSource, Data, Events, Props, Refs } from './types';
+import {
+  lifecycleHooks,
+  type ComponentInstance,
+  type ComponentSource,
+  type Data,
+  type Events,
+  type Props,
+  type Refs,
+} from './types';
 import { Core } from '.';
 
 function getParentInstance(el: Element): ComponentInstance | undefined {
@@ -170,7 +178,6 @@ export function registerComponent(componentName: string, source: ComponentSource
         const compiledScript = compileCode(source.script);
 
         const refs: Refs = {};
-        let data: Data = {};
         let isMounted = false;
         let isRendering = false;
         let lastRenderedData = '';
@@ -241,18 +248,18 @@ export function registerComponent(componentName: string, source: ComponentSource
           processSlots({ container, host: this });
 
           await processTemplate(container, data, refs);
-          await GlobalHooks.emit('processed', data);
-          await hookEmit(lifecycleRegistry, 'processed', data);
+          await hookEmit('global', 'processed', data);
+          await hookEmit(lifecycleRegistry, 'processed');
 
           bindNativeEvents(data, container);
           setupEvents(data, events, container, refs);
 
-          await GlobalHooks.emit(isMounted ? 'beforeUpdate' : 'beforeMount', data);
-          await hookEmit(lifecycleRegistry, isMounted ? 'beforeUpdate' : 'beforeMount', data);
+          await hookEmit('global', isMounted ? 'beforeUpdate' : 'beforeMount', data);
+          await hookEmit(lifecycleRegistry, isMounted ? 'beforeUpdate' : 'beforeMount');
           this.replaceChildren(container);
 
-          await GlobalHooks.emit('updated', data);
-          if (isMounted) await hookEmit(lifecycleRegistry, 'updated', data);
+          await hookEmit('global', 'updated', data);
+          if (isMounted) await hookEmit(lifecycleRegistry, 'updated');
           isRendering = false;
         };
 
@@ -268,6 +275,7 @@ export function registerComponent(componentName: string, source: ComponentSource
 
         // Model setup
         const model = createModel(controller.data ?? {}, async () => await render());
+        const { data } = model;
 
         // Observer hinzufügen
         model.addObserver(() => {
@@ -275,13 +283,11 @@ export function registerComponent(componentName: string, source: ComponentSource
         });
 
         // Setze die Daten und Methoden
-        data = model.data;
         const methods = controller.methods || {};
         const props = controller.props || {};
         const events = (controller.events || []) satisfies Events;
         let watchList = controller.watchList || [];
 
-        bindMethods(data, methods);
         processProps({
           ele: this,
           parent,
@@ -289,18 +295,28 @@ export function registerComponent(componentName: string, source: ComponentSource
           data,
         });
 
+        bindMethods(data, methods);
+
+        // Lifecycle-Hooks aus dem Controller in die Registry eintragen
+        for (const hook of lifecycleHooks) {
+          const fn = controller[hook];
+          if (typeof fn === 'function') {
+            hookOn(lifecycleRegistry, hook, fn.bind(data));
+          }
+        }
+
         // Watch setup
         watchList = Array.from(new Set([...watchList, ...Object.keys(props)]));
         watchList.forEach((path) => model.watch(path));
 
-        await GlobalHooks.emit('created', data);
-        await hookEmit(lifecycleRegistry, 'created', data);
+        await hookEmit('global', 'created', data);
+        await hookEmit(lifecycleRegistry, 'created');
 
         await render();
 
         if (!isMounted) {
-          await GlobalHooks.emit('mounted', data);
-          await hookEmit(lifecycleRegistry, 'mounted', data);
+          await hookEmit('global', 'mounted', data);
+          await hookEmit(lifecycleRegistry, 'mounted');
           isMounted = true;
         }
 
@@ -327,15 +343,15 @@ export function registerComponent(componentName: string, source: ComponentSource
       async disconnectedCallback() {
         const instance = this.instance!;
 
-        await GlobalHooks.emit('beforeDestroy', instance.data);
-        await hookEmit(instance.lifecycleRegistry, 'beforeDestroy', instance.data);
+        await hookEmit('global', 'beforeDestroy', instance.data);
+        await hookEmit(instance.lifecycleRegistry, 'beforeDestroy');
 
         if (!document.body.querySelector(componentName)) {
           document.head.querySelector(`style#style-${componentName}`)?.remove();
         }
 
-        await GlobalHooks.emit('destroyed', instance.data);
-        await hookEmit(instance.lifecycleRegistry, 'destroyed', instance.data);
+        await hookEmit('global', 'destroyed', instance.data);
+        await hookEmit(instance.lifecycleRegistry, 'destroyed');
       }
     },
   );
