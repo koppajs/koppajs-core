@@ -85,6 +85,5 @@ declare global {
 
     // instance properties
     instance?: ComponentInstance;
-    _eventObserver?: MutationObserver;
   }
 }

@@ -1,13 +1,17 @@
 // src/index.ts
 
-import { extend, isComponentSource, isModule, isPlugin } from './utils';
-import { GlobalHooks } from './utils/global-hooks';
+import { extend, hookOn, isComponentSource, isModule, isPlugin } from './utils';
 import { ExtensionRegistry } from './utils/extension-registry';
 import { registerComponent } from './component';
 
 import type { CoreCallable, CoreCtx, TakeArgs } from './types';
+import { patchGlobalEventTracking, startGlobalDisconnectionObserver } from './global-event-cleaner';
+
+patchGlobalEventTracking();
 
 extend();
+
+startGlobalDisconnectionObserver();
 
 let initialized = false;
 let queuedTakes: TakeArgs[] = [];
@@ -28,7 +32,9 @@ function performTake(...args: TakeArgs): void {
 
   if (isPlugin(ext) || isModule(ext)) {
     const ctx: CoreCtx = {
-      registerHook: GlobalHooks.on,
+      registerHook: (hookName, callback) => {
+        hookOn('global', hookName, callback);
+      },
       take: Core.take,
     };
 

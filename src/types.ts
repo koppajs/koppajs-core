@@ -3,6 +3,8 @@
 /// <reference path="./globals.d.ts" />
 /// <reference types="vite/client" />
 
+export const EVENT_STORE = Symbol('eventStore');
+
 export type ModelCallback = (oldValue?: any, newValue?: any) => void;
 
 export type TakeArgs = [ComponentSource, string] | [IPlugin | IModule];

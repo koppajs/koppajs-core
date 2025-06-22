@@ -1,13 +1,6 @@
 // src/component.ts
 
-import {
-  bindNativeEvents,
-  cleanupAllEventsFor,
-  cleanupElementAndChildren,
-  emit,
-  handleEventFromChild,
-  setupEvents,
-} from './event-handler';
+import { bindNativeEvents, emit, handleEventFromChild, setupEvents } from './event-handler';
 import { createModel } from './model';
 import { processTemplate } from './template-processor';
 import {
@@ -244,17 +237,6 @@ export function registerComponent(componentName: string, source: ComponentSource
           }
         }
 
-        const observer = new MutationObserver((mutations) => {
-          for (const mutation of mutations) {
-            mutation.removedNodes.forEach((node) => {
-              if (node instanceof HTMLElement) cleanupElementAndChildren(node);
-            });
-          }
-        });
-
-        observer.observe(this, { subtree: true, childList: true });
-        this._eventObserver = observer; // für späteren disconnect
-
         const render = async () => {
           if (isRendering) return;
           const currentData = JSON.stringify(data);
@@ -269,8 +251,8 @@ export function registerComponent(componentName: string, source: ComponentSource
           await hookEmit('global', 'processed', data);
           await hookEmit(lifecycleRegistry, 'processed');
 
-          bindNativeEvents(data, container, this);
-          setupEvents(data, events, container, refs, this);
+          bindNativeEvents(data, container);
+          setupEvents(data, events, container, refs);
 
           await hookEmit('global', isMounted ? 'beforeUpdate' : 'beforeMount', data);
           await hookEmit(lifecycleRegistry, isMounted ? 'beforeUpdate' : 'beforeMount');
@@ -362,9 +344,6 @@ export function registerComponent(componentName: string, source: ComponentSource
         const instance = this.instance!;
         await hookEmit('global', 'beforeDestroy', instance.data);
         await hookEmit(instance.lifecycleRegistry, 'beforeDestroy');
-
-        this._eventObserver?.disconnect();
-        cleanupAllEventsFor(this);
 
         if (!document.body.querySelector(this.tagName.toLowerCase())) {
           document.head.querySelector(`style#style-${this.tagName.toLowerCase()}`)?.remove();

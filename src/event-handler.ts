@@ -1,57 +1,7 @@
 // src/event-handler.ts
 
 import { isArrowFunction } from './utils';
-
 import type { ComponentInstance, Data, EventDefinition, Events, Refs } from './types';
-
-const elementEventMap = new WeakMap<
-  HTMLElement,
-  Array<{ el: Element | Window; event: string; handler: EventListener }>
->();
-
-export function cleanupElementAndChildren(root: Element): void {
-  const stack: Element[] = [root];
-
-  while (stack.length > 0) {
-    const el = stack.pop()!;
-    const typeMap = elementEventMap.get(el as HTMLElement);
-    if (typeMap) {
-      for (const { event, handler } of typeMap) {
-        el.removeEventListener(event, handler);
-      }
-      elementEventMap.delete(el as HTMLElement);
-    }
-
-    // Tiefer gehen – alle Kinder pushen
-    stack.push(...Array.from(el.children));
-  }
-}
-
-export function cleanupAllEventsFor(componentEl: HTMLElement) {
-  const entries = elementEventMap.get(componentEl);
-  if (!entries) return;
-
-  for (const { el, event, handler } of entries) {
-    try {
-      el.removeEventListener(event, handler);
-    } catch (e) {
-      console.warn('🧽 Failed to remove handler:', e);
-    }
-  }
-
-  elementEventMap.delete(componentEl);
-}
-
-function registerEvent(
-  componentEl: HTMLElement,
-  el: Element | Window,
-  event: string,
-  handler: EventListener,
-) {
-  if (!elementEventMap.has(componentEl)) elementEventMap.set(componentEl, []);
-  elementEventMap.get(componentEl)!.push({ el, event, handler });
-  el.addEventListener(event, handler);
-}
 
 export function emit(
   parent: ComponentInstance | undefined,
@@ -116,7 +66,6 @@ export function setupEvents(
   events: Events,
   container: DocumentFragment,
   refs: Refs,
-  componentEl: HTMLElement,
 ): void {
   if (!Array.isArray(events)) return;
 
@@ -143,16 +92,12 @@ export function setupEvents(
 
     for (const el of elements) {
       const bound = createBoundHandler(handler, data, type);
-      registerEvent(componentEl, el, type, bound);
+      el.addEventListener(type, bound);
     }
   });
 }
 
-export function bindNativeEvents(
-  data: Data,
-  fragment: DocumentFragment,
-  componentEl: HTMLElement,
-): void {
+export function bindNativeEvents(data: Data, fragment: DocumentFragment): void {
   const events = [
     'click',
     'input',
@@ -210,7 +155,7 @@ export function bindNativeEvents(
           data[handlerName](e);
         };
         el.removeAttribute(`on${type}`);
-        registerEvent(componentEl, el, type, bound);
+        el.addEventListener(type, bound);
       }
     }
   }
