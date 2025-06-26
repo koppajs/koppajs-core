@@ -1,0 +1,28 @@
+{
+  // Editor settings
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "always",
+    "source.organizeImports": "always"
+  },
+
+  // Search: Exclude these files/folders
+  "search.exclude": {
+    "**/node_modules/**": true,
+    "**/dist/**": true,
+    "**/.git/**": true,
+    "**/pnpm-lock.yaml": true
+  },
+
+  // File Explorer: same exclusions
+  "files.exclude": {
+    "**/.git/**": true
+  },
+
+  // Other settings
+  "files.autoSave": "off",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true
+}

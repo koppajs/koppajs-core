@@ -71,7 +71,6 @@ web_modules/
 .node_repl_history
 
 # Editor and IDE configuration files
-.vscode/
 .idea/
 .history/
 
