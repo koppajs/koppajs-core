@@ -132,6 +132,7 @@ KoppaJS follows a clear 3-step strategy for every test case.
 ### 🧪 Test Structure
 
 - **One `describe()` per function**
+
   - Keeps test structure modular and clean
   - Matches file/function name for traceability
 
