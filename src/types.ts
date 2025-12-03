@@ -1,13 +1,8 @@
-// src/types.ts
-
-/// <reference path="./globals.d.ts" />
-/// <reference types="vite/client" />
-
-export const EVENT_STORE = Symbol('eventStore');
-
-export type ModelCallback = (oldValue?: any, newValue?: any) => void;
+export const EVENT_STORE = Symbol("eventStore");
 
 export type TakeArgs = [ComponentSource, string] | [IPlugin | IModule];
+
+export type AnyFn = (...args: any[]) => unknown;
 
 export interface CoreCallable {
   (): void;
@@ -23,7 +18,7 @@ export type HookCallback = (context?: Data | undefined) => Promise<void>;
 
 export interface CoreCtx {
   registerHook: (hookName: LifecycleHook, callback: HookCallback) => void;
-  take: CoreCallable['take'];
+  take: CoreCallable["take"];
 }
 
 // Basic‐Extension‐Interface
@@ -42,7 +37,7 @@ export interface ModuleContext {
   element: HTMLElement;
   parent?: ComponentInstance;
   core: {
-    take: CoreCallable['take'];
+    take: CoreCallable["take"];
   };
 }
 
@@ -72,11 +67,11 @@ interface PropsDefinition {
 export type EventDefinition = [
   string,
   string | Element | Window | { ref: string; selector?: string },
-  Function,
+  AnyFn,
 ];
 
 export type Data = Record<string, any>;
-export type Methods = Record<string, Function>;
+export type Methods = Record<string, AnyFn>;
 export type Props = Record<string, PropsDefinition>;
 export type Events = Array<EventDefinition>;
 export type WatchList = string[];
@@ -84,27 +79,28 @@ export type WatchList = string[];
 export type Refs = Record<string, HTMLElement>;
 
 export const lifecycleHooks = [
-  'created',
-  'beforeMount',
-  'mounted',
-  'beforeUpdate',
-  'updated',
-  'beforeDestroy',
-  'destroyed',
-  'processed',
+  "created",
+  "beforeMount",
+  "mounted",
+  "beforeUpdate",
+  "updated",
+  "beforeDestroy",
+  "destroyed",
+  "processed",
 ] as const;
 
 export type LifecycleHook = (typeof lifecycleHooks)[number];
+export type LifecycleHandler = (this: Data) => void | Promise<void>;
 
 interface LifecycleHooks {
-  created?: Function;
-  beforeMount?: Function;
-  mounted?: Function;
-  beforeUpdate?: Function;
-  updated?: Function;
-  beforeDestroy?: Function;
-  destroyed?: Function;
-  processed?: Function;
+  created?: LifecycleHandler;
+  beforeMount?: LifecycleHandler;
+  mounted?: LifecycleHandler;
+  beforeUpdate?: LifecycleHandler;
+  updated?: LifecycleHandler;
+  beforeDestroy?: LifecycleHandler;
+  destroyed?: LifecycleHandler;
+  processed?: LifecycleHandler;
 }
 
 export interface Lifecycle {
@@ -127,8 +123,12 @@ export interface ComponentController extends LifecycleHooks {
 export interface ComponentContext {
   $refs: Refs;
   $parent?: ComponentInstance;
-  $emit: (parent: ComponentInstance | undefined, eventName: string, ...args: any[]) => void;
-  $take: (pluginName: string) => Record<string, any> | Function | void | undefined;
+  $emit: (
+    parent: ComponentInstance | undefined,
+    eventName: string,
+    ...args: any[]
+  ) => void;
+  $take: (pluginName: string) => Record<string, any> | AnyFn | void | undefined;
   $handleEventFromChild: (
     parent: ComponentInstance | undefined,
     data: Data,
@@ -140,8 +140,7 @@ export interface ComponentContext {
 }
 
 export interface ComponentInstance
-  extends ComponentContext,
-    Omit<ComponentController, keyof LifecycleHooks> {
+  extends ComponentContext, Omit<ComponentController, keyof LifecycleHooks> {
   element: HTMLElement;
   template: HTMLTemplateElement;
   readyPromise: Promise<void>;

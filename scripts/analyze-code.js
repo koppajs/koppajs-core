@@ -1,14 +1,14 @@
 #!/usr/bin/env node
-import { promises as fs } from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "url";
 
 // Resolve script directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const SRC_DIR = path.join(__dirname, '../src');
-const OUTPUT_FILE = path.join(__dirname, '../---code_analysis');
+const SRC_DIR = path.join(__dirname, "../src");
+const OUTPUT_FILE = path.join(__dirname, "../---code_analysis");
 
 // Regex Patterns
 const FUNCTION_PATTERN =
@@ -33,7 +33,7 @@ async function getAllFiles(dir) {
 
 async function analyzeCode() {
   try {
-    console.info('🔍 Analyzing source code...');
+    globalThis.console.info("🔍 Analyzing source code...");
     const files = await getAllFiles(SRC_DIR);
 
     let totalLines = 0;
@@ -43,14 +43,14 @@ async function analyzeCode() {
     let importExportCount = 0;
 
     for (const file of files) {
-      const fileData = await fs.readFile(file, 'utf-8');
-      const lines = fileData.split('\n').map((line) => line.trim());
+      const fileData = await fs.readFile(file, "utf-8");
+      const lines = fileData.split("\n").map((line) => line.trim());
       const codeLines = lines.filter(
         (line) =>
           line &&
-          !line.startsWith('//') &&
-          !line.startsWith('/*') &&
-          !line.startsWith('*'),
+          !line.startsWith("//") &&
+          !line.startsWith("/*") &&
+          !line.startsWith("*"),
       );
 
       totalLines += codeLines.length;
@@ -69,12 +69,14 @@ async function analyzeCode() {
 ================================
     `.trim();
 
-    await fs.writeFile(OUTPUT_FILE, report, 'utf-8');
-    console.info(report);
-    console.info(`✅ Analysis completed! Report saved in: ${OUTPUT_FILE}`);
+    await fs.writeFile(OUTPUT_FILE, report, "utf-8");
+    globalThis.console.info(report);
+    globalThis.console.info(
+      `✅ Analysis completed! Report saved in: ${OUTPUT_FILE}`,
+    );
   } catch (error) {
-    console.error('❌ Error analyzing code:', error.message);
-    process.exit(1);
+    globalThis.console.error("❌ Error analyzing code:", error.message);
+    globalThis.process.exit(1);
   }
 }
 

@@ -1,5 +1,7 @@
 export default {
-  '**/*.{ts,tsx}': ['eslint --fix', 'prettier --write'],
-  '**/*.{scss,css}': ['stylelint --fix'],
+  // Nur Code-Dateien gehen durch ESLint + Prettier
+  '**/*.{ts,tsx,js,cjs,mjs}': ['pnpm lint:scripts', 'prettier --write'],
+
+  // Alle „reinen Textformate“ nur durch Prettier
   '**/*.{json,md,yaml}': ['prettier --write'],
-};
+}

@@ -1,6 +1,4 @@
-// src/utils/string.ts
-
-import { getValueByPath } from './helper';
+import { getValueByPath } from "./helper";
 
 /**
  * Converts a kebab-case string to camelCase.
@@ -23,7 +21,10 @@ export function kebabToCamel(s: string): string {
  * @param data - Optional context object providing accessible variables
  * @returns The result of the evaluation, or `false` on error or forbidden access
  */
-export function evaluateExpression(expression: string, data: Record<string, any> = {}): any {
+export function evaluateExpression(
+  expression: string,
+  data: Record<string, any> = {},
+): any {
   try {
     // Define a regular expression to detect forbidden keywords that could allow unsafe execution.
     const forbiddenKeywords =
@@ -35,11 +36,13 @@ export function evaluateExpression(expression: string, data: Record<string, any>
     }
 
     // If the expression follows a simple property path pattern (e.g., `object.prop.subProp`), resolve it safely.
-    if (/^[a-zA-Z_$][0-9a-zA-Z_$]*(\.[a-zA-Z_$][0-9a-zA-Z_$]*)*$/.test(expression)) {
+    if (
+      /^[a-zA-Z_$][0-9a-zA-Z_$]*(\.[a-zA-Z_$][0-9a-zA-Z_$]*)*$/.test(expression)
+    ) {
       const value = getValueByPath(data, expression);
 
       // If the resolved value is a function, call it with `data` as its context.
-      if (typeof value === 'function') {
+      if (typeof value === "function") {
         return value.call(data);
       }
 
@@ -57,7 +60,7 @@ export function evaluateExpression(expression: string, data: Record<string, any>
 
     // Execute the function with values from the data object and return the result.
     return evalFunction(...allowedVars.map((key) => data[key]));
-  } catch (error) {
+  } catch {
     // Return false if an error occurs during evaluation.
     return false;
   }

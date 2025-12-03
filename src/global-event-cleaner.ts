@@ -1,5 +1,3 @@
-// global-event-cleaner.ts
-
 const EVENT_REGISTRY = new WeakMap<EventTarget, Set<EventListenerEntry>>();
 
 type EventListenerEntry = {
@@ -8,15 +6,22 @@ type EventListenerEntry = {
   options?: boolean | AddEventListenerOptions;
 };
 
-let observer: MutationObserver | undefined = undefined;
+let observer: MutationObserver | undefined;
 
 /**
- * Globale Erweiterung von addEventListener/removeEventListener
- * mit automatischer Registrierung.
+ * Patches EventTarget.prototype.addEventListener/removeEventListener
+ * to globally track registered listeners.
+ *
+ * This only runs when EventTarget exists (browser/JSDOM).
+ * In Node/SSR it is a safe no-op.
  */
-export function patchGlobalEventTracking() {
-  if ((window as any).__eventTrackingPatched) return;
-  (window as any).__eventTrackingPatched = true;
+export function patchGlobalEventTracking(): void {
+  if (typeof EventTarget === "undefined") return;
+
+  const g = globalThis as any;
+
+  if (g.__koppajsEventTrackingPatched) return;
+  g.__koppajsEventTrackingPatched = true;
 
   const nativeAdd = EventTarget.prototype.addEventListener;
   const nativeRemove = EventTarget.prototype.removeEventListener;
@@ -26,7 +31,10 @@ export function patchGlobalEventTracking() {
     listener: EventListenerOrEventListenerObject,
     options?: boolean | AddEventListenerOptions,
   ) {
-    if (!EVENT_REGISTRY.has(this)) EVENT_REGISTRY.set(this, new Set());
+    if (!EVENT_REGISTRY.has(this)) {
+      EVENT_REGISTRY.set(this, new Set());
+    }
+
     EVENT_REGISTRY.get(this)!.add({ type, listener, options });
     return nativeAdd.call(this, type, listener, options);
   };
@@ -36,35 +44,50 @@ export function patchGlobalEventTracking() {
     listener: EventListenerOrEventListenerObject,
     options?: boolean | EventListenerOptions,
   ) {
-    const set = EVENT_REGISTRY.get(this);
-    if (set) {
-      for (const entry of set) {
+    const entries = EVENT_REGISTRY.get(this);
+    if (entries) {
+      for (const entry of entries) {
         if (entry.type === type && entry.listener === listener) {
-          set.delete(entry);
+          entries.delete(entry);
           break;
         }
       }
+      if (entries.size === 0) {
+        EVENT_REGISTRY.delete(this);
+      }
     }
+
     return nativeRemove.call(this, type, listener, options);
   };
 }
 
 /**
- * Entfernt alle registrierten Event-Handler von einem Element.
+ * Removes all listeners registered on a specific EventTarget.
  */
-export function cleanupAllEventListeners(target: EventTarget) {
+export function cleanupAllEventListeners(target: EventTarget): void {
   const entries = EVENT_REGISTRY.get(target);
   if (!entries) return;
+
   for (const { type, listener, options } of entries) {
     target.removeEventListener(type, listener, options);
   }
+
   EVENT_REGISTRY.delete(target);
 }
 
 /**
- * Rekursiver Cleanup über den gesamten DOM-Subtree.
+ * Recursively cleans up all event listeners in a DOM subtree.
+ * This is only active in environments where DOM APIs exist.
  */
-export function cleanupSubtree(root: Node) {
+export function cleanupSubtree(root: Node): void {
+  if (
+    typeof document === "undefined" ||
+    typeof NodeFilter === "undefined" ||
+    typeof Element === "undefined"
+  ) {
+    return;
+  }
+
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT);
   let node: Element | null = root instanceof Element ? root : null;
 
@@ -77,18 +100,26 @@ export function cleanupSubtree(root: Node) {
 }
 
 /**
- * Startet einen globalen Observer für entfernte DOM-Knoten.
- * Führt automatisches Event-Cleanup aus.
+ * Starts a global MutationObserver that automatically cleans up
+ * event listeners from removed DOM elements.
+ *
+ * In SSR/Node environments this function is a safe no-op.
  */
-export function startGlobalDisconnectionObserver() {
+export function startGlobalDisconnectionObserver(): void {
   if (observer) return;
+  if (
+    typeof MutationObserver === "undefined" ||
+    typeof document === "undefined"
+  )
+    return;
+  if (!document.body) return;
 
   observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
-      for (const removedNode of mutation.removedNodes) {
-        if (removedNode.nodeType !== Node.ELEMENT_NODE) continue;
+      mutation.removedNodes.forEach((removedNode) => {
+        if (removedNode.nodeType !== Node.ELEMENT_NODE) return;
         cleanupSubtree(removedNode);
-      }
+      });
     }
   });
 
@@ -96,9 +127,10 @@ export function startGlobalDisconnectionObserver() {
 }
 
 /**
- * Stoppt den globalen Observer (z. B. bei Tests).
+ * Stops the global observer (useful in tests).
  */
-export function stopGlobalDisconnectionObserver() {
-  observer?.disconnect();
+export function stopGlobalDisconnectionObserver(): void {
+  if (!observer) return;
+  observer.disconnect();
   observer = undefined;
 }

@@ -1,6 +1,4 @@
-// src/global.d.ts
-
-import { ComponentInstance } from './types';
+import { ComponentInstance } from "./types";
 
 export {};
 

@@ -1,14 +1,13 @@
-/// <reference types="vitest" />
-import path from "path";
-import { fileURLToPath } from "url";
-import { defineConfig, type UserConfig } from "vite";
-import packageJson from "../package.json" assert { type: "json" };
-import { nodeResolve } from "@rollup/plugin-node-resolve";
-import commonJS from "@rollup/plugin-commonjs";
-import terser from "@rollup/plugin-terser";
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { defineConfig, type UserConfig } from 'vite'
+import packageJson from '../package.json' assert { type: 'json' }
+import { nodeResolve } from '@rollup/plugin-node-resolve'
+import commonJS from '@rollup/plugin-commonjs'
+import terser from '@rollup/plugin-terser'
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 /**
  * Converts the package name to PascalCase.
@@ -16,27 +15,27 @@ const __dirname = path.dirname(__filename);
  */
 const getLibraryName = () => {
   if (!packageJson.name) {
-    throw new Error("The 'name' property is missing in package.json.");
+    throw new Error("The 'name' property is missing in package.json.")
   }
 
   return packageJson.name
-    .replace(/^@.*\//, "") // Remove the namespace (e.g., "@namespace/")
+    .replace(/^@.*\//, '') // Remove the namespace (e.g., "@namespace/")
     .replace(/[-_/](\w)/g, (_, char) => char.toUpperCase()) // Convert characters following '-' or '_' to uppercase
-    .replace(/^\w/, (char) => char.toUpperCase()); // Capitalize the first letter
-};
+    .replace(/^\w/, (char) => char.toUpperCase()) // Capitalize the first letter
+}
 
-const libName = getLibraryName();
+const libName = getLibraryName()
 
 export default defineConfig(<UserConfig>{
   plugins: [nodeResolve(), commonJS()],
   build: {
-    minify: "terser", // Use Terser for code minification
-    sourcemap: true,  // Enable generation of source maps
+    minify: 'terser', // Use Terser for code minification
+    sourcemap: true, // Enable generation of source maps
     reportCompressedSize: true, // Report the compressed sizes of the output files
     lib: {
-      entry: path.resolve(__dirname, "../src/index.ts"), // Library entry point
+      entry: path.resolve(__dirname, '../src/index.ts'), // Library entry point
       name: libName, // Library name in PascalCase
-      formats: ["es", "cjs"], // Output formats: ES module and CommonJS
+      formats: ['es', 'cjs'], // Output formats: ES module and CommonJS
       fileName: (format) => `index.${format}.js`,
     },
     rollupOptions: {
@@ -47,8 +46,8 @@ export default defineConfig(<UserConfig>{
   resolve: {
     preserveSymlinks: true,
     alias: [
-      { find: "@", replacement: path.resolve(__dirname, "../src") },
-      { find: "~", replacement: path.resolve(__dirname, "../src") },
+      { find: '@', replacement: path.resolve(__dirname, '../src') },
+      { find: '~', replacement: path.resolve(__dirname, '../src') },
     ],
   },
-});
+})

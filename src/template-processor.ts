@@ -1,14 +1,15 @@
-// src/template-processor.ts
+import { containsHTML, evaluateExpression, isValidLoopMatch } from "./utils";
 
-import { containsHTML, evaluateExpression, isValidLoopMatch } from './utils';
-
-import type { Data, Refs } from './types';
+import type { Data, Refs } from "./types";
 
 function createFilteredTreeWalker(rootElement: Node): TreeWalker {
   const filter: NodeFilter = {
     acceptNode(node: Node): number {
       if (node.nodeType === Node.ELEMENT_NODE) return NodeFilter.FILTER_ACCEPT;
-      if (node.nodeType === Node.TEXT_NODE && /\{\{(.+?)\}\}/g.test(node.nodeValue || '')) {
+      if (
+        node.nodeType === Node.TEXT_NODE &&
+        /\{\{(.+?)\}\}/g.test(node.nodeValue || "")
+      ) {
         return NodeFilter.FILTER_ACCEPT;
       }
       return NodeFilter.FILTER_SKIP;
@@ -24,47 +25,57 @@ function createFilteredTreeWalker(rootElement: Node): TreeWalker {
 
 function skipNode(walker: TreeWalker): Node | null {
   const current = walker.currentNode;
-  return current?.nextSibling ? (walker.currentNode = current.nextSibling) : walker.nextNode();
+  return current?.nextSibling
+    ? (walker.currentNode = current.nextSibling)
+    : walker.nextNode();
 }
 
 function replaceTemplateString(template: string, data: Data): string {
   return template.replace(/\{\{(.+?)\}\}/g, (_, expression) => {
     try {
       const result = evaluateExpression(expression.trim(), data);
-      return result == null ? '' : String(result);
+      return result == null ? "" : String(result);
     } catch (error) {
-      console.error('❌ Error replacing', expression, ':', error);
-      return '';
+      console.error("❌ Error replacing", expression, ":", error);
+      return "";
     }
   });
 }
 
-async function applyLoop(element: HTMLElement, data: Data, refs: Refs): Promise<void> {
-  const loopDefinition = element.getAttribute('loop');
+async function applyLoop(
+  element: HTMLElement,
+  data: Data,
+  refs: Refs,
+): Promise<void> {
+  const loopDefinition = element.getAttribute("loop");
   if (!loopDefinition) return;
 
-  element.removeAttribute('loop');
+  element.removeAttribute("loop");
 
-  const toplevelIf = element.getAttribute('if');
-  if (toplevelIf) element.removeAttribute('if');
+  const toplevelIf = element.getAttribute("if");
+  if (toplevelIf) element.removeAttribute("if");
 
   const match = loopDefinition.match(/^(\w+)\s+in\s+(\w+)$/);
   if (!isValidLoopMatch(match)) {
-    console.error('❌ Invalid loop definition:', loopDefinition);
+    console.error("❌ Invalid loop definition:", loopDefinition);
     return;
   }
 
   const [, itemVar, collectionExp] = match;
   const raw = evaluateExpression(collectionExp, data);
 
-  if (!raw || typeof raw !== 'object' || raw === null) {
-    console.error('❌ Data source is not iterable:', collectionExp, raw);
+  if (!raw || typeof raw !== "object" || raw === null) {
+    console.error("❌ Data source is not iterable:", collectionExp, raw);
     return;
   }
 
   const isArray = Array.isArray(raw);
   if (isArray) {
-    console.error('❌ Loop source must be a plain object, not an array:', collectionExp, raw);
+    console.error(
+      "❌ Loop source must be a plain object, not an array:",
+      collectionExp,
+      raw,
+    );
     return;
   }
 
@@ -109,17 +120,17 @@ function applyConditionalRendering(
   element: HTMLElement,
   data: Data,
 ): void {
-  const ifCond = element.getAttribute('if');
+  const ifCond = element.getAttribute("if");
   if (ifCond !== null) {
     if (!evaluateExpression(ifCond, data)) element.remove();
     return;
   }
 
-  if (element.hasAttribute('else')) {
-    if (previous && previous.hasAttribute('if')) {
+  if (element.hasAttribute("else")) {
+    if (previous && previous.hasAttribute("if")) {
       element.remove();
     } else {
-      element.removeAttribute('else');
+      element.removeAttribute("else");
     }
   }
 }
@@ -134,20 +145,26 @@ async function processNodeBatch(
 
     for (const [index, { node, data }] of batch.entries()) {
       if (node instanceof HTMLElement) {
-        if (node.hasAttribute('loop')) {
+        if (node.hasAttribute("loop")) {
           await applyLoop(node, data, refs).catch((err) =>
-            console.error('❌ Error in applyLoop:', err),
+            console.error("❌ Error in applyLoop:", err),
           );
-        } else if (node.hasAttribute('if')) {
+        } else if (node.hasAttribute("if")) {
           applyConditionalRendering(null, node, data);
-        } else if (node.hasAttribute('else')) {
+        } else if (node.hasAttribute("else")) {
           const previous = batch[index - 1]?.node;
-          applyConditionalRendering(previous instanceof HTMLElement ? previous : null, node, data);
+          applyConditionalRendering(
+            previous instanceof HTMLElement ? previous : null,
+            node,
+            data,
+          );
         }
       } else {
         const newContent = replaceTemplateString(node.nodeValue!, data);
         if (containsHTML(newContent)) {
-          const frag = document.createRange().createContextualFragment(newContent);
+          const frag = document
+            .createRange()
+            .createContextualFragment(newContent);
           node.replaceWith(frag);
         } else {
           node.nodeValue = newContent;
@@ -161,7 +178,11 @@ async function processNodeBatch(
   }
 }
 
-export async function processTemplate(root: Node, data: Data, refs: Refs): Promise<void> {
+export async function processTemplate(
+  root: Node,
+  data: Data,
+  refs: Refs,
+): Promise<void> {
   const walker = createFilteredTreeWalker(root);
   const processed = new Set<Node>();
   const pending: { node: HTMLElement | Text; data: Data }[] = [];
@@ -176,23 +197,26 @@ export async function processTemplate(root: Node, data: Data, refs: Refs): Promi
 
     processed.add(current);
 
-    if (current.nodeType === Node.ELEMENT_NODE && current instanceof HTMLElement) {
+    if (
+      current.nodeType === Node.ELEMENT_NODE &&
+      current instanceof HTMLElement
+    ) {
       const el: HTMLElement = current;
 
-      if (el.hasAttribute('loop')) {
+      if (el.hasAttribute("loop")) {
         pending.push({ node: el, data });
         current = skipNode(walker) || walker.nextNode();
         continue;
       }
 
-      if (el.hasAttribute('if') || el.hasAttribute('else')) {
+      if (el.hasAttribute("if") || el.hasAttribute("else")) {
         pending.push({ node: el, data });
       }
 
       for (const attr of Array.from(el.attributes)) {
-        if (attr.name === 'ref') refs[attr.value] = el;
+        if (attr.name === "ref") refs[attr.value] = el;
 
-        if (attr.value.includes('{{')) {
+        if (attr.value.includes("{{")) {
           try {
             const updated = replaceTemplateString(attr.value, data);
             if (updated !== attr.value) el.setAttribute(attr.name, updated);
@@ -202,7 +226,7 @@ export async function processTemplate(root: Node, data: Data, refs: Refs): Promi
         }
       }
 
-      if (el.tagName.includes('-')) {
+      if (el.tagName.includes("-")) {
         current = skipNode(walker) || walker.nextNode();
         continue;
       }

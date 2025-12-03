@@ -1,5 +1,5 @@
-import { defineConfig } from 'vitest/config';
-import tsconfigPaths from 'vite-tsconfig-paths';
+import { defineConfig } from 'vitest/config'
+import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
   plugins: [tsconfigPaths({ projects: ['./config/tsconfig.test.json'] })],
@@ -13,4 +13,4 @@ export default defineConfig({
       exclude: ['**/*.d.ts', 'src/types.ts', 'src/types/**'],
     },
   },
-});
+})

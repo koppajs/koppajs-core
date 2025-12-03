@@ -1,6 +1,4 @@
-// src/utils/helper.ts
-
-import type { Data, Methods } from '../types';
+import type { AnyFn, Data, Methods } from "../types";
 
 /**
  * Checks whether a given function is an arrow function.
@@ -8,8 +6,8 @@ import type { Data, Methods } from '../types';
  * @param func - The function to check
  * @returns True if the function is an arrow function, otherwise false
  */
-export function isArrowFunction(func: Function): boolean {
-  return typeof func === 'function' && !func.hasOwnProperty('prototype');
+export function isArrowFunction(func: AnyFn): boolean {
+  return typeof func === "function" && !Object.hasOwn(func, "prototype");
 }
 
 /**
@@ -20,8 +18,11 @@ export function isArrowFunction(func: Function): boolean {
  */
 export function bindMethods(data: Data, methods: Methods): void {
   for (const method in methods) {
-    if (methods[method]) {
-      data[method] = methods[method].bind(data);
+    if (
+      Object.prototype.hasOwnProperty.call(methods, method) &&
+      methods[method]
+    ) {
+      data[method] = methods[method]!.bind(data);
     }
   }
 }
@@ -44,11 +45,11 @@ export function containsHTML(input: string): boolean {
  * @returns The value at the given path or undefined if not found
  */
 export function getValueByPath(obj: any, path: string): any {
-  if (!obj || typeof path !== 'string') return undefined;
+  if (!obj || typeof path !== "string") return undefined;
 
   const pathArray = path
-    .replace(/\[(\w+)\]/g, '.$1')
-    .split('.')
+    .replace(/\[(\w+)\]/g, ".$1")
+    .split(".")
     .filter(Boolean);
 
   try {
@@ -67,9 +68,9 @@ export function getValueByPath(obj: any, path: string): any {
  * @returns A lowercase string type (e.g. "string", "array") or "unknown"
  */
 export function getExpectedPropTypeName(input: unknown): string {
-  if (typeof input === 'string') return input.toLowerCase();
-  if (typeof input === 'function' && typeof input.name === 'string') {
+  if (typeof input === "string") return input.toLowerCase();
+  if (typeof input === "function" && typeof input.name === "string") {
     return input.name.toLowerCase();
   }
-  return 'unknown';
+  return "unknown";
 }

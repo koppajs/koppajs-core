@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Emission nur für Typen
+    "noEmit": false,
+    "emitDeclarationOnly": true,
+    "declaration": true,
+    "declarationMap": false,
+
+    // wohin mit den .d.ts?
+    "outDir": "../dist"
+  },
+  // Nur der öffentliche Einstieg:
+  // Alles, was du in src/index.ts exportierst,
+  // gehört zur Public API.
+  "include": ["../src/index.ts"]
+}

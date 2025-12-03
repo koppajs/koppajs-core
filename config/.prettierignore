@@ -1,28 +1,15 @@
-# Build and cache directories
-node_modules
-dist
-coverage
 .history
-
-# IDE and editor configuration files
-.vscode/
-.idea/
-.git/
-
-# Build and linting configuration files
-*.config.ts
-jest.config.ts
-
-# Temporary files
-**/*_del
-
-# Ignore compiled or auto-generated files
-*.min.js
-*.min.css
-*.lock
-package-lock.json
+.git
+.idea
+.vscode
+coverage
+dist
+node_modules
 pnpm-lock.yaml
-yarn.lock
+package-lock.json
 
-# Ignore selected files
-README.md
+# Build/Tool-Artefakte
+---*
+
+# Tests-Output ggf. später
+coverage

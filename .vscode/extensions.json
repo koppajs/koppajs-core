@@ -1,5 +1,9 @@
 {
   "recommendations": [
-    "vitest.explorer"
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+    "stylelint.vscode-stylelint",
+    "vitest.explorer",
+    "ms-vscode.vscode-typescript-next"
   ]
 }

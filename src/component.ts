@@ -1,8 +1,11 @@
-// src/component.ts
-
-import { bindNativeEvents, emit, handleEventFromChild, setupEvents } from './event-handler';
-import { createModel } from './model';
-import { processTemplate } from './template-processor';
+import {
+  bindNativeEvents,
+  emit,
+  handleEventFromChild,
+  setupEvents,
+} from "./event-handler";
+import { createModel } from "./model_temp";
+import { processTemplate } from "./template-processor";
 import {
   bindMethods,
   compileCode,
@@ -13,8 +16,9 @@ import {
   hookOn,
   isHTMLElementWithInstance,
   kebabToCamel,
-} from './utils';
+} from "./utils";
 
+import { Core } from ".";
 import {
   lifecycleHooks,
   type ComponentInstance,
@@ -23,12 +27,13 @@ import {
   type Events,
   type Props,
   type Refs,
-} from './types';
-import { Core } from '.';
+} from "./types";
 
 function getParentInstance(el: Element): ComponentInstance | undefined {
   const rootNode = el.getRootNode();
-  const parent = el.parentElement ?? (rootNode instanceof ShadowRoot ? rootNode.host : undefined);
+  const parent =
+    el.parentElement ??
+    (rootNode instanceof ShadowRoot ? rootNode.host : undefined);
 
   if (isHTMLElementWithInstance(parent)) {
     return parent.instance;
@@ -45,16 +50,17 @@ export function processSlots({
   host: HTMLElement;
 }): void {
   const slotContent = Array.from(host.childNodes).filter(
-    (node) => node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE,
+    (node) =>
+      node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE,
   );
 
   const slotMap: Record<string, Node[]> = {};
 
   for (const node of slotContent) {
     const slotName =
-      node instanceof HTMLElement && node.hasAttribute('slot')
-        ? node.getAttribute('slot')!
-        : 'default';
+      node instanceof HTMLElement && node.hasAttribute("slot")
+        ? node.getAttribute("slot")!
+        : "default";
 
     if (!slotMap[slotName]) {
       slotMap[slotName] = [];
@@ -63,8 +69,8 @@ export function processSlots({
     slotMap[slotName].push(node);
   }
 
-  container.querySelectorAll('slot').forEach((slotElement) => {
-    const slotName = slotElement.getAttribute('name') || 'default';
+  container.querySelectorAll("slot").forEach((slotElement) => {
+    const slotName = slotElement.getAttribute("name") || "default";
     const replacementNodes = slotMap[slotName];
 
     if (replacementNodes && replacementNodes.length > 0) {
@@ -93,15 +99,16 @@ export function validateProp({
 
   const expectedType = getExpectedPropTypeName(propOptions.type);
 
-  const actualType = Array.isArray(pValue) ? 'array' : typeof pValue;
+  const actualType = Array.isArray(pValue) ? "array" : typeof pValue;
 
   const typeMatches = {
-    string: actualType === 'string',
-    number: actualType === 'number',
-    boolean: actualType === 'boolean',
+    string: actualType === "string",
+    number: actualType === "number",
+    boolean: actualType === "boolean",
     array: Array.isArray(pValue),
-    object: actualType === 'object' && pValue !== null && !Array.isArray(pValue),
-    function: actualType === 'function',
+    object:
+      actualType === "object" && pValue !== null && !Array.isArray(pValue),
+    function: actualType === "function",
   }[expectedType];
 
   if (!typeMatches) {
@@ -114,10 +121,12 @@ export function validateProp({
 
   if (
     propOptions.regex &&
-    typeof pValue === 'string' &&
+    typeof pValue === "string" &&
     !new RegExp(propOptions.regex).test(pValue)
   ) {
-    console.error(`❌ Prop "${propName}" does not match regex "${propOptions.regex}".`);
+    console.error(
+      `❌ Prop "${propName}" does not match regex "${propOptions.regex}".`,
+    );
     return false;
   }
 
@@ -137,9 +146,13 @@ function processProps({
 }) {
   const hasDefinedProps = Object.keys(props).length > 0;
   Array.from(ele.attributes).forEach((attr) => {
-    const isDynamic = attr.name.startsWith(':');
+    const isDynamic = attr.name.startsWith(":");
     const propName = kebabToCamel(attr.name.substring(isDynamic ? 1 : 0));
-    const value = isDynamic ? parent?.data[propName] : attr.value !== '' ? attr.value : true;
+    const value = isDynamic
+      ? parent?.data[propName]
+      : attr.value !== ""
+        ? attr.value
+        : true;
 
     if (
       !hasDefinedProps ||
@@ -160,27 +173,33 @@ function processProps({
   }
 }
 
-export function registerComponent(componentName: string, source: ComponentSource): void {
+export function registerComponent(
+  componentName: string,
+  source: ComponentSource,
+): void {
   customElements.define(
     componentName,
     class extends HTMLElement {
       private template: HTMLTemplateElement;
+      private instance?: ComponentInstance;
 
       constructor() {
         super();
-        this.template = document.createElement('template');
+        this.template = document.createElement("template");
         this.template.innerHTML = source.template;
       }
 
       async connectedCallback() {
         const parent = getParentInstance(this);
-        const clonedTemplate = this.template.cloneNode(true) as HTMLTemplateElement;
+        const clonedTemplate = this.template.cloneNode(
+          true,
+        ) as HTMLTemplateElement;
         const compiledScript = compileCode(source.script);
 
         const refs: Refs = {};
         let isMounted = false;
         let isRendering = false;
-        let lastRenderedData = '';
+        let lastRenderedData = "";
 
         const lifecycleRegistry = createHookRegistry();
 
@@ -193,7 +212,7 @@ export function registerComponent(componentName: string, source: ComponentSource
 
         // Style injection
         if (!document.head.querySelector(`style#style-${componentName}`)) {
-          const style = document.createElement('style');
+          const style = document.createElement("style");
           style.id = `style-${componentName}`;
           style.textContent = source.style;
           document.head.appendChild(style);
@@ -203,8 +222,10 @@ export function registerComponent(componentName: string, source: ComponentSource
         const take = (pluginName: string) => {
           const plugin = ExtensionRegistry.plugins[pluginName];
 
-          if (!plugin || typeof plugin.setup !== 'function') {
-            console.warn(`Plugin "${pluginName}" not found or has no setup method`);
+          if (!plugin || typeof plugin.setup !== "function") {
+            console.warn(
+              `Plugin "${pluginName}" not found or has no setup method`,
+            );
             return undefined;
           }
 
@@ -221,8 +242,10 @@ export function registerComponent(componentName: string, source: ComponentSource
         // WICHTIG: Sammle alle Module und führe attach() aus
         const attachedModules: Record<string, any> = {};
 
-        for (const [moduleName, module] of Object.entries(ExtensionRegistry.modules)) {
-          if (typeof module.attach === 'function') {
+        for (const [moduleName, module] of Object.entries(
+          ExtensionRegistry.modules,
+        )) {
+          if (typeof module.attach === "function") {
             // attach() mit Component Context ausführen
             const attached = module.attach.call({
               element: this,
@@ -239,28 +262,50 @@ export function registerComponent(componentName: string, source: ComponentSource
 
         const render = async () => {
           if (isRendering) return;
+
           const currentData = JSON.stringify(data);
           if (lastRenderedData === currentData) return;
+
           isRendering = true;
-          lastRenderedData = currentData;
 
-          const container = clonedTemplate.content.cloneNode(true) as DocumentFragment;
-          processSlots({ container, host: this });
+          try {
+            const container = clonedTemplate.content.cloneNode(
+              true,
+            ) as DocumentFragment;
 
-          await processTemplate(container, data, refs);
-          await hookEmit('global', 'processed', data);
-          await hookEmit(lifecycleRegistry, 'processed');
+            processSlots({ container, host: this });
 
-          bindNativeEvents(data, container);
-          setupEvents(data, events, container, refs);
+            await processTemplate(container, data, refs);
+            await hookEmit("global", "processed", data);
+            await hookEmit(lifecycleRegistry, "processed");
 
-          await hookEmit('global', isMounted ? 'beforeUpdate' : 'beforeMount', data);
-          await hookEmit(lifecycleRegistry, isMounted ? 'beforeUpdate' : 'beforeMount');
-          this.replaceChildren(container);
+            bindNativeEvents(data, container);
+            setupEvents(data, events, container, refs);
 
-          await hookEmit('global', 'updated', data);
-          if (isMounted) await hookEmit(lifecycleRegistry, 'updated');
-          isRendering = false;
+            await hookEmit(
+              "global",
+              isMounted ? "beforeUpdate" : "beforeMount",
+              data,
+            );
+            await hookEmit(
+              lifecycleRegistry,
+              isMounted ? "beforeUpdate" : "beforeMount",
+            );
+
+            this.replaceChildren(container);
+
+            await hookEmit("global", "updated", data);
+            if (isMounted) {
+              await hookEmit(lifecycleRegistry, "updated");
+            }
+
+            // Nur wenn alles durch ist, Cache aktualisieren
+            lastRenderedData = currentData;
+          } catch (error) {
+            console.error("❌ Error during render:", error);
+          } finally {
+            isRendering = false;
+          }
         };
 
         // Erweitere den Context für compiledScript
@@ -274,12 +319,16 @@ export function registerComponent(componentName: string, source: ComponentSource
         });
 
         // Model setup
-        const model = createModel(controller.data ?? {}, async () => await render());
+        const model = createModel(controller.data ?? {});
         const { data } = model;
 
         // Observer hinzufügen
         model.addObserver(() => {
-          requestAnimationFrame(() => render());
+          requestAnimationFrame(() => {
+            void render().catch((error) => {
+              console.error("❌ Error during render:", error);
+            });
+          });
         });
 
         // Setze die Daten und Methoden
@@ -300,8 +349,8 @@ export function registerComponent(componentName: string, source: ComponentSource
         // Lifecycle-Hooks aus dem Controller in die Registry eintragen
         for (const hook of lifecycleHooks) {
           const fn = controller[hook];
-          if (typeof fn === 'function') {
-            hookOn(lifecycleRegistry, hook, fn.bind(data));
+          if (typeof fn === "function") {
+            hookOn(lifecycleRegistry, hook, async () => await fn.bind(data)());
           }
         }
 
@@ -309,14 +358,14 @@ export function registerComponent(componentName: string, source: ComponentSource
         watchList = Array.from(new Set([...watchList, ...Object.keys(props)]));
         watchList.forEach((path) => model.watch(path));
 
-        await hookEmit('global', 'created', data);
-        await hookEmit(lifecycleRegistry, 'created');
+        await hookEmit("global", "created", data);
+        await hookEmit(lifecycleRegistry, "created");
 
         await render();
 
         if (!isMounted) {
-          await hookEmit('global', 'mounted', data);
-          await hookEmit(lifecycleRegistry, 'mounted');
+          await hookEmit("global", "mounted", data);
+          await hookEmit(lifecycleRegistry, "mounted");
           isMounted = true;
         }
 
@@ -342,15 +391,17 @@ export function registerComponent(componentName: string, source: ComponentSource
 
       async disconnectedCallback() {
         const instance = this.instance!;
-        await hookEmit('global', 'beforeDestroy', instance.data);
-        await hookEmit(instance.lifecycleRegistry, 'beforeDestroy');
+        await hookEmit("global", "beforeDestroy", instance.data);
+        await hookEmit(instance.lifecycleRegistry, "beforeDestroy");
 
         if (!document.body.querySelector(this.tagName.toLowerCase())) {
-          document.head.querySelector(`style#style-${this.tagName.toLowerCase()}`)?.remove();
+          document.head
+            .querySelector(`style#style-${this.tagName.toLowerCase()}`)
+            ?.remove();
         }
 
-        await hookEmit('global', 'destroyed', instance.data);
-        await hookEmit(instance.lifecycleRegistry, 'destroyed');
+        await hookEmit("global", "destroyed", instance.data);
+        await hookEmit(instance.lifecycleRegistry, "destroyed");
       }
     },
   );

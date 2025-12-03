@@ -1,6 +1,9 @@
-// src/utils/type-guards.ts
-
-import type { ComponentInstance, ComponentSource, IModule, IPlugin } from '../types';
+import type {
+  ComponentInstance,
+  ComponentSource,
+  IModule,
+  IPlugin,
+} from "../types";
 
 /**
  * Checks if the given object conforms to the ComponentSource structure.
@@ -10,9 +13,9 @@ import type { ComponentInstance, ComponentSource, IModule, IPlugin } from '../ty
  */
 export function isComponentSource(ext: any): ext is ComponentSource {
   return (
-    typeof ext?.template === 'string' &&
-    typeof ext?.script === 'string' &&
-    typeof ext?.style === 'string'
+    typeof ext?.template === "string" &&
+    typeof ext?.script === "string" &&
+    typeof ext?.style === "string"
   );
 }
 
@@ -23,7 +26,7 @@ export function isComponentSource(ext: any): ext is ComponentSource {
  * @returns True if the object has a `setup` function and no `attach` method
  */
 export function isPlugin(ext: any): ext is IPlugin {
-  return typeof ext?.setup === 'function' && ext?.attach === undefined;
+  return typeof ext?.setup === "function" && ext?.attach === undefined;
 }
 
 /**
@@ -33,7 +36,7 @@ export function isPlugin(ext: any): ext is IPlugin {
  * @returns True if the object has an `attach` function and no `setup` method
  */
 export function isModule(ext: any): ext is IModule {
-  return typeof ext?.attach === 'function' && ext?.setup === undefined;
+  return typeof ext?.attach === "function" && ext?.setup === undefined;
 }
 
 /**
@@ -45,7 +48,7 @@ export function isModule(ext: any): ext is IModule {
 export function isHTMLElementWithInstance(
   el: unknown,
 ): el is HTMLElement & { instance: ComponentInstance } {
-  return el instanceof HTMLElement && 'instance' in el;
+  return el instanceof HTMLElement && "instance" in el;
 }
 
 /**
@@ -59,5 +62,7 @@ export function isHTMLElementWithInstance(
 export function isValidLoopMatch(
   match: RegExpMatchArray | null,
 ): match is [string, string, string] {
-  return !!match && match.length === 3 && Boolean(match[1]) && Boolean(match[2]);
+  return (
+    !!match && match.length === 3 && Boolean(match[1]) && Boolean(match[2])
+  );
 }

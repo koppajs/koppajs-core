@@ -1,5 +1,3 @@
-// src/utils/dom.ts
-
 export const domExtensions: { [key: string]: PropertyDescriptor } = {
   select: {
     get(this: HTMLElement): (s: string) => HTMLElement | null {
@@ -55,8 +53,8 @@ export const domExtensions: { [key: string]: PropertyDescriptor } = {
         if (!this.parentNode) return;
         if (newNode instanceof HTMLElement) {
           this.parentNode.replaceChild(newNode, this);
-        } else if (typeof newNode === 'string') {
-          this.insertAdjacentText('beforebegin', newNode);
+        } else if (typeof newNode === "string") {
+          this.insertAdjacentText("beforebegin", newNode);
           this.remove();
         }
       };
@@ -64,7 +62,9 @@ export const domExtensions: { [key: string]: PropertyDescriptor } = {
   },
 
   siblings: {
-    get(this: HTMLElement): (callback?: (sibling: HTMLElement) => void) => HTMLElement[] {
+    get(
+      this: HTMLElement,
+    ): (callback?: (sibling: HTMLElement) => void) => HTMLElement[] {
       return (callback) => {
         if (!this.parentNode) return [];
 
@@ -92,8 +92,9 @@ export const domExtensions: { [key: string]: PropertyDescriptor } = {
     get(this: HTMLElement): (newNode: HTMLElement | string) => void {
       return (newNode: HTMLElement | string) => {
         if (!this.parentNode) return;
-        if (newNode instanceof HTMLElement) this.parentNode.insertBefore(newNode, this);
-        else this.insertAdjacentHTML('beforebegin', newNode.toString());
+        if (newNode instanceof HTMLElement)
+          this.parentNode.insertBefore(newNode, this);
+        else this.insertAdjacentHTML("beforebegin", newNode.toString());
       };
     },
   },
@@ -102,16 +103,20 @@ export const domExtensions: { [key: string]: PropertyDescriptor } = {
     get(this: HTMLElement): (newNode: HTMLElement | string) => void {
       return (newNode: HTMLElement | string) => {
         if (!this.parentNode) return;
-        if (newNode instanceof HTMLElement) this.parentNode.insertBefore(newNode, this.nextSibling);
-        else this.insertAdjacentHTML('afterend', newNode.toString());
+        if (newNode instanceof HTMLElement)
+          this.parentNode.insertBefore(newNode, this.nextSibling);
+        else this.insertAdjacentHTML("afterend", newNode.toString());
       };
     },
   },
 
   attr: {
-    get(this: HTMLElement): (attrName: string, attrValue?: string) => string | null {
+    get(
+      this: HTMLElement,
+    ): (attrName: string, attrValue?: string) => string | null {
       return (attrName: string, attrValue?: string) => {
-        if (attrValue !== undefined) this.setAttribute(attrName, attrValue || 'true');
+        if (attrValue !== undefined)
+          this.setAttribute(attrName, attrValue || "true");
         return this.getAttribute(attrName);
       };
     },
