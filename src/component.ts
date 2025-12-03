@@ -51,7 +51,7 @@ export function processSlots({
 }): void {
   const slotContent = Array.from(host.childNodes).filter(
     (node) =>
-      node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE
+      node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE,
   );
 
   const slotMap: Record<string, Node[]> = {};
@@ -114,7 +114,7 @@ export function validateProp({
   if (!typeMatches) {
     console.error(
       `❌ Prop "${propName}" should be of type "${expectedType}", but got "${actualType}".`,
-      pValue
+      pValue,
     );
     return false;
   }
@@ -125,7 +125,7 @@ export function validateProp({
     !new RegExp(propOptions.regex).test(pValue)
   ) {
     console.error(
-      `❌ Prop "${propName}" does not match regex "${propOptions.regex}".`
+      `❌ Prop "${propName}" does not match regex "${propOptions.regex}".`,
     );
     return false;
   }
@@ -175,7 +175,7 @@ function processProps({
 
 export function registerComponent(
   componentName: string,
-  source: ComponentSource
+  source: ComponentSource,
 ): void {
   customElements.define(
     componentName,
@@ -192,7 +192,7 @@ export function registerComponent(
       async connectedCallback() {
         const parent = getParentInstance(this);
         const clonedTemplate = this.template.cloneNode(
-          true
+          true,
         ) as HTMLTemplateElement;
         const compiledScript = compileCode(source.script);
 
@@ -224,7 +224,7 @@ export function registerComponent(
 
           if (!plugin || typeof plugin.setup !== "function") {
             console.warn(
-              `Plugin "${pluginName}" not found or has no setup method`
+              `Plugin "${pluginName}" not found or has no setup method`,
             );
             return undefined;
           }
@@ -243,7 +243,7 @@ export function registerComponent(
         const attachedModules: Record<string, any> = {};
 
         for (const [moduleName, module] of Object.entries(
-          ExtensionRegistry.modules
+          ExtensionRegistry.modules,
         )) {
           if (typeof module.attach === "function") {
             // attach() mit Component Context ausführen
@@ -270,7 +270,7 @@ export function registerComponent(
 
           try {
             const container = clonedTemplate.content.cloneNode(
-              true
+              true,
             ) as DocumentFragment;
 
             processSlots({ container, host: this });
@@ -285,11 +285,11 @@ export function registerComponent(
             await hookEmit(
               "global",
               isMounted ? "beforeUpdate" : "beforeMount",
-              data
+              data,
             );
             await hookEmit(
               lifecycleRegistry,
-              isMounted ? "beforeUpdate" : "beforeMount"
+              isMounted ? "beforeUpdate" : "beforeMount",
             );
 
             this.replaceChildren(container);
@@ -403,6 +403,6 @@ export function registerComponent(
         await hookEmit("global", "destroyed", instance.data);
         await hookEmit(instance.lifecycleRegistry, "destroyed");
       }
-    }
+    },
   );
 }
