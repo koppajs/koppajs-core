@@ -1,31 +1,55 @@
-# 🤝 Contributing to KoppaJS Core
+<a id="contributing-top"></a>
+
+<!-- PROJECT LOGO -->
+<div align="center">
+  <img src="https://public-assets-1b57ca06-687a-4142-a525-0635f7649a5c.s3.eu-central-1.amazonaws.com/koppajs/koppajs-logo-text-900x226.png" width="500" alt="KoppaJS Logo">
+</div>
+
+<br>
+
+<!-- TITLE -->
+<div align="center">
+  <h1 align="center">Contributing to KoppaJS Core</h1>
+  <h3 align="center">Build with intention. Contribute with clarity.</h3>
+  <p align="center">
+    <i align="center">A framework powered by simplicity, transparency, and responsibility.</i>
+  </p>
+</div>
+
+<br>
+
+---
+
+## ✨ Philosophy
 
 > _"Only start things you're willing to finish with dedication."_
 
-KoppaJS is more than a framework. It's a declaration of intent –  
-that software can be simple, transparent, and elegant.  
-No virtual DOM. No class hierarchies. No unnecessary abstractions.  
-Just clean, functional JavaScript – with full ownership of every line.
+KoppaJS is more than a codebase — it is a declaration of intent.
+A belief that frontend work can be **simple**, **transparent**, and **elegant**, without the noise of unnecessary abstraction.
 
-If you choose to contribute to this project, do so not just with code,  
-but with clarity. I welcome developers who don’t just write _working_ code,  
-but **clear**, **consistent**, and **conscious** code.
+If you contribute here, you join a community that values:
 
-KoppaJS follows the principle of **Intentional Architecture**:
+- **clarity over cleverness**
+- **function over abstraction**
+- **responsibility over hidden behavior**
 
-- **No factories. No classes. No magic.**  
-  The framework avoids hidden abstractions. Code is direct, modular, and functional by design.
+KoppaJS follows a principle we call **Intentional Architecture**:
 
-- **Every function is explicit, every behavior explainable.**  
-  Each behavior arises from visible logic – not from implicit lifecycle or internal state machines.
+- **No factories. No classes. No magic.**
+  Everything is functional, explicit, and traceable.
 
-- **Data is referenced, not duplicated.**  
-  Values flow by reference to maintain synchronicity. Shallow copies are permitted only where strictly necessary (e.g., in loop contexts).
+- **Every behavior is explainable.**
+  Nothing happens behind your back — no invisible lifecycles.
 
-- **Responsibility lies with the developer, not the framework.**  
-  KoppaJS gives full control. You decide what happens, when, and why – the framework never overrides your intent.
+- **Data flows by reference.**
+  Never duplicate what can be shared. Keep state synchronized by design.
 
-If that resonates with you – welcome to the engine room of KoppaJS. 🔧
+- **The developer is in control.**
+  KoppaJS never overrides your intent. You decide what happens, when, and why.
+
+If these ideas resonate with you — welcome to the engine room of KoppaJS. 🔧
+
+<p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
 ---
 
@@ -33,14 +57,16 @@ If that resonates with you – welcome to the engine room of KoppaJS. 🔧
 
 Before contributing, ensure you have the following installed:
 
-- **Node.js** ≥ 20.18.0
-- **pnpm** ≥ 10.12.1
+- **Node.js ≥ 20**
+- **pnpm ≥ 10.24.0**
 
-To install dependencies:
+Install dependencies:
 
 ```bash
 pnpm install
 ```
+
+<p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
 ---
 
@@ -52,11 +78,11 @@ pnpm install
 pnpm build
 ```
 
-This runs:
+This performs:
 
-- type checking
-- bundling with Vite
-- type definitions generation
+- Type checking
+- Bundling with Vite
+- Type definition generation
 
 ### 2. Run tests
 
@@ -64,50 +90,61 @@ This runs:
 pnpm test
 ```
 
-For coverage:
+Coverage:
 
 ```bash
 pnpm test:coverage
 ```
 
+<p align="right">(<a href="#contributing-top">back to top</a>)</p>
+
 ---
 
 ## 💡 Code Style & Quality
 
-- Use **Prettier** and **ESLint** for consistent code formatting.
-- Validate all style rules:
+KoppaJS uses strict and consistent formatting through:
+
+- **ESLint (Flat Config)**
+- **Prettier**
+- **TypeScript strict mode**
+
+Validate lint rules:
 
 ```bash
 pnpm lint
 ```
 
-To fix issues:
+Fix formatting issues:
 
 ```bash
 pnpm format
 ```
 
+<p align="right">(<a href="#contributing-top">back to top</a>)</p>
+
 ---
 
-## 📘 Commit Conventions
+## 📝 Commit Conventions
 
-We use [Conventional Commits](https://www.conventionalcommits.org) with Gitmojis.
+We use **Conventional Commits**, optionally with Gitmojis.
 
 Example:
 
 ```
-feat: ✨ Add support for lifecycle event 'processed'
+feat: ✨ add support for 'processed' lifecycle hook
 ```
 
-> 🛡️ All commits are automatically validated using a custom Husky hook.
+All commit messages are validated via a Husky hook.
 
-System commits (e.g. `Merge`, `Revert`, `chore(release)`, etc.) are excluded from validation.
+System commits like `Merge`, `Revert`, or `fixup!` are automatically skipped.
+
+<p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
 ---
 
 ## 🔒 Commit Hook Setup
 
-Husky is used to enforce formatting and commit message standards:
+Install Husky:
 
 ```bash
 pnpm prepare
@@ -115,69 +152,81 @@ pnpm prepare
 
 Ensure `.husky/commit-msg` exists and is executable.
 
----
-
-## 🧪 Test Structure
-
-Each module should have a corresponding `.test.ts` file.  
-Use **Vitest** for writing and running unit tests.
+<p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
 ---
 
-## ✅ Testing Guidelines
+## 🧪 Testing Guidelines
 
-Each function must be tested thoroughly and consistently.  
-KoppaJS follows a clear 3-step strategy for every test case.
+KoppaJS uses **Vitest** with a strict philosophy:
 
-### 🧪 Test Structure
+### The Three Test Rule
+
+Every function should have:
+
+- ✅ **Valid Case** — works as intended
+- ❌ **Error Case** — fails gracefully
+- ⚠️ **Edge Case** — unexpected but valid input
+
+This ensures robust, intentional behavior.
+
+### Structure
 
 - **One `describe()` per function**
+- **Three `it()` blocks** per exported utility or behavior function
+- Tests mirror the folder structure:
+  `src/utils/helper.ts` → `test/utils/helper.test.ts`
+- No global mocks
+- Explicit, isolated input/output per test
 
-  - Keeps test structure modular and clean
-  - Matches file/function name for traceability
+> Clarity over quantity — three meaningful tests beat thirty shallow ones.
 
-- **Three `it()` blocks per function**
-  - ✅ **Valid case** — ensures expected behavior with valid input
-  - ❌ **Error case** — checks that invalid input throws or fails gracefully
-  - ⚠️ **Edge case** — input is valid type but leads to a logically wrong or undefined result
-
-### 📌 Principles
-
-- Tests must be **independent**, **explicit**, and **readable**
-- Use **realistic** inputs that reflect actual framework usage
-- Avoid `as any` unless needed for intentional edge-case testing
-- Keep test files parallel to source files (e.g. `src/utils/helper.ts` → `test/utils/helper.test.ts`)
-
-> Aim for clarity over quantity. A well-tested function needs **three thoughtful tests**, not thirty shallow ones.
+<p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
 ---
 
 ## 🧱 Architecture Principles
 
-- Functional and modular — no classes or factories
-- Runtime-safe typing with `satisfies` where possible
-- Guards and helpers separated into `utils/*`
+KoppaJS Core follows a strict functional foundation:
+
+- Functional and modular — **no classes**, **no factories**
+- Runtime-safe types with `satisfies`
+- Clear separation of logic and helpers under `utils/*`
 - Avoid `as` type assertions unless absolutely necessary
+- Prefer explicit data flow and composable functions
+
+<p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
 ---
 
 ## 🛠️ Scripts
 
-| Command               | Description                        |
-| --------------------- | ---------------------------------- |
-| `pnpm build`          | Full build including type & bundle |
-| `pnpm rebuild`        | Clean & rebuild from scratch       |
-| `pnpm test`           | Run tests                          |
-| `pnpm lint`           | Lint JS/TS & styles                |
-| `pnpm format`         | Auto-format code                   |
-| `pnpm dump-code`      | Output full code snapshot          |
-| `pnpm analyze-code`   | Analyze code structure             |
-| `pnpm list-structure` | Output full Structure snapshot     |
+| Command               | Description                                                             |
+| --------------------- | ----------------------------------------------------------------------- |
+| `pnpm build`          | Full production build: typecheck → Vite bundle → generate `.d.ts` files |
+| `pnpm rebuild`        | Clean the project completely and rebuild from scratch                   |
+| `pnpm typecheck`      | Run TypeScript type checking using `config/tsconfig.json`               |
+| `pnpm generate:types` | Emit public type definitions using `tsconfig.types.json`                |
+| `pnpm test`           | Run the full Vitest test suite once                                     |
+| `pnpm test:watch`     | Run tests in watch mode                                                 |
+| `pnpm test:coverage`  | Generate coverage report (text + HTML)                                  |
+| `pnpm test:ci`        | CI-friendly test run with coverage                                      |
+| `pnpm lint`           | Lint all TypeScript/JavaScript via ESLint (flat config)                 |
+| `pnpm format`         | Format all files using Prettier                                         |
+| `pnpm dump-code`      | Generate a full code snapshot (`---code_dump.txt`)                      |
+| `pnpm analyze-code`   | Analyze project structure and produce report (`---code_analysis`)       |
+| `pnpm list-structure` | Write all tracked file paths to `---project-structure`                  |
+| `pnpm clean`          | Remove `node_modules`, `dist`, and lockfiles                            |
+
+<p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
 ---
 
-## 📬 Still have questions?
+## 📬 Need Help?
 
-Open an issue or start a discussion on [GitHub](https://github.com/koppajs/koppajs-core).
+Open an issue or start a discussion on GitHub:
+https://github.com/koppajs/koppajs-core
 
-Happy hacking! 🚀
+Thank you for contributing — and welcome aboard. 🚀
+
+<p align="right">(<a href="#contributing-top">back to top</a>)</p>
