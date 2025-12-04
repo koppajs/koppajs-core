@@ -3,7 +3,7 @@ import tsPlugin from '@typescript-eslint/eslint-plugin'
 import tsParser from '@typescript-eslint/parser'
 import prettierPlugin from 'eslint-plugin-prettier'
 
-/** Globale Ignore-Liste (ersetzt .eslintignore) */
+/** Global ignore list (replaces .eslintignore) */
 const ignores = [
   '.git',
   '.history/**',
@@ -21,7 +21,7 @@ const ignores = [
   'config/tsconfig*.json',
 ]
 
-/** Gemeinsame Language-Options für TS/JS */
+/** Shared language options for TS/JS files */
 const languageOptions = {
   parser: tsParser,
   ecmaVersion: 'latest',
@@ -29,27 +29,27 @@ const languageOptions = {
 }
 
 export default [
-  // 1) Ignore-Konfiguration
+  // 1) Ignore configuration
   {
     ignores,
   },
 
-  // 2) TS/JS-Regeln
+  // 2) Core TS/JS rules for the project
   {
-    files: ['**/*.{ts,tsx,js,cjs,mjs}'],
+    files: ['**/*.{ts,tsx,js, cjs, mjs}'],
     languageOptions,
     plugins: {
       '@typescript-eslint': tsPlugin,
       prettier: prettierPlugin,
     },
     rules: {
-      // Basis: ESLint-Empfehlungen
+      // Base ESLint recommended rules
       ...js.configs.recommended.rules,
 
-      // TypeScript-Empfehlungen (ohne zu harte/noisy Regeln)
+      // TypeScript recommended rules (kept reasonably strict, but not noisy)
       ...tsPlugin.configs.recommended.rules,
 
-      // TypeScript-spezifische Anpassungen/Overrides
+      // TypeScript-specific overrides
       'no-undef': 'off',
       'no-unused-vars': 'off',
       '@typescript-eslint/no-unused-vars': [
@@ -57,10 +57,10 @@ export default [
         { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
       ],
 
-      // optional: etwas weniger streng, wenn du viel refaktorierst
+      // Optional: disable if you refactor frequently
       '@typescript-eslint/no-explicit-any': 'off',
 
-      // Prettier als Format-Richter
+      // Prettier as the final formatting authority
       'prettier/prettier': 'error',
     },
   },

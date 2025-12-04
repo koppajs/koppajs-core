@@ -3,16 +3,16 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "url";
 
-// ==== Pfade ====
+// ==== Paths ====
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Projektwurzel = Ordner über dem Skript
+// Project root = one level above this script
 const PROJECT_ROOT = path.join(__dirname, "..");
 const OUTPUT_FILE = path.join(PROJECT_ROOT, "---code_dump.txt");
 
-// ==== Konfiguration: Ignore-Listen ====
+// ==== Configuration: Ignore lists ====
 
 const IGNORE_DIR_NAMES = new Set([
   "node_modules",
@@ -41,7 +41,7 @@ const IGNORE_DIR_NAMES = new Set([
 ]);
 
 const IGNORE_FILE_PATTERNS = [
-  // temporär / generiert
+  // Temporary / generated files
   /\.log$/i,
   /\.tmp$/i,
   /\.temp$/i,
@@ -56,11 +56,11 @@ const IGNORE_FILE_PATTERNS = [
   /package-lock\.json$/i,
   /yarn-lock\.txt$/i,
 
-  // custom DUMP files
+  // Custom dump files
   /^---.*$/i,
 ];
 
-// Bekannte Text-Extensions → direkt als Text behandeln
+// Known text extensions → always treated as text
 const TEXT_EXTENSIONS = new Set([
   ".js",
   ".cjs",
@@ -89,7 +89,7 @@ const TEXT_EXTENSIONS = new Set([
 ]);
 
 /**
- * Prüft, ob ein Dateiname zu den ignorierten Dateien gehört.
+ * Check whether a filename matches any ignore patterns.
  * @param {string} fileName
  * @returns {boolean}
  */
@@ -98,8 +98,8 @@ function shouldIgnoreFile(fileName) {
 }
 
 /**
- * Ermittelt, ob eine Datei als Textdatei behandelt werden sollte.
- * Zuerst über Extension, sonst optionaler Binär-Check.
+ * Determine whether a file should be treated as text or binary.
+ * Priority: extension → binary check.
  * @param {string} filePath
  * @returns {Promise<"text" | "binary">}
  */
@@ -110,13 +110,14 @@ async function detectFileType(filePath) {
     return "text";
   }
 
-  // Unbekannte Extension → Binärcheck
+  // Unknown extension → binary check
   const isBinary = await isBinaryFile(filePath);
   return isBinary ? "binary" : "text";
 }
 
 /**
- * Binär-Erkennung: liest nur die ersten N Bytes und sucht Nullbytes.
+ * Lightweight binary detection: read the first N bytes and
+ * look for null bytes.
  * @param {string} filePath
  * @returns {Promise<boolean>}
  */
@@ -131,15 +132,15 @@ async function isBinaryFile(filePath) {
 
     for (let i = 0; i < bytesRead; i++) {
       if (buffer[i] === 0) {
-        return true; // Nullbyte → vermutlich Binär
+        return true; // Null byte → likely binary
       }
     }
     return false;
   } catch (error) {
     globalThis.console.warn(
-      `⚠️  Fehler beim Binär-Check von ${filePath}: ${error.message}`,
+      `⚠️  Error during binary check for ${filePath}: ${error.message}`,
     );
-    // Fail-safe: eher als Binär behandeln, wenn wir nicht lesen können
+    // Fail-safe: treat as binary if unreadable
     return true;
   } finally {
     if (handle) {
@@ -149,7 +150,7 @@ async function isBinaryFile(filePath) {
 }
 
 /**
- * Rekursiv alle relevanten Dateien im Projekt sammeln.
+ * Recursively collect all relevant files in the project.
  * @param {string} dir
  * @returns {Promise<Array<{ path: string, type: "text" | "binary" }>>}
  */
@@ -161,7 +162,7 @@ async function getAllFiles(dir) {
     entries = await fs.readdir(dir, { withFileTypes: true });
   } catch (error) {
     globalThis.console.warn(
-      `⚠️  Kann Verzeichnis nicht lesen: ${dir} (${error.message})`,
+      `⚠️  Cannot read directory: ${dir} (${error.message})`,
     );
     return result;
   }
@@ -169,7 +170,7 @@ async function getAllFiles(dir) {
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
 
-    // eigenen Dump nicht wieder einlesen
+    // Do not re-read the dump file itself
     if (path.resolve(fullPath) === path.resolve(OUTPUT_FILE)) {
       continue;
     }
@@ -178,7 +179,8 @@ async function getAllFiles(dir) {
       if (IGNORE_DIR_NAMES.has(entry.name) || entry.name.startsWith("---")) {
         continue;
       }
-      // Symlinks auf Ordner lieber nicht verfolgen (Zyklenschutz)
+
+      // Avoid following directory symlinks (cycle protection)
       if (entry.isSymbolicLink && entry.isSymbolicLink()) {
         continue;
       }
@@ -199,44 +201,44 @@ async function getAllFiles(dir) {
 }
 
 /**
- * Erstellt den Code-Dump.
+ * Create the code dump.
  */
 async function dumpCode() {
   try {
-    globalThis.console.info("🔍 Sammle alle relevanten Dateien im Projekt ...");
-    globalThis.console.info(`📁 Projektwurzel: ${PROJECT_ROOT}`);
+    globalThis.console.info("🔍 Collecting all relevant project files...");
+    globalThis.console.info(`📁 Project root: ${PROJECT_ROOT}`);
 
     const files = await getAllFiles(PROJECT_ROOT);
 
-    globalThis.console.info(`📄 Gefundene Dateien: ${files.length}`);
+    globalThis.console.info(`📄 Files found: ${files.length}`);
 
     let content = "";
     for (const file of files) {
       const relativePath = path.relative(PROJECT_ROOT, file.path);
 
       if (file.type === "binary") {
-        // Nur vermerken, kein Inhalt
-        content += `\n\n===BINARY_FILE:${relativePath}===\n[Binärdatei – Inhalt ausgelassen]\n`;
-        globalThis.console.info(`🚫 Binärdatei vermerkt: ${relativePath}`);
+        // Only mark the file, do not include content
+        content += `\n\n===BINARY_FILE:${relativePath}===\n[Binary file – content omitted]\n`;
+        globalThis.console.info(`🚫 Binary file recorded: ${relativePath}`);
         continue;
       }
 
-      // Textdatei → Inhalt dumpen
+      // Dump text content
       try {
         const fileData = await fs.readFile(file.path, "utf-8");
         content += `\n\n===FILE:${relativePath}===\n${fileData}`;
       } catch (readError) {
         globalThis.console.warn(
-          `⚠️  Datei wird übersprungen: ${relativePath} (Fehler: ${readError.message})`,
+          `⚠️  File skipped: ${relativePath} (Error: ${readError.message})`,
         );
       }
     }
 
     await fs.writeFile(OUTPUT_FILE, content, "utf-8");
-    globalThis.console.info(`✅ Code-Dump abgeschlossen: ${OUTPUT_FILE}`);
+    globalThis.console.info(`✅ Code dump completed: ${OUTPUT_FILE}`);
   } catch (error) {
     globalThis.console.error(
-      "❌ Fehler beim Erstellen des Code-Dumps:",
+      "❌ Error while creating code dump:",
       error.message,
     );
     globalThis.process.exit(1);

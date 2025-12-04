@@ -1,15 +1,20 @@
+# Ignore editor and IDE metadata
 .history
 .git
 .idea
 .vscode
-coverage
+
+# Ignore build artefacts and generated output
 dist
+coverage
+
+# Ignore dependencies
 node_modules
 pnpm-lock.yaml
 package-lock.json
 
-# Build/Tool-Artefakte
+# Ignore auto-generated / temporary files starting with '---'
 ---*
 
-# Tests-Output ggf. später
+# Ignore test coverage output (if generated later)
 coverage
