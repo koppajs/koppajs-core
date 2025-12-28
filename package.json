@@ -20,10 +20,7 @@
       "require": "./dist/index.cjs.js"
     }
   },
-  "sideEffects": [
-    "./dist/index.es.js",
-    "./dist/index.cjs.js"
-  ],
+  "sideEffects": false,
   "repository": {
     "type": "git",
     "url": "https://github.com/koppajs/koppajs-core"
@@ -51,9 +48,12 @@
   "homepage": "https://koppajs.org",
   "scripts": {
     "generate:types": "tsc --project config/tsconfig.types.json",
-    "clean": "rimraf node_modules dist pnpm-lock.yaml",
+    "copy:dts": "node scripts/copy-dts.js",
+    "clean": "rimraf dist coverage",
+    "deepclean": "rimraf node_modules dist pnpm-lock.yaml",
+    "pretypecheck": "rimraf dist",
     "typecheck": "tsc --project config/tsconfig.json",
-    "build": "pnpm run typecheck && vite build --config config/vite.config.ts && pnpm generate:types",
+    "build": "pnpm run typecheck && vite build --config config/vite.config.ts && pnpm generate:types && pnpm run copy:dts",
     "rebuild": "pnpm run clean && pnpm run build",
     "test": "vitest --config config/vitest.config.ts --run",
     "test:coverage": "vitest --config config/vitest.config.ts --coverage",
@@ -72,17 +72,10 @@
     "node": ">=20",
     "pnpm": ">=10.24.0"
   },
-  "peerDependencies": {
-    "typescript": "^5.7.2",
-    "vite": "^7.2.6"
-  },
   "devDependencies": {
     "@commitlint/cli": "^20.1.0",
     "@commitlint/config-conventional": "^20.0.0",
     "@eslint/js": "^9.39.1",
-    "@rollup/plugin-commonjs": "^29.0.0",
-    "@rollup/plugin-node-resolve": "^16.0.3",
-    "@rollup/plugin-terser": "^0.4.4",
     "@types/jsdom": "^27.0.0",
     "@types/node": "^24.10.1",
     "@typescript-eslint/eslint-plugin": "^8.48.1",
@@ -104,5 +97,8 @@
   },
   "overrides": {
     "glob": "^11.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild"]
   }
 }

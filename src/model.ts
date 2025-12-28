@@ -8,14 +8,33 @@ const IS_PROXY = Symbol("isProxy");
  */
 const globalProxyCache = new WeakMap<object, object>();
 
-/**
- * Erstellt ein reaktives Model mit Proxy-based change detection.
- *
- * @param initialData - Initial data for the model
- * @param callback - Function to handle value changes
- * @returns Model interface with data and methods
- */
-export function createModel<T extends Record<string, any>>(
+type WatchListSnapshot = { parent: object; properties: string[] };
+
+const isObject = (value: unknown): value is object =>
+  typeof value === "object" && value !== null;
+
+const toPropName = (property: PropertyKey): string =>
+  typeof property === "symbol" ? property.toString() : String(property);
+
+const getCachedProxy = <O extends object>(obj: O): O | undefined => {
+  const cached = globalProxyCache.get(obj);
+  return cached && isObject(cached) ? (cached as O) : undefined;
+};
+
+const isProxy = (obj: unknown): boolean => {
+  if (!isObject(obj)) return false;
+  return Reflect.get(obj, IS_PROXY) === true;
+};
+
+const isPrimitive = (value: unknown): boolean =>
+  value !== null &&
+  (typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    typeof value === "function" ||
+    typeof value === "undefined");
+
+export function createModel<T extends Record<string, unknown>>(
   initialData: T,
 ): {
   data: T;
@@ -23,7 +42,7 @@ export function createModel<T extends Record<string, any>>(
   unwatch: (path: string) => void;
   addObserver: (observer: () => void) => void;
   removeObserver: (observer: () => void) => void;
-  getWatchList: () => { parent: object; properties: string[] }[];
+  getWatchList: () => WatchListSnapshot[];
 } {
   // Private state
   const observers = new Set<() => void>();
@@ -34,36 +53,19 @@ export function createModel<T extends Record<string, any>>(
     observers.forEach((observer) => observer());
   };
 
-  const isProxy = (obj: any): boolean => {
-    return !!obj && typeof obj === "object" && Reflect.get(obj, IS_PROXY);
-  };
-
-  const isPrimitive = (value: any): boolean => {
-    return (
-      value !== null &&
-      (typeof value === "string" ||
-        typeof value === "number" ||
-        typeof value === "boolean" ||
-        typeof value === "function" ||
-        typeof value === "undefined")
-    );
-  };
-
   const hasWatchEntry = (
     parentObj?: object,
     property?: string,
-    value?: any,
+    value?: unknown,
   ): boolean => {
     if (parentObj && property) {
-      return watchList.get(parentObj)?.has(property) || false;
+      return watchList.get(parentObj)?.has(property) ?? false;
     }
 
     if (value !== undefined) {
       for (const [parent, props] of watchList.entries()) {
         for (const prop of props) {
-          if (Reflect.get(parent, prop) === value) {
-            return true;
-          }
+          if (Reflect.get(parent, prop) === value) return true;
         }
       }
     }
@@ -71,33 +73,31 @@ export function createModel<T extends Record<string, any>>(
     return false;
   };
 
-  const isWatched = (parent: object, property: string): boolean => {
-    return hasWatchEntry(parent, property);
-  };
+  const isWatched = (parent: object, property: string): boolean =>
+    hasWatchEntry(parent, property);
 
-  const isWholeValueWatched = (value: any): boolean => {
-    return hasWatchEntry(undefined, undefined, value);
-  };
+  const isWholeValueWatched = (value: unknown): boolean =>
+    hasWatchEntry(undefined, undefined, value);
 
   const addWatchEntry = (parent: object, prop: string) => {
-    if (!watchList.has(parent)) {
-      watchList.set(parent, new Set());
-    }
-    watchList.get(parent)?.add(prop);
+    const set = watchList.get(parent) ?? new Set<string>();
+    set.add(prop);
+    if (!watchList.has(parent)) watchList.set(parent, set);
   };
 
   const removeWatchEntry = (parent: object, prop: string): void => {
     const watchedProps = watchList.get(parent);
-    if (watchedProps) {
-      watchedProps.delete(prop);
-      if (watchedProps.size === 0) {
-        watchList.delete(parent);
-      }
-    }
+    if (!watchedProps) return;
+
+    watchedProps.delete(prop);
+    if (watchedProps.size === 0) watchList.delete(parent);
   };
 
   // Diff functions for arrays
-  const findLCSByRef = (oldArr: any[], newArr: any[]): [number, number][] => {
+  const findLCSByRef = (
+    oldArr: unknown[],
+    newArr: unknown[],
+  ): [number, number][] => {
     const lenA = oldArr.length;
     const lenB = newArr.length;
     const dp: number[][] = Array.from({ length: lenA + 1 }, () =>
@@ -115,8 +115,9 @@ export function createModel<T extends Record<string, any>>(
     }
 
     const result: [number, number][] = [];
-    let i = lenA,
-      j = lenB;
+    let i = lenA;
+    let j = lenB;
+
     while (i > 0 && j > 0) {
       if (oldArr[i - 1] === newArr[j - 1]) {
         result.unshift([i - 1, j - 1]);
@@ -128,19 +129,20 @@ export function createModel<T extends Record<string, any>>(
         j--;
       }
     }
+
     return result;
   };
 
   const diffArraysByReferenceNoDeepMerge = (
-    oldArr: any[],
-    newArr: any[],
+    oldArr: unknown[],
+    newArr: unknown[],
   ): void => {
     if (oldArr === newArr) return;
 
     const lcsPairs = findLCSByRef(oldArr, newArr);
-    let i = 0,
-      j = 0,
-      pairIndex = 0;
+    let i = 0;
+    let j = 0;
+    let pairIndex = 0;
 
     while (
       pairIndex < lcsPairs.length ||
@@ -172,24 +174,15 @@ export function createModel<T extends Record<string, any>>(
     oldArr.splice(0, oldArr.length, ...newArr);
   };
 
-  const diffArraysSimple = (oldArr: any[], newArr: any[]): void => {
+  const diffArraysSimple = (oldArr: unknown[], newArr: unknown[]): void => {
     const oldSet = new Set(oldArr);
     const newSet = new Set(newArr);
 
-    for (const item of oldSet) {
-      if (!newSet.has(item)) {
-        enhancedCallback();
-      }
-    }
-
-    for (const item of newSet) {
-      if (!oldSet.has(item)) {
-        enhancedCallback();
-      }
-    }
+    for (const item of oldSet) if (!newSet.has(item)) enhancedCallback();
+    for (const item of newSet) if (!oldSet.has(item)) enhancedCallback();
   };
 
-  const diffArraysOptimized = (oldArr: any[], newArr: any[]): void => {
+  const diffArraysOptimized = (oldArr: unknown[], newArr: unknown[]): void => {
     const oldSet = new Set(oldArr);
     const newSet = new Set(newArr);
 
@@ -198,22 +191,20 @@ export function createModel<T extends Record<string, any>>(
       [...oldSet].some((item) => !newSet.has(item)) ||
       [...newSet].some((item) => !oldSet.has(item));
 
-    if (onlyAddedOrRemoved) {
-      diffArraysSimple(oldArr, newArr);
-    } else {
-      diffArraysByReferenceNoDeepMerge(oldArr, newArr);
-    }
+    if (onlyAddedOrRemoved) diffArraysSimple(oldArr, newArr);
+    else diffArraysByReferenceNoDeepMerge(oldArr, newArr);
   };
 
-  const mergeInPlaceObject = (oldObj: any, newObj: any): void => {
+  const mergeInPlaceObject = (
+    oldObj: Record<string, unknown>,
+    newObj: Record<string, unknown>,
+  ): void => {
     if (oldObj === newObj) return;
 
     // Remove properties not in new object
     for (const key of Object.keys(oldObj)) {
       if (!(key in newObj)) {
-        if (isWatched(oldObj, key)) {
-          enhancedCallback();
-        }
+        if (isWatched(oldObj, key)) enhancedCallback();
         Reflect.deleteProperty(oldObj, key);
       }
     }
@@ -222,132 +213,130 @@ export function createModel<T extends Record<string, any>>(
     for (const key of Object.keys(newObj)) {
       const oldVal = oldObj[key];
       const newVal = newObj[key];
-      if (oldVal !== newVal) {
-        if (
-          oldVal &&
-          typeof oldVal === "object" &&
-          isProxy(oldVal) &&
-          newVal &&
-          typeof newVal === "object" &&
-          !isProxy(newVal)
-        ) {
-          mergeInPlaceObject(oldVal, newVal);
-          if (oldVal !== newVal && isWatched(oldObj, key)) {
-            enhancedCallback();
-            Reflect.set(oldObj, key, newVal);
-          }
-        } else {
-          if (isWatched(oldObj, key)) {
-            enhancedCallback();
-          }
+
+      if (oldVal === newVal) continue;
+
+      if (isObject(oldVal) && isProxy(oldVal) && isObject(newVal) && !isProxy(newVal)) {
+        mergeInPlaceObject(
+          oldVal as Record<string, unknown>,
+          newVal as Record<string, unknown>,
+        );
+        if (oldVal !== newVal && isWatched(oldObj, key)) {
+          enhancedCallback();
           Reflect.set(oldObj, key, newVal);
         }
+      } else {
+        if (isWatched(oldObj, key)) enhancedCallback();
+        Reflect.set(oldObj, key, newVal);
       }
     }
   };
 
   // Main reactive wrapper
-  const makeReactive = (obj: any): any => {
-    if (obj !== null && typeof obj === "object") {
-      if (globalProxyCache.has(obj)) {
-        return globalProxyCache.get(obj);
-      }
+  const makeReactive = <O extends object>(obj: O): O => {
+    const cached = getCachedProxy(obj);
+    if (cached) return cached;
 
-      const proxy = new Proxy(obj, {
-        get: (target, property, receiver) => {
-          if (property === IS_PROXY) return true;
-          return Reflect.get(target, property, receiver);
-        },
+    const proxy = new Proxy(obj, {
+      get: (target, property, receiver) => {
+        if (property === IS_PROXY) return true;
+        return Reflect.get(target, property, receiver) as unknown;
+      },
 
-        set: (target, property, value, receiver) => {
-          const oldValue = Reflect.get(target, property, receiver);
-          if (oldValue === value) return true;
+      set: (target, property, value, receiver) => {
+        const oldValue = Reflect.get(target, property, receiver) as unknown;
+        if (oldValue === value) return true;
 
-          const isWatchedProperty = isWatched(target, property.toString());
+        const propName = toPropName(property);
 
-          // Special array handling
-          if (
-            isWatchedProperty &&
-            Array.isArray(oldValue) &&
-            !isPrimitive(value) &&
-            Array.isArray(value) &&
-            isWholeValueWatched(oldValue)
-          ) {
-            diffArraysOptimized(oldValue, value);
-            return true;
-          }
+        const receiverObj = isObject(receiver) ? receiver : undefined;
 
-          // Special object handling
-          if (
-            isWatchedProperty &&
-            oldValue &&
-            typeof oldValue === "object" &&
-            isProxy(oldValue) &&
-            value &&
-            typeof value === "object" &&
-            !isProxy(value)
-          ) {
-            mergeInPlaceObject(oldValue, value);
-            if (oldValue !== value) {
-              enhancedCallback();
-              let finalVal = value;
-              if (
-                finalVal &&
-                typeof finalVal === "object" &&
-                !isProxy(finalVal)
-              ) {
-                finalVal = makeReactive(finalVal);
-              }
-              Reflect.set(target, property, finalVal, receiver);
-            }
-            return true;
-          }
+        const isWatchedProperty =
+          isWatched(target, propName) ||
+          (receiverObj ? isWatched(receiverObj, propName) : false);
 
-          // Standard property assignment
-          const result = Reflect.set(target, property, value, receiver);
-          if (isWatchedProperty && oldValue !== value) {
-            if (value && typeof value === "object" && !isProxy(value)) {
-              value = makeReactive(value);
-              Reflect.set(target, property, value, receiver);
-            }
+        // Special array handling
+        if (
+          isWatchedProperty &&
+          Array.isArray(oldValue) &&
+          !isPrimitive(value) &&
+          Array.isArray(value) &&
+          isWholeValueWatched(oldValue)
+        ) {
+          diffArraysOptimized(oldValue, value);
+          return true;
+        }
+
+        // Special object handling
+        if (
+          isWatchedProperty &&
+          isObject(oldValue) &&
+          isProxy(oldValue) &&
+          isObject(value) &&
+          !isProxy(value)
+        ) {
+          mergeInPlaceObject(
+            oldValue as Record<string, unknown>,
+            value as Record<string, unknown>,
+          );
+          if (oldValue !== value) {
             enhancedCallback();
+
+            let finalVal: unknown = value;
+            if (isObject(finalVal) && !isProxy(finalVal)) {
+              finalVal = makeReactive(finalVal);
+            }
+
+            Reflect.set(target, property, finalVal, receiver);
           }
-          return result;
-        },
+          return true;
+        }
 
-        deleteProperty: (target, property) => {
-          const propName = property.toString();
-          const oldValue = Reflect.get(target, property);
-          const isWatchedProperty = isWatched(target, propName);
+        // Standard property assignment
+        const result = Reflect.set(target, property, value, receiver);
 
-          const isDeleted = Reflect.deleteProperty(target, property);
-
-          if (isWatchedProperty && oldValue !== undefined) {
-            enhancedCallback();
+        if (isWatchedProperty && oldValue !== value) {
+          if (isObject(value) && !isProxy(value)) {
+            const reactive = makeReactive(value);
+            Reflect.set(target, property, reactive, receiver);
           }
+          enhancedCallback();
+        }
 
-          return isDeleted;
-        },
-      });
+        return result;
+      },
 
-      globalProxyCache.set(obj, proxy);
-      return proxy;
-    }
+      deleteProperty: (target, property) => {
+        const propName = toPropName(property);
+        const oldValue = Reflect.get(target, property) as unknown;
 
-    return obj;
+        const maybeProxy = globalProxyCache.get(target);
+        const proxyObj = isObject(maybeProxy) ? maybeProxy : undefined;
+
+        const isWatchedProperty =
+          isWatched(target, propName) ||
+          (proxyObj ? isWatched(proxyObj, propName) : false);
+
+        const isDeleted = Reflect.deleteProperty(target, property);
+
+        if (isWatchedProperty && oldValue !== undefined) enhancedCallback();
+        return isDeleted;
+      },
+    });
+
+    globalProxyCache.set(obj, proxy);
+    return proxy;
   };
 
-  const deepReactive = (obj: any): void => {
-    if (typeof obj === "object" && obj !== null) {
-      const reactiveObj = makeReactive(obj);
-      for (const key in reactiveObj) {
-        if (Object.prototype.hasOwnProperty.call(reactiveObj, key)) {
-          const value = reactiveObj[key];
-          if (typeof value === "object" && value !== null) {
-            deepReactive(value);
-          }
-        }
-      }
+  const deepReactive = (obj: unknown): void => {
+    if (!isObject(obj)) return;
+
+    const reactiveObj = makeReactive(obj);
+    for (const key in reactiveObj as Record<string, unknown>) {
+      if (!Object.prototype.hasOwnProperty.call(reactiveObj, key)) continue;
+
+      const value = (reactiveObj as Record<string, unknown>)[key];
+      if (isObject(value)) deepReactive(value);
     }
   };
 
@@ -355,48 +344,59 @@ export function createModel<T extends Record<string, any>>(
     path: string,
     data: T,
   ): {
-    grandParent?: Record<string, any>;
+    grandParent?: Record<string, unknown>;
     parentPropertyName?: string;
-    parent: Record<string, any>;
+    parent: Record<string, unknown>;
     property: string;
   } => {
     const segments = path.split(".");
-    if (segments.length === 0) {
-      throw new Error(`❌ Invalid path: "${path}".`);
-    }
+    if (segments.length === 0) throw new Error(`❌ Invalid path: "${path}".`);
 
-    let grandParent: any = undefined;
+    let grandParent: Record<string, unknown> | undefined = undefined;
     let parentPropertyName: string | undefined = undefined;
+
     const property = segments.pop()!;
+    if (segments.length > 0) parentPropertyName = segments.pop()!;
 
-    if (segments.length > 0) {
-      parentPropertyName = segments.pop()!;
-    }
+    let temp: unknown = data;
 
-    let temp: any = data;
     for (const seg of segments) {
-      if (!temp[seg]) {
+      if (!isObject(temp)) {
+        throw new Error(
+          `❌ Invalid path "${path}". Segment "${seg}" is not an object.`,
+        );
+      }
+      const next = Reflect.get(temp, seg) as unknown;
+      if (!next) {
         throw new Error(
           `❌ Invalid path "${path}". Segment "${seg}" does not exist.`,
         );
       }
-      temp = temp[seg];
+      temp = next;
     }
 
-    let parent: any;
+    let parent: unknown;
     if (parentPropertyName !== undefined) {
-      grandParent = temp;
+      grandParent = temp as Record<string, unknown>;
       parent = grandParent[parentPropertyName];
-      if (!parent) {
+      if (!isObject(parent)) {
         throw new Error(
           `❌ Invalid path. No parent object for property "${parentPropertyName}".`,
         );
       }
     } else {
       parent = temp;
+      if (!isObject(parent)) {
+        throw new Error(`❌ Invalid path "${path}". Parent is not an object.`);
+      }
     }
 
-    return { grandParent, parentPropertyName, parent, property };
+    return {
+      grandParent,
+      parentPropertyName,
+      parent: parent as Record<string, unknown>,
+      property,
+    };
   };
 
   // Create reactive data
@@ -409,18 +409,13 @@ export function createModel<T extends Record<string, any>>(
     watch(path: string, deep = false): void {
       const { parent, property } = processWatchString(path, data);
 
-      if (hasWatchEntry(parent, property)) {
-        return;
-      }
+      if (hasWatchEntry(parent, property)) return;
 
       const value = parent[property];
 
-      if (typeof value === "object" && value !== null) {
-        if (deep) {
-          deepReactive(value);
-        } else if (!Array.isArray(value)) {
-          makeReactive(value);
-        }
+      if (isObject(value)) {
+        if (deep) deepReactive(value);
+        else if (!Array.isArray(value)) makeReactive(value);
       }
 
       addWatchEntry(parent, property);
@@ -431,15 +426,15 @@ export function createModel<T extends Record<string, any>>(
       removeWatchEntry(parent, property);
 
       const value = parent[property];
-      if (typeof value === "object" && value !== null) {
-        for (const [watchedParent] of watchList.entries()) {
-          if (watchedParent === value) return;
-        }
+      if (!isObject(value)) return;
 
-        if (globalProxyCache.has(value)) {
-          globalProxyCache.delete(value);
-        }
+      // Wenn das Value-Objekt nirgendwo mehr als Parent im watchList steht, darf es aus dem Cache
+      for (const [watchedParent] of watchList.entries()) {
+        if (watchedParent === value) return;
       }
+
+      const cached = getCachedProxy(value);
+      if (cached) globalProxyCache.delete(value);
     },
 
     addObserver(observer: () => void): void {
@@ -450,7 +445,7 @@ export function createModel<T extends Record<string, any>>(
       observers.delete(observer);
     },
 
-    getWatchList(): { parent: object; properties: string[] }[] {
+    getWatchList(): WatchListSnapshot[] {
       return Array.from(watchList.entries()).map(([parent, props]) => ({
         parent,
         properties: Array.from(props),

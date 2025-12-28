@@ -8,23 +8,33 @@ import {
 
 import type { CoreCallable, CoreCtx, TakeArgs } from "./types";
 
+// Public Types
+export type {
+  ComponentSource,
+  ComponentInstance,
+  ComponentController,
+  ComponentContext,
+  CoreCallable,
+  CoreCtx,
+  IPlugin,
+  IModule,
+  TakeArgs,
+  Props,
+  Events,
+  Data,
+  Refs,
+  Methods,
+  LifecycleHook,
+} from "./types";
+
 let initialized = false;
 let domInitialized = false;
 let queuedTakes: TakeArgs[] = [];
 
-/**
- * Initializes all DOM-related side effects:
- * - EventTarget patching for global event tracking
- * - Prototype extensions on HTMLElement and Object
- * - A global MutationObserver for automatic event cleanup
- *
- * In Node/SSR environments this function does nothing (safe no-op).
- */
 export function initDomEnvironment(): void {
   if (domInitialized) return;
   domInitialized = true;
 
-  // No DOM available → do nothing
   if (typeof document === "undefined" || typeof HTMLElement === "undefined") {
     return;
   }
@@ -34,20 +44,13 @@ export function initDomEnvironment(): void {
   startGlobalDisconnectionObserver();
 }
 
-/**
- * Performs the actual handling of a take() call:
- * - Registers components
- * - Installs plugins/modules
- */
 function performTake(...args: TakeArgs): void {
   const ext = args[0];
   const name = args[1];
 
   if (isComponentSource(ext)) {
     if (!name) {
-      console.error(
-        "ComponentSource requires a component name when calling take()",
-      );
+      console.error("ComponentSource requires a component name when calling take()");
       return;
     }
     registerComponent(name, ext);
@@ -62,7 +65,6 @@ function performTake(...args: TakeArgs): void {
       take: Core.take,
     };
 
-    // Install extension (ignore returned cleanup function for now)
     ext.install(ctx);
 
     if (isPlugin(ext)) {
@@ -77,9 +79,6 @@ function performTake(...args: TakeArgs): void {
   console.error("❌ Unknown extension type:", ext);
 }
 
-/**
- * Initializes the core logic and flushes all queued take() calls.
- */
 function initialize(): void {
   if (initialized) return;
   initialized = true;
@@ -90,25 +89,16 @@ function initialize(): void {
   console.log("🚀 Core initialized");
 }
 
-/**
- * The main Core entry function.
- * - Calling Core() initializes DOM features and core state.
- * - Calling Core.take(...) registers components/plugins/modules.
- */
 export const Core = (() => {
   const callable = Object.assign(
     () => {
-      // Initialize DOM environment if available (safe in SSR)
       initDomEnvironment();
       initialize();
     },
     {
       take: (...args: TakeArgs) => {
-        if (initialized) {
-          performTake(...args);
-        } else {
-          queuedTakes.push(args);
-        }
+        if (initialized) performTake(...args);
+        else queuedTakes.push(args);
       },
     },
   ) satisfies CoreCallable;

@@ -36,7 +36,7 @@ export default [
 
   // 2) Core TS/JS rules for the project
   {
-    files: ['**/*.{ts,tsx,js, cjs, mjs}'],
+    files: ['**/*.{ts,tsx,js,cjs,mjs}'],
     languageOptions,
     plugins: {
       '@typescript-eslint': tsPlugin,

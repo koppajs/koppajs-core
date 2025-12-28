@@ -122,7 +122,8 @@ pnpm run dev
 To integrate KoppaJS into an existing project, you’ll need both the core framework **and** the official Vite plugin to support `.kpa` Single File Components:
 
 ```bash
-pnpm add @koppajs/koppajs-core @koppajs/plugin-vite -D
+pnpm add @koppajs/koppajs-core
+pnpm add @koppajs/koppajs-vite-plugin -D
 ```
 
 ***1. Configure Vite (`vite.config.ts`)***

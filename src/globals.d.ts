@@ -1,5 +1,3 @@
-import { ComponentInstance } from "./types";
-
 export {};
 
 declare global {
@@ -80,8 +78,5 @@ declare global {
      * @returns the current value, or null/undefined if not set
      */
     attr(attrName: string, attrValue?: string): string | undefined;
-
-    // instance properties
-    instance?: ComponentInstance;
   }
 }

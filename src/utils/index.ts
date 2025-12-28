@@ -3,6 +3,7 @@ export * from "./dom";
 export * from "./object";
 export * from "./string";
 export * from "./script";
+export * from "./template-watch";
 export * from "./hook-registry";
 export { ExtensionRegistry } from "./extension-registry";
 export * from "./type-guards";

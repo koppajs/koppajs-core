@@ -1,6 +1,7 @@
 import type {
   ComponentInstance,
   ComponentSource,
+  HTMLElementWithInstance,
   IModule,
   IPlugin,
 } from "../types";
@@ -40,15 +41,29 @@ export function isModule(ext: any): ext is IModule {
 }
 
 /**
- * Checks whether a DOM element contains a component instance.
+ * Checks whether a DOM element has the `instance` slot (may be undefined).
  *
  * @param el - The value to check
- * @returns True if the element is an HTMLElement with an `instance` property
+ * @returns True if el is an HTMLElement and carries an `instance` property
  */
-export function isHTMLElementWithInstance(
-  el: unknown,
-): el is HTMLElement & { instance: ComponentInstance } {
+export function isHTMLElementWithInstance(el: unknown): el is HTMLElementWithInstance {
   return el instanceof HTMLElement && "instance" in el;
+}
+
+/**
+ * Checks whether a DOM element has a *set* component instance.
+ *
+ * @param el - The value to check
+ * @returns True if el is HTMLElementWithInstance and instance is defined
+ */
+export function hasComponentInstance(
+  el: unknown,
+): el is HTMLElementWithInstance & { instance: ComponentInstance } {
+  return (
+    el instanceof HTMLElement &&
+    "instance" in el &&
+    (el as HTMLElementWithInstance).instance !== undefined
+  );
 }
 
 /**
@@ -62,7 +77,5 @@ export function isHTMLElementWithInstance(
 export function isValidLoopMatch(
   match: RegExpMatchArray | null,
 ): match is [string, string, string] {
-  return (
-    !!match && match.length === 3 && Boolean(match[1]) && Boolean(match[2])
-  );
+  return !!match && match.length === 3 && Boolean(match[1]) && Boolean(match[2]);
 }

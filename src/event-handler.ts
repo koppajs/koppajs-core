@@ -1,12 +1,9 @@
 import { isArrowFunction } from "./utils";
 import type { AnyFn, ComponentInstance, Data, Events, Refs } from "./types";
 
-export function emit(
-  parent: ComponentInstance | undefined,
-  eventName: string,
-  ...args: any[]
-): void {
-  parent?.$handleEventFromChild?.(parent, parent?.data, eventName, ...args);
+export function emit(parent: ComponentInstance | undefined, eventName: string, ...args: any[]) {
+  if (!parent) return;
+  handleEventFromChild(parent, parent.data, eventName, ...args);
 }
 
 export function handleEventFromChild(
@@ -15,14 +12,21 @@ export function handleEventFromChild(
   eventName: string,
   ...args: any[]
 ): void {
+  if (!parent) return;
+
   const handlerName = `on${eventName.charAt(0).toUpperCase()}${eventName.slice(1)}`;
 
-  if (typeof data[handlerName] === "function") {
-    data[handlerName](...args);
+  if (typeof parent.data[handlerName] === "function") {
+    parent.data[handlerName](...args);
   }
 
-  parent?.$handleEventFromChild?.(parent, data, eventName, ...args);
+  // bubble to grandparent
+  const next = parent.$parent;
+  if (next) {
+    handleEventFromChild(next, next.data, eventName, ...args);
+  }
 }
+
 
 export function createSubmitHandler(handler: AnyFn, context: Data) {
   return (event: Event) => {

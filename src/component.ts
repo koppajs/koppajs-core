@@ -11,11 +11,16 @@ import {
   compileCode,
   createHookRegistry,
   ExtensionRegistry,
+  evaluateExpression,
   getExpectedPropTypeName,
+  getValueByPath,
+  hasComponentInstance,
   hookEmit,
   hookOn,
-  isHTMLElementWithInstance,
+  isSimplePathExpression,
   kebabToCamel,
+  setValueByPath,
+  extractWatchListFromTemplate,
 } from "./utils";
 
 import { Core } from ".";
@@ -25,6 +30,7 @@ import {
   type ComponentSource,
   type Data,
   type Events,
+  type HTMLElementWithInstance,
   type Props,
   type Refs,
 } from "./types";
@@ -35,7 +41,7 @@ function getParentInstance(el: Element): ComponentInstance | undefined {
     el.parentElement ??
     (rootNode instanceof ShadowRoot ? rootNode.host : undefined);
 
-  if (isHTMLElementWithInstance(parent)) {
+  if (hasComponentInstance(parent)) {
     return parent.instance;
   }
 
@@ -98,10 +104,9 @@ export function validateProp({
   if (!propOptions) return true;
 
   const expectedType = getExpectedPropTypeName(propOptions.type);
-
   const actualType = Array.isArray(pValue) ? "array" : typeof pValue;
 
-  const typeMatches = {
+  const typeChecks: Record<string, boolean> = {
     string: actualType === "string",
     number: actualType === "number",
     boolean: actualType === "boolean",
@@ -109,7 +114,11 @@ export function validateProp({
     object:
       actualType === "object" && pValue !== null && !Array.isArray(pValue),
     function: actualType === "function",
-  }[expectedType];
+  };
+
+  // If expected type is unknown, skip runtime type validation
+  const typeMatches =
+    expectedType === "unknown" ? true : typeChecks[expectedType] ?? false;
 
   if (!typeMatches) {
     console.error(
@@ -145,23 +154,87 @@ function processProps({
   data: Data;
 }) {
   const hasDefinedProps = Object.keys(props).length > 0;
+
+  const defineBoundProp = (propName: string, parentPath: string) => {
+    Object.defineProperty(data, propName, {
+      enumerable: true,
+      configurable: true,
+      get() {
+        if (!parent) return undefined
+        return getValueByPath(parent.data, parentPath)
+      },
+      set(next) {
+        if (!parent) return
+
+        try {
+          setValueByPath(parent.data, parentPath, next)
+        } catch (error) {
+          console.error(
+            `❌ Failed to set bound prop "${propName}" → "${parentPath}"`,
+            error,
+          )
+        }
+      },
+    })
+  };
+
   Array.from(ele.attributes).forEach((attr) => {
     const isDynamic = attr.name.startsWith(":");
     const propName = kebabToCamel(attr.name.substring(isDynamic ? 1 : 0));
-    const value = isDynamic
-      ? parent?.data[propName]
-      : attr.value !== ""
-        ? attr.value
-        : true;
+
+    // ignore ":" without parent (SSR, standalone, etc.)
+    if (isDynamic && !parent) return;
+
+    // If component declares props, validate against it (as far as possible)
+    const isAllowed =
+      !hasDefinedProps || (props[propName] && props[propName] !== undefined);
+
+    if (!isAllowed) return;
+
+    // STATIC
+    if (!isDynamic) {
+      const value = attr.value !== "" ? attr.value : true;
+
+      if (
+        !hasDefinedProps ||
+        validateProp({ propName, propValue: value, props })
+      ) {
+        data[propName] = value;
+      }
+
+      return;
+    }
+
+    // DYNAMIC
+    const expr = attr.value?.trim() ?? "";
+
+    // If it's a simple path, create a true binding (two-way)
+    if (expr && isSimplePathExpression(expr)) {
+      // validate based on current value (read)
+      const currentValue = getValueByPath(parent!.data, expr);
+
+      if (
+        !hasDefinedProps ||
+        validateProp({ propName, propValue: currentValue, props })
+      ) {
+        defineBoundProp(propName, expr);
+      }
+
+      return;
+    }
+
+    // Otherwise: evaluate expression one-way (read-only)
+    const evaluated = expr ? evaluateExpression(expr, parent!.data) : undefined;
 
     if (
       !hasDefinedProps ||
-      (props[propName] && validateProp({ propName, propValue: value, props }))
+      validateProp({ propName, propValue: evaluated, props })
     ) {
-      data[propName] = value;
+      data[propName] = evaluated;
     }
   });
 
+  // Defaults / required
   for (const [propName, propOptions] of Object.entries(props)) {
     if (!(propName in data)) {
       if (propOptions.default !== undefined) {
@@ -181,7 +254,11 @@ export function registerComponent(
     componentName,
     class extends HTMLElement {
       private template: HTMLTemplateElement;
-      private instance?: ComponentInstance;
+
+      /**
+       * Nicht private: wir wollen kompatibel bleiben und über HTMLElementWithInstance arbeiten.
+       */
+      public instance?: ComponentInstance;
 
       constructor() {
         super();
@@ -190,10 +267,15 @@ export function registerComponent(
       }
 
       async connectedCallback() {
-        const parent = getParentInstance(this);
+        const host = this as HTMLElementWithInstance;
+
+        // Parent früh ermitteln (bevor replaceChildren Children aktiviert)
+        const parent = getParentInstance(host);
+
         const clonedTemplate = this.template.cloneNode(
           true,
         ) as HTMLTemplateElement;
+
         const compiledScript = compileCode(source.script);
 
         const refs: Refs = {};
@@ -205,9 +287,11 @@ export function registerComponent(
 
         // Ready promise setup
         const ready: { promise: Promise<void>; resolve: () => void } = (() => {
-          let resolve: () => void;
-          const promise = new Promise<void>((res) => (resolve = res));
-          return { promise, resolve: resolve! };
+          let resolve!: () => void;
+          const promise = new Promise<void>((res) => {
+            resolve = res;
+          });
+          return { promise, resolve };
         })();
 
         // Style injection
@@ -218,7 +302,11 @@ export function registerComponent(
           document.head.appendChild(style);
         }
 
-        // WICHTIG: take function mit this-binding
+        /**
+         * TDZ-fix für data: Variable existiert sofort, wird später gesetzt.
+         */
+        let data!: Data;
+
         const take = (pluginName: string) => {
           const plugin = ExtensionRegistry.plugins[pluginName];
 
@@ -229,9 +317,7 @@ export function registerComponent(
             return undefined;
           }
 
-          // setup() mit data als this-Context aufrufen
           try {
-            // WICHTIG: call mit data als this
             return plugin.setup.call(data);
           } catch (error) {
             console.error(`Plugin "${pluginName}" setup failed:`, error);
@@ -239,27 +325,76 @@ export function registerComponent(
           }
         };
 
-        // WICHTIG: Sammle alle Module und führe attach() aus
+        // Modules attach
         const attachedModules: Record<string, any> = {};
-
         for (const [moduleName, module] of Object.entries(
           ExtensionRegistry.modules,
         )) {
           if (typeof module.attach === "function") {
-            // attach() mit Component Context ausführen
             const attached = module.attach.call({
-              element: this,
+              element: host,
               parent,
               core: { take: Core.take },
             });
 
-            // Füge das Modul mit $ prefix hinzu
             if (attached) {
               attachedModules[`$${moduleName}`] = attached;
             }
           }
         }
 
+        // Script ausführen
+        const controller = compiledScript({
+          $refs: refs,
+          $parent: parent,
+          $emit: emit,
+          $take: take,
+          $handleEventFromChild: handleEventFromChild,
+          ...attachedModules,
+        });
+
+        // Model setup
+        const model = createModel(controller.data ?? {});
+        data = model.data;
+
+        // Controller Bits
+        const methods = controller.methods || {};
+        const props = controller.props || {};
+        const events = (controller.events || []) satisfies Events;
+
+        let watchList = controller.watchList || [];
+
+        processProps({
+          ele: host,
+          parent,
+          props,
+          data,
+        });
+
+        bindMethods(data, methods);
+
+        // Hooks registrieren
+        for (const hook of lifecycleHooks) {
+          const fn = controller[hook];
+          if (typeof fn === "function") {
+            hookOn(lifecycleRegistry, hook, async () => await fn.bind(data)());
+          }
+        }
+
+        const autoWatch = extractWatchListFromTemplate(this.template.innerHTML).filter((p) => {
+          const root = p.split(".")[0]!
+          return Object.prototype.hasOwnProperty.call(data, root)
+        });
+
+        // Watch setup
+        watchList = Array.from(
+          new Set([...watchList, ...autoWatch, ...Object.keys(props)]),
+        )
+        watchList.forEach((path) => model.watch(path));
+
+        /**
+         * render zuerst definieren (sonst TDZ wenn Observer feuert)
+         */
         const render = async () => {
           if (isRendering) return;
 
@@ -273,7 +408,7 @@ export function registerComponent(
               true,
             ) as DocumentFragment;
 
-            processSlots({ container, host: this });
+            processSlots({ container, host });
 
             await processTemplate(container, data, refs);
             await hookEmit("global", "processed", data);
@@ -292,14 +427,13 @@ export function registerComponent(
               isMounted ? "beforeUpdate" : "beforeMount",
             );
 
-            this.replaceChildren(container);
+            host.replaceChildren(container);
 
             await hookEmit("global", "updated", data);
             if (isMounted) {
               await hookEmit(lifecycleRegistry, "updated");
             }
 
-            // Nur wenn alles durch ist, Cache aktualisieren
             lastRenderedData = currentData;
           } catch (error) {
             console.error("❌ Error during render:", error);
@@ -308,21 +442,28 @@ export function registerComponent(
           }
         };
 
-        // Erweitere den Context für compiledScript
-        const controller = compiledScript({
+        /**
+         * Parent/Child Fix: instance VOR initial render setzen
+         */
+        host.instance = {
+          element: host,
+          template: clonedTemplate,
+          data,
+          props,
+          methods,
+          events,
+          watchList,
           $refs: refs,
           $parent: parent,
           $emit: emit,
           $take: take,
           $handleEventFromChild: handleEventFromChild,
-          ...attachedModules, // Alle Module hinzufügen
-        });
+          readyPromise: ready.promise,
+          lifecycleRegistry,
+          ...attachedModules,
+        } satisfies ComponentInstance;
 
-        // Model setup
-        const model = createModel(controller.data ?? {});
-        const { data } = model;
-
-        // Observer hinzufügen
+        // Observer hinzufügen (jetzt render bereits definiert)
         model.addObserver(() => {
           requestAnimationFrame(() => {
             void render().catch((error) => {
@@ -331,66 +472,29 @@ export function registerComponent(
           });
         });
 
-        // Setze die Daten und Methoden
-        const methods = controller.methods || {};
-        const props = controller.props || {};
-        const events = (controller.events || []) satisfies Events;
-        let watchList = controller.watchList || [];
-
-        processProps({
-          ele: this,
-          parent,
-          props,
-          data,
-        });
-
-        bindMethods(data, methods);
-
-        // Lifecycle-Hooks aus dem Controller in die Registry eintragen
-        for (const hook of lifecycleHooks) {
-          const fn = controller[hook];
-          if (typeof fn === "function") {
-            hookOn(lifecycleRegistry, hook, async () => await fn.bind(data)());
-          }
-        }
-
-        // Watch setup
-        watchList = Array.from(new Set([...watchList, ...Object.keys(props)]));
-        watchList.forEach((path) => model.watch(path));
-
+        // created
         await hookEmit("global", "created", data);
         await hookEmit(lifecycleRegistry, "created");
 
+        // initial render
         await render();
 
+        // mounted
         if (!isMounted) {
           await hookEmit("global", "mounted", data);
           await hookEmit(lifecycleRegistry, "mounted");
           isMounted = true;
         }
 
-        this.instance = {
-          element: this,
-          template: clonedTemplate,
-          data,
-          props,
-          methods,
-          events,
-          watchList: controller.watchList ?? [],
-          $refs: refs,
-          $parent: parent,
-          $emit: emit,
-          $take: take,
-          $handleEventFromChild: handleEventFromChild,
-          readyPromise: ready.promise,
-          lifecycleRegistry,
-        } satisfies ComponentInstance;
-
         ready.resolve();
       }
 
       async disconnectedCallback() {
-        const instance = this.instance!;
+        const host = this as HTMLElementWithInstance;
+        if (!host.instance) return;
+
+        const instance = host.instance;
+
         await hookEmit("global", "beforeDestroy", instance.data);
         await hookEmit(instance.lifecycleRegistry, "beforeDestroy");
 
