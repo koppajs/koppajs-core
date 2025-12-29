@@ -16,7 +16,9 @@ export function isArrowFunction(func: AnyFn): boolean {
   return typeof func === "function" && !Object.hasOwn(func, "prototype");
 }
 
-export function bindOnce(fn: AnyFn, bindings: Data): AnyFn {
+export function bindOnce(fn?: AnyFn, bindings?: Data): AnyFn | undefined {
+  if (!bindings) return fn!;
+  if (!fn) return;
   if (typeof fn !== "function") return fn;
 
   // Arrow: bind bringt nichts für `this`
@@ -55,7 +57,7 @@ export function bindMethods(methods: Methods, bindings: Data): void {
       typeof fn === "function"
     ) {
       // methods[name] = fn.bind(bindings as Data);
-      methods[name] = bindOnce(fn, bindings);
+      methods[name] = bindOnce(fn, bindings) || fn;
     }
   }
 }

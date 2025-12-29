@@ -120,6 +120,13 @@ export interface ComponentSource {
    * The core runtime may re-attach this map for DevTools when evaluating scripts.
    */
   scriptMap?: string | null;
+
+  /**
+   * Component composition type.
+   *
+   * Controls how the component logic is assembled and bound at runtime.
+   */
+  type: "options" | "composite";
 }
 
 /**

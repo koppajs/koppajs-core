@@ -265,6 +265,7 @@ export function registerComponent(
 
       async connectedCallback() {
         const host = this as HTMLElementWithInstance;
+        const componentType = source.type || "options";
 
         // Parent früh ermitteln (bevor replaceChildren Children aktiviert)
         const parent = getParentInstance(host);
@@ -303,7 +304,7 @@ export function registerComponent(
          * TDZ-fix für data: Variable existiert sofort, wird später gesetzt.
          */
         let data!: Data;
-        let bindings!: Data;
+        let bindings: Data | undefined;
 
         const take = (pluginName: string) => {
           const plugin = ExtensionRegistry.plugins[pluginName];
@@ -350,7 +351,7 @@ export function registerComponent(
             const handler = current.methods?.[handlerName];
             const cb = current.bindings;
             if (typeof handler === "function" && cb) {
-              bindOnce(handler, cb)(...args);
+              bindOnce(handler, cb)?.(...args);
             }
 
             current = current.$parent;
@@ -384,19 +385,18 @@ export function registerComponent(
           data,
         });
 
-        bindings = composeBySource([methods, data]);
-
-        bindMethods(methods, bindings);
+        if (componentType === "options") {
+          bindings = composeBySource([methods, data]);
+          bindMethods(methods, bindings);
+        }
 
         // Hooks registrieren
         for (const hook of lifecycleHooks) {
-          const fn = controller[hook];
+          const fn = bindOnce(controller[hook], bindings);
           if (typeof fn === "function") {
-            hookOn(
-              lifecycleRegistry,
-              hook,
-              async () => await fn.bind(bindings)()
-            );
+            hookOn(lifecycleRegistry, hook, async () => {
+              await fn();
+            });
           }
         }
 
