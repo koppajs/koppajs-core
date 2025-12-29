@@ -1,8 +1,8 @@
-import { bindOnce, isArrowFunction } from "./utils";
+import { bindOnce } from "./utils";
 import type { AnyFn, Data, Events, Methods, Refs } from "./types";
 
 export function setupEvents(
-  bindings: Data | undefined,
+  bindings: Data,
   events: Events,
   container: DocumentFragment,
   refs: Refs
@@ -44,8 +44,7 @@ export function setupEvents(
     }
 
     for (const el of elements) {
-      const boundHandler = bindOnce(handler, bindings);
-      if (boundHandler) el.addEventListener(type, boundHandler);
+      el.addEventListener(type, bindOnce(handler, bindings));
     }
   });
 }
@@ -53,7 +52,7 @@ export function setupEvents(
 export function bindNativeEvents(
   methods: Methods,
   fragment: DocumentFragment,
-  bindings?: Data
+  bindings: Data
 ): void {
   const events = [
     "click",
@@ -107,12 +106,9 @@ export function bindNativeEvents(
     for (const el of fragment.querySelectorAll(`[on${type}]`)) {
       const handlerName = el.getAttribute(`on${type}`);
       if (handlerName && typeof methods[handlerName] === "function") {
-        const handler = methods[handlerName];
+        const handler = methods[handlerName] as AnyFn;
         el.removeAttribute(`on${type}`);
-        if (handler) {
-          const boundHandler = bindOnce(handler, bindings);
-          if (boundHandler) el.addEventListener(type, boundHandler);
-        }
+        el.addEventListener(type, bindOnce(handler, bindings));
       }
     }
   }

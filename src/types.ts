@@ -126,7 +126,7 @@ export interface ComponentSource {
    *
    * Controls how the component logic is assembled and bound at runtime.
    */
-  type: "options" | "composite";
+  // type: "options" | "composite";
 }
 
 /**

@@ -6,23 +6,8 @@ import {
   type Methods,
 } from "../types";
 
-/**
- * Checks whether a given function is an arrow function.
- *
- * @param func - The function to check
- * @returns True if the function is an arrow function, otherwise false
- */
-export function isArrowFunction(func: AnyFn): boolean {
-  return typeof func === "function" && !Object.hasOwn(func, "prototype");
-}
-
-export function bindOnce(fn?: AnyFn, bindings?: Data): AnyFn | undefined {
-  if (!bindings) return fn!;
-  if (!fn) return;
+export function bindOnce(fn: AnyFn, bindings: Data): AnyFn {
   if (typeof fn !== "function") return fn;
-
-  // Arrow: bind bringt nichts für `this`
-  if (isArrowFunction(fn)) return fn;
 
   const maybe = fn as BoundFn;
   if (maybe[BOUND]) return fn;
@@ -57,7 +42,7 @@ export function bindMethods(methods: Methods, bindings: Data): void {
       typeof fn === "function"
     ) {
       // methods[name] = fn.bind(bindings as Data);
-      methods[name] = bindOnce(fn, bindings) || fn;
+      methods[name] = bindOnce(fn, bindings);
     }
   }
 }
