@@ -1,9 +1,4 @@
-import {
-  bindNativeEvents,
-  emit,
-  handleEventFromChild,
-  setupEvents,
-} from "./event-handler";
+import { bindNativeEvents, setupEvents } from "./event-handler";
 import { createModel } from "./model";
 import { processTemplate } from "./template-processor";
 import {
@@ -21,6 +16,7 @@ import {
   kebabToCamel,
   setValueByPath,
   extractWatchListFromTemplate,
+  bindOnce,
 } from "./utils";
 
 import { Core } from ".";
@@ -34,6 +30,7 @@ import {
   type Props,
   type Refs,
 } from "./types";
+import { composeBySource } from "./compose";
 
 function getParentInstance(el: Element): ComponentInstance | undefined {
   const rootNode = el.getRootNode();
@@ -57,7 +54,7 @@ export function processSlots({
 }): void {
   const slotContent = Array.from(host.childNodes).filter(
     (node) =>
-      node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE,
+      node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE
   );
 
   const slotMap: Record<string, Node[]> = {};
@@ -118,12 +115,12 @@ export function validateProp({
 
   // If expected type is unknown, skip runtime type validation
   const typeMatches =
-    expectedType === "unknown" ? true : typeChecks[expectedType] ?? false;
+    expectedType === "unknown" ? true : (typeChecks[expectedType] ?? false);
 
   if (!typeMatches) {
     console.error(
       `❌ Prop "${propName}" should be of type "${expectedType}", but got "${actualType}".`,
-      pValue,
+      pValue
     );
     return false;
   }
@@ -134,7 +131,7 @@ export function validateProp({
     !new RegExp(propOptions.regex).test(pValue)
   ) {
     console.error(
-      `❌ Prop "${propName}" does not match regex "${propOptions.regex}".`,
+      `❌ Prop "${propName}" does not match regex "${propOptions.regex}".`
     );
     return false;
   }
@@ -160,22 +157,22 @@ function processProps({
       enumerable: true,
       configurable: true,
       get() {
-        if (!parent) return undefined
-        return getValueByPath(parent.data, parentPath)
+        if (!parent) return undefined;
+        return getValueByPath(parent.data, parentPath);
       },
       set(next) {
-        if (!parent) return
+        if (!parent) return;
 
         try {
-          setValueByPath(parent.data, parentPath, next)
+          setValueByPath(parent.data, parentPath, next);
         } catch (error) {
           console.error(
             `❌ Failed to set bound prop "${propName}" → "${parentPath}"`,
-            error,
-          )
+            error
+          );
         }
       },
-    })
+    });
   };
 
   Array.from(ele.attributes).forEach((attr) => {
@@ -248,7 +245,7 @@ function processProps({
 
 export function registerComponent(
   componentName: string,
-  source: ComponentSource,
+  source: ComponentSource
 ): void {
   customElements.define(
     componentName,
@@ -273,7 +270,7 @@ export function registerComponent(
         const parent = getParentInstance(host);
 
         const clonedTemplate = this.template.cloneNode(
-          true,
+          true
         ) as HTMLTemplateElement;
 
         const compiledScript = compileCode(source.script);
@@ -306,13 +303,14 @@ export function registerComponent(
          * TDZ-fix für data: Variable existiert sofort, wird später gesetzt.
          */
         let data!: Data;
+        let bindings!: Data;
 
         const take = (pluginName: string) => {
           const plugin = ExtensionRegistry.plugins[pluginName];
 
           if (!plugin || typeof plugin.setup !== "function") {
             console.warn(
-              `Plugin "${pluginName}" not found or has no setup method`,
+              `Plugin "${pluginName}" not found or has no setup method`
             );
             return undefined;
           }
@@ -328,7 +326,7 @@ export function registerComponent(
         // Modules attach
         const attachedModules: Record<string, any> = {};
         for (const [moduleName, module] of Object.entries(
-          ExtensionRegistry.modules,
+          ExtensionRegistry.modules
         )) {
           if (typeof module.attach === "function") {
             const attached = module.attach.call({
@@ -343,13 +341,28 @@ export function registerComponent(
           }
         }
 
+        // $emit Funktion
+        const $emit = (eventName: string, ...args: any[]) => {
+          let current = parent;
+
+          while (current) {
+            const handlerName = `on${eventName.charAt(0).toUpperCase()}${eventName.slice(1)}`;
+            const handler = current.methods?.[handlerName];
+            const cb = current.bindings;
+            if (typeof handler === "function" && cb) {
+              bindOnce(handler, cb)(...args);
+            }
+
+            current = current.$parent;
+          }
+        };
+
         // Script ausführen
         const controller = compiledScript({
           $refs: refs,
           $parent: parent,
-          $emit: emit,
+          $emit,
           $take: take,
-          $handleEventFromChild: handleEventFromChild,
           ...attachedModules,
         });
 
@@ -371,25 +384,33 @@ export function registerComponent(
           data,
         });
 
-        bindMethods(data, methods);
+        bindings = composeBySource([methods, data]);
+
+        bindMethods(methods, bindings);
 
         // Hooks registrieren
         for (const hook of lifecycleHooks) {
           const fn = controller[hook];
           if (typeof fn === "function") {
-            hookOn(lifecycleRegistry, hook, async () => await fn.bind(data)());
+            hookOn(
+              lifecycleRegistry,
+              hook,
+              async () => await fn.bind(bindings)()
+            );
           }
         }
 
-        const autoWatch = extractWatchListFromTemplate(this.template.innerHTML).filter((p) => {
-          const root = p.split(".")[0]!
-          return Object.prototype.hasOwnProperty.call(data, root)
+        const autoWatch = extractWatchListFromTemplate(
+          this.template.innerHTML
+        ).filter((p) => {
+          const root = p.split(".")[0]!;
+          return Object.prototype.hasOwnProperty.call(data, root);
         });
 
         // Watch setup
         watchList = Array.from(
-          new Set([...watchList, ...autoWatch, ...Object.keys(props)]),
-        )
+          new Set([...watchList, ...autoWatch, ...Object.keys(props)])
+        );
         watchList.forEach((path) => model.watch(path));
 
         /**
@@ -405,7 +426,7 @@ export function registerComponent(
 
           try {
             const container = clonedTemplate.content.cloneNode(
-              true,
+              true
             ) as DocumentFragment;
 
             processSlots({ container, host });
@@ -414,17 +435,17 @@ export function registerComponent(
             await hookEmit("global", "processed", data);
             await hookEmit(lifecycleRegistry, "processed");
 
-            bindNativeEvents(data, container);
-            setupEvents(data, events, container, refs);
+            bindNativeEvents(methods, container, bindings);
+            setupEvents(bindings, events, container, refs);
 
             await hookEmit(
               "global",
               isMounted ? "beforeUpdate" : "beforeMount",
-              data,
+              data
             );
             await hookEmit(
               lifecycleRegistry,
-              isMounted ? "beforeUpdate" : "beforeMount",
+              isMounted ? "beforeUpdate" : "beforeMount"
             );
 
             host.replaceChildren(container);
@@ -449,15 +470,15 @@ export function registerComponent(
           element: host,
           template: clonedTemplate,
           data,
+          bindings,
           props,
           methods,
           events,
           watchList,
           $refs: refs,
           $parent: parent,
-          $emit: emit,
+          $emit,
           $take: take,
-          $handleEventFromChild: handleEventFromChild,
           readyPromise: ready.promise,
           lifecycleRegistry,
           ...attachedModules,
@@ -507,6 +528,6 @@ export function registerComponent(
         await hookEmit("global", "destroyed", instance.data);
         await hookEmit(instance.lifecycleRegistry, "destroyed");
       }
-    },
+    }
   );
 }

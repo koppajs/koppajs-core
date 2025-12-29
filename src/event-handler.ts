@@ -1,82 +1,19 @@
-import { isArrowFunction } from "./utils";
-import type { AnyFn, ComponentInstance, Data, Events, Refs } from "./types";
-
-export function emit(parent: ComponentInstance | undefined, eventName: string, ...args: any[]) {
-  if (!parent) return;
-  handleEventFromChild(parent, parent.data, eventName, ...args);
-}
-
-export function handleEventFromChild(
-  parent: ComponentInstance | undefined,
-  data: Data,
-  eventName: string,
-  ...args: any[]
-): void {
-  if (!parent) return;
-
-  const handlerName = `on${eventName.charAt(0).toUpperCase()}${eventName.slice(1)}`;
-
-  if (typeof parent.data[handlerName] === "function") {
-    parent.data[handlerName](...args);
-  }
-
-  // bubble to grandparent
-  const next = parent.$parent;
-  if (next) {
-    handleEventFromChild(next, next.data, eventName, ...args);
-  }
-}
-
-
-export function createSubmitHandler(handler: AnyFn, context: Data) {
-  return (event: Event) => {
-    event.preventDefault();
-    handler.call(context, event);
-  };
-}
-
-export function createArrowHandler(handler: AnyFn, context: Data) {
-  return (event: Event) => {
-    event.preventDefault();
-    handler.call(context, event);
-  };
-}
-
-export function createBoundHandler(
-  handler: AnyFn,
-  context: any,
-  eventType: string,
-): (event: Event) => void {
-  if (typeof handler !== "function") {
-    console.error("❌ Provided handler is not a function.", {
-      handler,
-      context,
-      eventType,
-    });
-    return () => {};
-  }
-
-  if (isArrowFunction(handler)) {
-    return createArrowHandler(handler, context);
-  }
-
-  if (eventType === "submit") {
-    return createSubmitHandler(handler, context);
-  }
-
-  return handler.bind(context);
-}
+import { bindOnce, isArrowFunction } from "./utils";
+import type { AnyFn, Data, Events, Methods, Refs } from "./types";
 
 export function setupEvents(
-  data: Data,
+  bindings: Data,
   events: Events,
   container: DocumentFragment,
-  refs: Refs,
+  refs: Refs
 ): void {
   if (!Array.isArray(events)) return;
 
   events.forEach(([type, target, handler]) => {
-    if (typeof type !== "string" || typeof handler !== "function") return;
+    if (typeof type !== "string" || typeof handler !== "function") {
+      console.error("❌ Provided handler is not a function.", handler);
+      return;
+    }
 
     let elements: (Element | Window)[] = [];
 
@@ -107,13 +44,16 @@ export function setupEvents(
     }
 
     for (const el of elements) {
-      const bound = createBoundHandler(handler, data, type);
-      el.addEventListener(type, bound);
+      el.addEventListener(type, bindOnce(handler, bindings));
     }
   });
 }
 
-export function bindNativeEvents(data: Data, fragment: DocumentFragment): void {
+export function bindNativeEvents(
+  methods: Methods,
+  fragment: DocumentFragment,
+  bindings: Data
+): void {
   const events = [
     "click",
     "input",
@@ -165,13 +105,10 @@ export function bindNativeEvents(data: Data, fragment: DocumentFragment): void {
   for (const type of events) {
     for (const el of fragment.querySelectorAll(`[on${type}]`)) {
       const handlerName = el.getAttribute(`on${type}`);
-      if (handlerName && typeof data[handlerName] === "function") {
-        const bound = (e: Event) => {
-          e.preventDefault();
-          data[handlerName](e);
-        };
+      if (handlerName && typeof methods[handlerName] === "function") {
+        const handler = methods[handlerName] as AnyFn;
         el.removeAttribute(`on${type}`);
-        el.addEventListener(type, bound);
+        el.addEventListener(type, bindOnce(handler, bindings));
       }
     }
   }

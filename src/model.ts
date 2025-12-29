@@ -1,14 +1,9 @@
-/**
- * Symbol to identify whether an object is a Proxy.
- */
-const IS_PROXY = Symbol("isProxy");
+import { IS_PROXY, WatchListSnapshot } from "./types";
 
 /**
  * WeakMap für Proxy Cache - global für alle Models
  */
 const globalProxyCache = new WeakMap<object, object>();
-
-type WatchListSnapshot = { parent: object; properties: string[] };
 
 const isObject = (value: unknown): value is object =>
   typeof value === "object" && value !== null;
@@ -35,7 +30,7 @@ const isPrimitive = (value: unknown): boolean =>
     typeof value === "undefined");
 
 export function createModel<T extends Record<string, unknown>>(
-  initialData: T,
+  initialData: T
 ): {
   data: T;
   watch: (path: string, deep?: boolean) => void;
@@ -56,7 +51,7 @@ export function createModel<T extends Record<string, unknown>>(
   const hasWatchEntry = (
     parentObj?: object,
     property?: string,
-    value?: unknown,
+    value?: unknown
   ): boolean => {
     if (parentObj && property) {
       return watchList.get(parentObj)?.has(property) ?? false;
@@ -96,12 +91,12 @@ export function createModel<T extends Record<string, unknown>>(
   // Diff functions for arrays
   const findLCSByRef = (
     oldArr: unknown[],
-    newArr: unknown[],
+    newArr: unknown[]
   ): [number, number][] => {
     const lenA = oldArr.length;
     const lenB = newArr.length;
     const dp: number[][] = Array.from({ length: lenA + 1 }, () =>
-      new Array(lenB + 1).fill(0),
+      new Array(lenB + 1).fill(0)
     );
 
     for (let i = 1; i <= lenA; i++) {
@@ -135,7 +130,7 @@ export function createModel<T extends Record<string, unknown>>(
 
   const diffArraysByReferenceNoDeepMerge = (
     oldArr: unknown[],
-    newArr: unknown[],
+    newArr: unknown[]
   ): void => {
     if (oldArr === newArr) return;
 
@@ -197,7 +192,7 @@ export function createModel<T extends Record<string, unknown>>(
 
   const mergeInPlaceObject = (
     oldObj: Record<string, unknown>,
-    newObj: Record<string, unknown>,
+    newObj: Record<string, unknown>
   ): void => {
     if (oldObj === newObj) return;
 
@@ -216,10 +211,15 @@ export function createModel<T extends Record<string, unknown>>(
 
       if (oldVal === newVal) continue;
 
-      if (isObject(oldVal) && isProxy(oldVal) && isObject(newVal) && !isProxy(newVal)) {
+      if (
+        isObject(oldVal) &&
+        isProxy(oldVal) &&
+        isObject(newVal) &&
+        !isProxy(newVal)
+      ) {
         mergeInPlaceObject(
           oldVal as Record<string, unknown>,
-          newVal as Record<string, unknown>,
+          newVal as Record<string, unknown>
         );
         if (oldVal !== newVal && isWatched(oldObj, key)) {
           enhancedCallback();
@@ -277,7 +277,7 @@ export function createModel<T extends Record<string, unknown>>(
         ) {
           mergeInPlaceObject(
             oldValue as Record<string, unknown>,
-            value as Record<string, unknown>,
+            value as Record<string, unknown>
           );
           if (oldValue !== value) {
             enhancedCallback();
@@ -342,7 +342,7 @@ export function createModel<T extends Record<string, unknown>>(
 
   const processWatchString = (
     path: string,
-    data: T,
+    data: T
   ): {
     grandParent?: Record<string, unknown>;
     parentPropertyName?: string;
@@ -363,13 +363,13 @@ export function createModel<T extends Record<string, unknown>>(
     for (const seg of segments) {
       if (!isObject(temp)) {
         throw new Error(
-          `❌ Invalid path "${path}". Segment "${seg}" is not an object.`,
+          `❌ Invalid path "${path}". Segment "${seg}" is not an object.`
         );
       }
       const next = Reflect.get(temp, seg) as unknown;
       if (!next) {
         throw new Error(
-          `❌ Invalid path "${path}". Segment "${seg}" does not exist.`,
+          `❌ Invalid path "${path}". Segment "${seg}" does not exist.`
         );
       }
       temp = next;
@@ -381,7 +381,7 @@ export function createModel<T extends Record<string, unknown>>(
       parent = grandParent[parentPropertyName];
       if (!isObject(parent)) {
         throw new Error(
-          `❌ Invalid path. No parent object for property "${parentPropertyName}".`,
+          `❌ Invalid path. No parent object for property "${parentPropertyName}".`
         );
       }
     } else {
