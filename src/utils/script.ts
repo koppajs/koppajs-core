@@ -3,7 +3,15 @@ import type {
   ComponentContext,
   ComponentController,
 } from "../types";
+import { logger } from "./logger";
 
+/**
+ * Compiles component script string into an executable function.
+ * Exposes context variables ($refs, $parent, etc.) and dynamic module properties.
+ * @param strg - Component script string
+ * @returns Compiled script function
+ * @throws Error if compilation fails
+ */
 export function compileCode(strg: string): CompiledScript {
   const sanitizedCode = strg.replace(/\$-\{/g, "${");
 
@@ -31,11 +39,10 @@ export function compileCode(strg: string): CompiledScript {
 
     return compiled;
   } catch (error) {
-    console.error(
-      "❌ Fehler beim Kompilieren von dynamischem Code:\n",
-      functionBody,
-      "\n→",
-      error,
+    logger.errorWithContext(
+      "Failed to compile dynamic code",
+      { functionBody },
+      error
     );
     throw error;
   }

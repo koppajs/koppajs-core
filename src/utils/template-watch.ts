@@ -62,6 +62,12 @@ function extractFromExpression(expression: string): string[] {
   return out
 }
 
+/**
+ * Extracts property paths from template expressions for automatic watching.
+ * Parses {{ expression }} syntax and extracts simple property paths.
+ * @param templateHtml - Template HTML string
+ * @returns Array of unique property paths to watch
+ */
 export function extractWatchListFromTemplate(templateHtml: string): string[] {
   const found: string[] = []
   let match: RegExpExecArray | null

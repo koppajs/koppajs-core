@@ -130,21 +130,21 @@ pnpm add @koppajs/koppajs-vite-plugin -D
 
 ```ts
 import { defineConfig } from 'vite'
-import koppajs from '@koppajs/plugin-vite'
+import koppajs from '@koppajs/koppajs-vite-plugin'
 
 export default defineConfig({
-  plugins: [koppajs()]
+  plugins: [koppajs()]
 })
 ```
 
 ***2. Set up your entry file (`main.ts`)***
 
 ```ts
-import { koppajs } from '@koppajs/koppajs-core'
+import { Core } from '@koppajs/koppajs-core'
 import BtnCount from './components/btn-count.kpa'
 
-koppajs.take(BtnCount, 'btn-count')
-koppajs()
+Core.take(BtnCount, 'btn-count')
+Core()
 ```
 
 ***3. Create a `.kpa` Single File Component***
@@ -155,14 +155,14 @@ koppajs()
 [/template]
 
 [js]
-  return {
-    data: { count: 0 },
-    methods: {
-      increment() {
-        this.count++
-      }
-    }
-  }
+  return {
+    state: { count: 0 },
+    methods: {
+      increment() {
+        this.count++
+      }
+    }
+  }
 [/js]
 
 [css]

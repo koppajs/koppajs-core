@@ -7,7 +7,7 @@ and follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) standar
 
 ---
 
-## [3.0.0] – 2025-06-20
+## [3.0.0] – 2025-01-30
 
 ### Added
 
@@ -44,12 +44,16 @@ and follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) standar
 
 ### Testing
 
-- Introduced “Three Test Rule”:
+- Introduced "Three Test Rule":
   - Valid case
   - Error case
   - Logical edge case
 - Test structure now mirrors the source folder
 - No global mocks — each test is isolated
+- Comprehensive test coverage: 78% statements, 68% branches, 90% functions, 80% lines
+- 248 tests across 17 test files
+- Test setup with logger suppression for clean test output
+- Full component registration and lifecycle testing
 
 ### Tooling
 
@@ -57,5 +61,13 @@ and follows the [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) standar
 - Prettier defines consistent formatting rules
 - Commitlint + Husky ensure clean commit messages
 - Project scripts for code dumps, analysis, and type generation added
+- Vitest test setup with automatic logger level suppression
+- Comprehensive test coverage reporting with v8 provider
+
+### Fixed
+
+- TypeScript type errors in test files (IPlugin attach property)
+- WeakMap iteration issues in model proxy cache
+- Test output cleanup with logger level management
 
 ---

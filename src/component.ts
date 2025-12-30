@@ -1,4 +1,9 @@
-import { bindNativeEvents, setupEvents } from "./event-handler";
+import {
+  bindNativeEvents,
+  bindNativeEventsForComposite,
+  setupEvents,
+  setupEventsForComposite,
+} from "./event-handler";
 import { createModel } from "./model";
 import { processTemplate } from "./template-processor";
 import {
@@ -17,14 +22,16 @@ import {
   setValueByPath,
   extractWatchListFromTemplate,
   bindOnce,
+  logger,
 } from "./utils";
 
 import { Core } from ".";
 import {
   lifecycleHooks,
+  type AnyFn,
   type ComponentInstance,
   type ComponentSource,
-  type Data,
+  type State,
   type Events,
   type HTMLElementWithInstance,
   type Props,
@@ -32,6 +39,11 @@ import {
 } from "./types";
 import { composeBySource } from "./compose";
 
+/**
+ * Gets the parent component instance for an element.
+ * @param el - Element to find parent for
+ * @returns Parent component instance or undefined
+ */
 function getParentInstance(el: Element): ComponentInstance | undefined {
   const rootNode = el.getRootNode();
   const parent =
@@ -45,6 +57,12 @@ function getParentInstance(el: Element): ComponentInstance | undefined {
   return undefined;
 }
 
+/**
+ * Processes slot elements in component template.
+ * Replaces <slot> elements with content from host element.
+ * @param container - Template fragment containing slot elements
+ * @param host - Host element containing slot content
+ */
 export function processSlots({
   container,
   host,
@@ -86,6 +104,13 @@ export function processSlots({
   });
 }
 
+/**
+ * Validates a prop value against its definition.
+ * @param propName - Name of the prop
+ * @param propValue - Value to validate
+ * @param props - Props definition object
+ * @returns True if prop is valid, false otherwise
+ */
 export function validateProp({
   propName,
   propValue,
@@ -118,8 +143,8 @@ export function validateProp({
     expectedType === "unknown" ? true : (typeChecks[expectedType] ?? false);
 
   if (!typeMatches) {
-    console.error(
-      `❌ Prop "${propName}" should be of type "${expectedType}", but got "${actualType}".`,
+    logger.error(
+      `Prop "${propName}" should be of type "${expectedType}", but got "${actualType}".`,
       pValue
     );
     return false;
@@ -130,8 +155,8 @@ export function validateProp({
     typeof pValue === "string" &&
     !new RegExp(propOptions.regex).test(pValue)
   ) {
-    console.error(
-      `❌ Prop "${propName}" does not match regex "${propOptions.regex}".`
+    logger.error(
+      `Prop "${propName}" does not match regex "${propOptions.regex}".`
     );
     return false;
   }
@@ -139,35 +164,44 @@ export function validateProp({
   return true;
 }
 
+/**
+ * Processes component props from element attributes.
+ * Handles static props, dynamic props, and two-way bindings.
+ * @param ele - Component element
+ * @param parent - Parent component instance
+ * @param props - Props definition
+ * @param state - Component state to populate
+ */
 function processProps({
   ele,
   parent,
   props,
-  data,
+  state,
 }: {
   ele: HTMLElement;
   parent: ComponentInstance | undefined;
   props: Props;
-  data: Data;
+  state: State;
 }) {
   const hasDefinedProps = Object.keys(props).length > 0;
 
   const defineBoundProp = (propName: string, parentPath: string) => {
-    Object.defineProperty(data, propName, {
+    Object.defineProperty(state, propName, {
       enumerable: true,
       configurable: true,
       get() {
         if (!parent) return undefined;
-        return getValueByPath(parent.data, parentPath);
+        return getValueByPath(parent.state, parentPath);
       },
       set(next) {
         if (!parent) return;
 
         try {
-          setValueByPath(parent.data, parentPath, next);
+          setValueByPath(parent.state, parentPath, next);
         } catch (error) {
-          console.error(
-            `❌ Failed to set bound prop "${propName}" → "${parentPath}"`,
+          logger.errorWithContext(
+            `Failed to set bound prop "${propName}" → "${parentPath}"`,
+            { propName, parentPath },
             error
           );
         }
@@ -175,18 +209,18 @@ function processProps({
     });
   };
 
-  Array.from(ele.attributes).forEach((attr) => {
+  for (const attr of ele.attributes) {
     const isDynamic = attr.name.startsWith(":");
     const propName = kebabToCamel(attr.name.substring(isDynamic ? 1 : 0));
 
     // ignore ":" without parent (SSR, standalone, etc.)
-    if (isDynamic && !parent) return;
+    if (isDynamic && !parent) continue;
 
     // If component declares props, validate against it (as far as possible)
     const isAllowed =
       !hasDefinedProps || (props[propName] && props[propName] !== undefined);
 
-    if (!isAllowed) return;
+    if (!isAllowed) continue;
 
     // STATIC
     if (!isDynamic) {
@@ -196,10 +230,10 @@ function processProps({
         !hasDefinedProps ||
         validateProp({ propName, propValue: value, props })
       ) {
-        data[propName] = value;
+        state[propName] = value;
       }
 
-      return;
+      continue;
     }
 
     // DYNAMIC
@@ -208,7 +242,7 @@ function processProps({
     // If it's a simple path, create a true binding (two-way)
     if (expr && isSimplePathExpression(expr)) {
       // validate based on current value (read)
-      const currentValue = getValueByPath(parent!.data, expr);
+      const currentValue = getValueByPath(parent!.state, expr);
 
       if (
         !hasDefinedProps ||
@@ -217,32 +251,39 @@ function processProps({
         defineBoundProp(propName, expr);
       }
 
-      return;
+      continue;
     }
 
     // Otherwise: evaluate expression one-way (read-only)
-    const evaluated = expr ? evaluateExpression(expr, parent!.data) : undefined;
+    const evaluated = expr
+      ? evaluateExpression(expr, parent!.state)
+      : undefined;
 
     if (
       !hasDefinedProps ||
       validateProp({ propName, propValue: evaluated, props })
     ) {
-      data[propName] = evaluated;
+      state[propName] = evaluated;
     }
-  });
+  }
 
   // Defaults / required
   for (const [propName, propOptions] of Object.entries(props)) {
-    if (!(propName in data)) {
+    if (!(propName in state)) {
       if (propOptions.default !== undefined) {
-        data[propName] = propOptions.default;
+        state[propName] = propOptions.default;
       } else if (propOptions.required) {
-        console.error(`❌ Required prop "${propName}" is missing.`);
+        logger.error(`Required prop "${propName}" is missing.`);
       }
     }
   }
 }
 
+/**
+ * Registers a component with the custom elements registry.
+ * @param componentName - Custom element tag name
+ * @param source - Component source with template, script, and style
+ */
 export function registerComponent(
   componentName: string,
   source: ComponentSource
@@ -265,6 +306,10 @@ export function registerComponent(
 
       async connectedCallback() {
         const host = this as HTMLElementWithInstance;
+
+        // Component type bestimmen (default: "options")
+        const componentType = source.type || "options";
+        const useUserContext = componentType === "options";
 
         // Parent früh ermitteln (bevor replaceChildren Children aktiviert)
         const parent = getParentInstance(host);
@@ -300,25 +345,32 @@ export function registerComponent(
         }
 
         /**
-         * TDZ-fix für data: Variable existiert sofort, wird später gesetzt.
+         * TDZ-fix für state: Variable existiert sofort, wird später gesetzt.
          */
-        let data!: Data;
-        let bindings!: Data;
+        let state!: State;
+        let userContext!: State;
 
         const take = (pluginName: string) => {
           const plugin = ExtensionRegistry.plugins[pluginName];
 
           if (!plugin || typeof plugin.setup !== "function") {
-            console.warn(
-              `Plugin "${pluginName}" not found or has no setup method`
+            logger.warnWithContext(
+              `Plugin "${pluginName}" not found or has no setup method`,
+              { pluginName }
             );
             return undefined;
           }
 
           try {
-            return plugin.setup.call(data);
+            // Use userContext if available and type is "options", otherwise use state
+            const context = useUserContext && userContext ? userContext : state;
+            return plugin.setup.call(context);
           } catch (error) {
-            console.error(`Plugin "${pluginName}" setup failed:`, error);
+            logger.errorWithContext(
+              `Plugin "${pluginName}" setup failed`,
+              { pluginName },
+              error
+            );
             return undefined;
           }
         };
@@ -341,16 +393,36 @@ export function registerComponent(
           }
         }
 
-        // $emit Funktion
+        // $emit Funktion with caching
+        const handlerNameCache = new Map<string, string>();
+        const getHandlerName = (eventName: string): string => {
+          let cached = handlerNameCache.get(eventName);
+          if (!cached) {
+            cached = `on${eventName.charAt(0).toUpperCase()}${eventName.slice(1)}`;
+            handlerNameCache.set(eventName, cached);
+          }
+          return cached;
+        };
+
         const $emit = (eventName: string, ...args: any[]) => {
+          const handlerName = getHandlerName(eventName);
           let current = parent;
 
           while (current) {
-            const handlerName = `on${eventName.charAt(0).toUpperCase()}${eventName.slice(1)}`;
-            const handler = current.methods?.[handlerName];
-            const cb = current.bindings;
-            if (typeof handler === "function" && cb) {
-              bindOnce(handler, cb)(...args);
+            // Only use userContext if it exists (options type)
+            const cb = current.userContext;
+            if (cb) {
+              const handler = cb[handlerName];
+              if (typeof handler === "function") {
+                // Handler is already bound via bindMethods, use directly
+                (handler as AnyFn)(...args);
+              }
+            } else if (current.methods) {
+              // For composite type, use methods directly without binding
+              const handler = current.methods[handlerName];
+              if (typeof handler === "function") {
+                handler(...args);
+              }
             }
 
             current = current.$parent;
@@ -367,8 +439,8 @@ export function registerComponent(
         });
 
         // Model setup
-        const model = createModel(controller.data ?? {});
-        data = model.data;
+        const model = createModel(controller.state ?? {});
+        state = model.data;
 
         // Controller Bits
         const methods = controller.methods || {};
@@ -377,26 +449,34 @@ export function registerComponent(
 
         let watchList = controller.watchList || [];
 
+        // Create userContext only for "options" type
+        if (useUserContext) {
+          userContext = composeBySource([methods, state]);
+        }
+
         processProps({
           ele: host,
           parent,
           props,
-          data,
+          state,
         });
 
-        bindings = composeBySource([methods, data]);
-
-        bindMethods(methods, bindings);
+        // Bind methods only if userContext exists
+        if (useUserContext && userContext) {
+          bindMethods(methods, userContext);
+        }
 
         // Hooks registrieren
         for (const hook of lifecycleHooks) {
           const fn = controller[hook];
           if (typeof fn === "function") {
-            hookOn(
-              lifecycleRegistry,
-              hook,
-              async () => await fn.bind(bindings)()
-            );
+            // Bind hook only if userContext exists
+            const boundFn =
+              useUserContext && userContext ? bindOnce(fn, userContext) : fn;
+            hookOn(lifecycleRegistry, hook, async () => {
+              const result = boundFn();
+              if (result instanceof Promise) await result;
+            });
           }
         }
 
@@ -404,7 +484,7 @@ export function registerComponent(
           this.template.innerHTML
         ).filter((p) => {
           const root = p.split(".")[0]!;
-          return Object.prototype.hasOwnProperty.call(data, root);
+          return Object.prototype.hasOwnProperty.call(state, root);
         });
 
         // Watch setup
@@ -419,8 +499,8 @@ export function registerComponent(
         const render = async () => {
           if (isRendering) return;
 
-          const currentData = JSON.stringify(data);
-          if (lastRenderedData === currentData) return;
+          const currentState = JSON.stringify(state);
+          if (lastRenderedData === currentState) return;
 
           isRendering = true;
 
@@ -431,17 +511,25 @@ export function registerComponent(
 
             processSlots({ container, host });
 
-            await processTemplate(container, data, refs);
-            await hookEmit("global", "processed", data);
+            await processTemplate(container, state, refs);
+            const hookContext =
+              useUserContext && userContext ? userContext : state;
+            await hookEmit("global", "processed", hookContext);
             await hookEmit(lifecycleRegistry, "processed");
 
-            bindNativeEvents(methods, container, bindings);
-            setupEvents(bindings, events, container, refs);
+            if (useUserContext && userContext) {
+              bindNativeEvents(userContext, container);
+              setupEvents(userContext, events, container, refs);
+            } else {
+              // For composite type, use methods directly without binding
+              bindNativeEventsForComposite(methods, container);
+              setupEventsForComposite(methods, state, events, container, refs);
+            }
 
             await hookEmit(
               "global",
               isMounted ? "beforeUpdate" : "beforeMount",
-              data
+              hookContext
             );
             await hookEmit(
               lifecycleRegistry,
@@ -450,14 +538,18 @@ export function registerComponent(
 
             host.replaceChildren(container);
 
-            await hookEmit("global", "updated", data);
+            await hookEmit("global", "updated", hookContext);
             if (isMounted) {
               await hookEmit(lifecycleRegistry, "updated");
             }
 
-            lastRenderedData = currentData;
+            lastRenderedData = currentState;
           } catch (error) {
-            console.error("❌ Error during render:", error);
+            logger.errorWithContext(
+              "Error during render",
+              { componentName },
+              error
+            );
           } finally {
             isRendering = false;
           }
@@ -469,8 +561,8 @@ export function registerComponent(
         host.instance = {
           element: host,
           template: clonedTemplate,
-          data,
-          bindings,
+          state,
+          userContext: useUserContext ? userContext : undefined,
           props,
           methods,
           events,
@@ -488,13 +580,18 @@ export function registerComponent(
         model.addObserver(() => {
           requestAnimationFrame(() => {
             void render().catch((error) => {
-              console.error("❌ Error during render:", error);
+              logger.errorWithContext(
+                "Error during render (observer)",
+                { componentName },
+                error
+              );
             });
           });
         });
 
         // created
-        await hookEmit("global", "created", data);
+        const hookContext = useUserContext && userContext ? userContext : state;
+        await hookEmit("global", "created", hookContext);
         await hookEmit(lifecycleRegistry, "created");
 
         // initial render
@@ -502,7 +599,7 @@ export function registerComponent(
 
         // mounted
         if (!isMounted) {
-          await hookEmit("global", "mounted", data);
+          await hookEmit("global", "mounted", hookContext);
           await hookEmit(lifecycleRegistry, "mounted");
           isMounted = true;
         }
@@ -516,7 +613,8 @@ export function registerComponent(
 
         const instance = host.instance;
 
-        await hookEmit("global", "beforeDestroy", instance.data);
+        const destroyContext = instance.userContext || instance.state;
+        await hookEmit("global", "beforeDestroy", destroyContext);
         await hookEmit(instance.lifecycleRegistry, "beforeDestroy");
 
         if (!document.body.querySelector(this.tagName.toLowerCase())) {
@@ -525,7 +623,7 @@ export function registerComponent(
             ?.remove();
         }
 
-        await hookEmit("global", "destroyed", instance.data);
+        await hookEmit("global", "destroyed", destroyContext);
         await hookEmit(instance.lifecycleRegistry, "destroyed");
       }
     }

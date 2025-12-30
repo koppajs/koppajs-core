@@ -172,6 +172,19 @@ Additional rules:
 - No global mocks
 - Clear, explicit test data
 
+### Current Test Coverage
+
+- **248 tests** across **17 test files**
+- **78% statement coverage**, **68% branch coverage**, **90% function coverage**, **80% line coverage**
+- All tests passing with clean output (logger suppression in test environment)
+- Comprehensive component registration, lifecycle, and utility testing
+
+Run coverage report:
+
+```bash
+pnpm test:coverage
+```
+
 <p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
 ---
@@ -207,7 +220,8 @@ KoppaJS Core adheres to:
 | `pnpm dump-code`      | Output a full code snapshot (`---code_dump.txt`)                 |
 | `pnpm analyze-code`   | Analyze project structure and output report (`---code_analysis`) |
 | `pnpm list-structure` | Dump all tracked project files                                   |
-| `pnpm clean`          | Remove node_modules, dist, lockfiles                             |
+| `pnpm clean`          | Remove dist and coverage directories                             |
+| `pnpm deepclean`      | Remove node_modules, dist, and pnpm-lock.yaml                     |
 
 <p align="right">(<a href="#contributing-top">back to top</a>)</p>
 

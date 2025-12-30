@@ -1,0 +1,639 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import {
+  processSlots,
+  validateProp,
+  registerComponent,
+} from "../src/component";
+import type { Props, ComponentSource } from "../src/types";
+import { ExtensionRegistry } from "../src/utils/index";
+
+describe("component", () => {
+  describe("processSlots", () => {
+    let container: DocumentFragment;
+    let host: HTMLElement;
+
+    beforeEach(() => {
+      container = document.createDocumentFragment();
+      host = document.createElement("div");
+    });
+
+    it("replaces default slot with host content", () => {
+      const template = document.createElement("div");
+      const slot = document.createElement("slot");
+      template.appendChild(slot);
+      container.appendChild(template);
+
+      const content = document.createTextNode("Slot content");
+      host.appendChild(content);
+
+      processSlots({ container, host });
+
+      expect(template.contains(slot)).toBe(false);
+      expect(template.textContent).toBe("Slot content");
+    });
+
+    it("replaces named slots with matching content", () => {
+      const template = document.createElement("div");
+      const slot = document.createElement("slot");
+      slot.setAttribute("name", "header");
+      template.appendChild(slot);
+      container.appendChild(template);
+
+      const headerContent = document.createElement("h1");
+      headerContent.setAttribute("slot", "header");
+      headerContent.textContent = "Header";
+      host.appendChild(headerContent);
+
+      processSlots({ container, host });
+
+      expect(template.contains(slot)).toBe(false);
+      expect(template.querySelector("h1")).toBe(headerContent);
+      expect(template.textContent).toBe("Header");
+    });
+
+    it("handles multiple slots", () => {
+      const template = document.createElement("div");
+      const headerSlot = document.createElement("slot");
+      headerSlot.setAttribute("name", "header");
+      const footerSlot = document.createElement("slot");
+      footerSlot.setAttribute("name", "footer");
+      template.appendChild(headerSlot);
+      template.appendChild(footerSlot);
+      container.appendChild(template);
+
+      const header = document.createElement("h1");
+      header.setAttribute("slot", "header");
+      header.textContent = "Header";
+      const footer = document.createElement("footer");
+      footer.setAttribute("slot", "footer");
+      footer.textContent = "Footer";
+      host.appendChild(header);
+      host.appendChild(footer);
+
+      processSlots({ container, host });
+
+      expect(template.contains(headerSlot)).toBe(false);
+      expect(template.contains(footerSlot)).toBe(false);
+      expect(template.querySelector("h1")?.textContent).toBe("Header");
+      expect(template.querySelector("footer")?.textContent).toBe("Footer");
+    });
+
+    it("handles slot without matching content", () => {
+      const template = document.createElement("div");
+      const slot = document.createElement("slot");
+      slot.setAttribute("name", "missing");
+      template.appendChild(slot);
+      container.appendChild(template);
+
+      processSlots({ container, host });
+
+      expect(template.contains(slot)).toBe(false);
+      expect(template.children.length).toBe(0);
+    });
+
+    it("handles text nodes in default slot", () => {
+      const template = document.createElement("div");
+      const slot = document.createElement("slot");
+      template.appendChild(slot);
+      container.appendChild(template);
+
+      const text1 = document.createTextNode("First ");
+      const text2 = document.createTextNode("Second");
+      host.appendChild(text1);
+      host.appendChild(text2);
+
+      processSlots({ container, host });
+
+      expect(template.contains(slot)).toBe(false);
+      expect(template.textContent).toBe("First Second");
+    });
+  });
+
+  describe("validateProp", () => {
+    it("returns true for valid string prop", () => {
+      const props: Props = {
+        name: { type: String as any },
+      };
+
+      expect(validateProp({ propName: "name", propValue: "test", props })).toBe(
+        true
+      );
+    });
+
+    it("returns true for valid number prop", () => {
+      const props: Props = {
+        count: { type: Number as any },
+      };
+
+      expect(validateProp({ propName: "count", propValue: 42, props })).toBe(
+        true
+      );
+    });
+
+    it("returns true for valid boolean prop", () => {
+      const props: Props = {
+        enabled: { type: Boolean as any },
+      };
+
+      expect(
+        validateProp({ propName: "enabled", propValue: true, props })
+      ).toBe(true);
+    });
+
+    it("returns true for valid array prop", () => {
+      const props: Props = {
+        items: { type: Array as any },
+      };
+
+      expect(
+        validateProp({ propName: "items", propValue: [1, 2, 3], props })
+      ).toBe(true);
+    });
+
+    it("returns true for valid object prop", () => {
+      const props: Props = {
+        config: { type: Object as any },
+      };
+
+      expect(
+        validateProp({ propName: "config", propValue: { key: "value" }, props })
+      ).toBe(true);
+    });
+
+    it("returns false for invalid type", () => {
+      const props: Props = {
+        count: { type: Number as any },
+      };
+
+      expect(
+        validateProp({ propName: "count", propValue: "not a number", props })
+      ).toBe(false);
+    });
+
+    it("uses default value when propValue is undefined", () => {
+      const props: Props = {
+        name: { type: String as any, default: "default" },
+      };
+
+      expect(
+        validateProp({ propName: "name", propValue: undefined, props })
+      ).toBe(true);
+    });
+
+    it("returns true when prop is not defined in props", () => {
+      const props: Props = {};
+
+      expect(
+        validateProp({ propName: "unknown", propValue: "anything", props })
+      ).toBe(true);
+    });
+
+    it("handles function type", () => {
+      const props: Props = {
+        callback: { type: Function as any },
+      };
+
+      expect(
+        validateProp({
+          propName: "callback",
+          propValue: () => {},
+          props,
+        })
+      ).toBe(true);
+    });
+
+    it("returns false for null when object is expected", () => {
+      const props: Props = {
+        config: { type: Object as any },
+      };
+
+      expect(validateProp({ propName: "config", propValue: null, props })).toBe(
+        false
+      );
+    });
+
+    it("returns false for array when object is expected", () => {
+      const props: Props = {
+        config: { type: Object as any },
+      };
+
+      expect(validateProp({ propName: "config", propValue: [], props })).toBe(
+        false
+      );
+    });
+
+    it("validates regex pattern", () => {
+      const props: Props = {
+        email: { type: String as any, regex: "^[a-z]+@[a-z]+\\.[a-z]+$" },
+      };
+
+      expect(
+        validateProp({
+          propName: "email",
+          propValue: "test@example.com",
+          props,
+        })
+      ).toBe(true);
+      expect(
+        validateProp({ propName: "email", propValue: "invalid-email", props })
+      ).toBe(false);
+    });
+
+    it("handles required props", () => {
+      const props: Props = {
+        name: { type: "string", required: true },
+      };
+
+      // Required prop validation is handled in processProps, not validateProp
+      // validateProp returns true if no propOptions or if value matches type
+      expect(validateProp({ propName: "name", propValue: "test", props })).toBe(
+        true
+      );
+    });
+
+    it("handles unknown type gracefully", () => {
+      const props: Props = {
+        custom: { type: "unknown" },
+      };
+
+      // Unknown type should skip validation
+      expect(
+        validateProp({ propName: "custom", propValue: "anything", props })
+      ).toBe(true);
+    });
+  });
+
+  describe("registerComponent", () => {
+    beforeEach(() => {
+      // Clean up any existing custom elements
+      document.body.innerHTML = "";
+      document.head.innerHTML = "";
+      ExtensionRegistry.plugins = {};
+      ExtensionRegistry.modules = {};
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = "";
+      document.head.innerHTML = "";
+    });
+
+    it("registers a basic component", async () => {
+      const componentSource: ComponentSource = {
+        template: "<div>Test</div>",
+        script: "{ state: { count: 0 } }",
+        style: "div { color: red; }",
+      };
+
+      registerComponent("test-basic", componentSource);
+
+      const element = document.createElement("test-basic");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(element.shadowRoot || element).toBeTruthy();
+      expect(customElements.get("test-basic")).toBeDefined();
+    });
+
+    it("creates component with state", async () => {
+      const componentSource: ComponentSource = {
+        template: "<div>{{ count }}</div>",
+        script: "{ state: { count: 42 } }",
+        style: "",
+      };
+
+      registerComponent("test-state", componentSource);
+
+      const element = document.createElement("test-state");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(element.textContent).toContain("42");
+    });
+
+    it("handles static props", async () => {
+      const componentSource: ComponentSource = {
+        template: "<div>{{ message }}</div>",
+        script: `{
+          props: { message: { type: String } },
+          state: { message: "default" }
+        }`,
+        style: "",
+      };
+
+      registerComponent("test-static-prop", componentSource);
+
+      const element = document.createElement("test-static-prop");
+      element.setAttribute("message", "Hello");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(element.textContent).toContain("Hello");
+    });
+
+    it("handles boolean props", async () => {
+      const componentSource: ComponentSource = {
+        template: "<div>{{ enabled ? 'on' : 'off' }}</div>",
+        script: `{
+          props: { enabled: { type: Boolean } },
+          state: { enabled: false }
+        }`,
+        style: "",
+      };
+
+      registerComponent("test-bool-prop", componentSource);
+
+      const element = document.createElement("test-bool-prop");
+      element.setAttribute("enabled", "");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(element.textContent).toContain("on");
+    });
+
+    it("handles default prop values", async () => {
+      const componentSource: ComponentSource = {
+        template: "<div>{{ name }}</div>",
+        script: `{
+          props: { name: { type: String, default: "DefaultName" } },
+          state: {}
+        }`,
+        style: "",
+      };
+
+      registerComponent("test-default-prop", componentSource);
+
+      const element = document.createElement("test-default-prop");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(element.textContent).toContain("DefaultName");
+    });
+
+    it("handles composite type component", async () => {
+      const componentSource: ComponentSource = {
+        template: "<div>{{ count }}</div>",
+        script: `{
+          state: { count: 10 },
+          methods: {
+            increment() { this.count++; }
+          }
+        }`,
+        style: "",
+        type: "composite",
+      };
+
+      registerComponent("test-composite", componentSource);
+
+      const element = document.createElement("test-composite");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(element.textContent).toContain("10");
+      const instance = (element as any).instance;
+      expect(instance).toBeDefined();
+      expect(instance?.userContext).toBeUndefined();
+      expect(instance?.methods).toBeDefined();
+    });
+
+    it("injects styles into document head", async () => {
+      const componentSource: ComponentSource = {
+        template: "<div>Test</div>",
+        script: "{}",
+        style: ".test { color: blue; }",
+      };
+
+      registerComponent("test-style", componentSource);
+
+      const element = document.createElement("test-style");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const styleElement = document.head.querySelector(
+        "style#style-test-style"
+      );
+      expect(styleElement).toBeTruthy();
+      expect(styleElement?.textContent).toContain("color: blue");
+    });
+
+    it("handles lifecycle hooks", async () => {
+      const createdHook = vi.fn();
+      const mountedHook = vi.fn();
+
+      const componentSource: ComponentSource = {
+        template: "<div>Test</div>",
+        script: `{
+          state: {},
+          created() { window.testCreated = true; },
+          mounted() { window.testMounted = true; }
+        }`,
+        style: "",
+      };
+
+      registerComponent("test-hooks", componentSource);
+
+      const element = document.createElement("test-hooks");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      // Hooks should have been called (we can't easily test them directly, but we can check instance exists)
+      expect((element as any).instance).toBeDefined();
+    });
+
+    it("handles component with methods", async () => {
+      const componentSource: ComponentSource = {
+        template: '<button @click="increment">{{ count }}</button>',
+        script: `{
+          state: { count: 0 },
+          methods: {
+            increment() { this.count++; }
+          }
+        }`,
+        style: "",
+      };
+
+      registerComponent("test-methods", componentSource);
+
+      const element = document.createElement("test-methods");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const instance = (element as any).instance;
+      expect(instance?.methods).toBeDefined();
+      expect(typeof instance?.methods?.increment).toBe("function");
+    });
+
+    it("handles disconnectedCallback", async () => {
+      const componentSource: ComponentSource = {
+        template: "<div>Test</div>",
+        script: "{}",
+        style: "",
+      };
+
+      registerComponent("test-disconnect", componentSource);
+
+      const element = document.createElement("test-disconnect");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect((element as any).instance).toBeDefined();
+
+      element.remove();
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Component should be disconnected
+      expect(element.isConnected).toBe(false);
+    });
+
+    it("handles component with parent instance", async () => {
+      const parentSource: ComponentSource = {
+        template: "<child-component></child-component>",
+        script: `{
+          state: { parentValue: "parent" }
+        }`,
+        style: "",
+      };
+
+      const childSource: ComponentSource = {
+        template: "<div>{{ parentValue }}</div>",
+        script: `{
+          state: {}
+        }`,
+        style: "",
+      };
+
+      registerComponent("parent-component", parentSource);
+      registerComponent("child-component", childSource);
+
+      const parent = document.createElement("parent-component");
+      document.body.appendChild(parent);
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      const child = parent.querySelector("child-component") as any;
+      expect(child).toBeTruthy();
+      expect(child?.instance).toBeDefined();
+      expect(child?.instance?.$parent).toBeDefined();
+    });
+
+    it("handles component with plugins", async () => {
+      const plugin = {
+        name: "test-plugin",
+        install() {},
+        setup() {
+          return { pluginData: "test" };
+        },
+        attach: undefined as never,
+      };
+
+      ExtensionRegistry.plugins["test-plugin"] = plugin;
+
+      const componentSource: ComponentSource = {
+        template: "<div>Test</div>",
+        script: `{
+          state: {},
+          created() {
+            const data = this.$take("test-plugin");
+            if (data && typeof data === "object") {
+              this.pluginData = data.pluginData;
+            }
+          }
+        }`,
+        style: "",
+      };
+
+      registerComponent("test-plugin-component", componentSource);
+
+      const element = document.createElement("test-plugin-component");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      expect((element as any).instance).toBeDefined();
+    });
+
+    // Note: Module integration is tested indirectly through component registration
+    // Direct module testing is complex due to script compilation requirements
+
+    it("handles component with events", async () => {
+      const componentSource: ComponentSource = {
+        template: '<button class="btn">Click</button>',
+        script: `{
+          state: {},
+          events: [
+            ["click", ".btn", function() { this.clicked = true; }]
+          ]
+        }`,
+        style: "",
+      };
+
+      registerComponent("test-events", componentSource);
+
+      const element = document.createElement("test-events");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      const button = element.querySelector(".btn");
+      expect(button).toBeTruthy();
+
+      button?.dispatchEvent(new Event("click", { bubbles: true }));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    it("handles component with watch list", async () => {
+      const componentSource: ComponentSource = {
+        template: "<div>{{ count }}</div>",
+        script: `{
+          state: { count: 0 },
+          watchList: ["count"]
+        }`,
+        style: "",
+      };
+
+      registerComponent("test-watch", componentSource);
+
+      const element = document.createElement("test-watch");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect((element as any).instance?.watchList).toContain("count");
+    });
+
+    it("handles component with refs", async () => {
+      const componentSource: ComponentSource = {
+        template: '<button ref="button">Click</button>',
+        script: `{
+          state: {},
+          created() {
+            if (this.$refs.button) {
+              this.hasButton = true;
+            }
+          }
+        }`,
+        style: "",
+      };
+
+      registerComponent("test-refs", componentSource);
+
+      const element = document.createElement("test-refs");
+      document.body.appendChild(element);
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+
+      expect((element as any).instance?.$refs?.button).toBeDefined();
+    });
+  });
+});

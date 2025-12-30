@@ -17,7 +17,11 @@ export const domExtensions: { [key: string]: PropertyDescriptor } = {
   addClass: {
     get(this: HTMLElement): (classes: string) => HTMLElement {
       return (classes: string) => {
-        classes.split(/\s+/).forEach((c) => this.classList.add(c.trim()));
+        classes
+          .split(/\s+/)
+          .map((c) => c.trim())
+          .filter((c) => c.length > 0)
+          .forEach((c) => this.classList.add(c));
         return this;
       };
     },
@@ -26,7 +30,11 @@ export const domExtensions: { [key: string]: PropertyDescriptor } = {
   removeClass: {
     get(this: HTMLElement): (classes: string) => HTMLElement {
       return (classes: string) => {
-        classes.split(/\s+/).forEach((c) => this.classList.remove(c.trim()));
+        classes
+          .split(/\s+/)
+          .map((c) => c.trim())
+          .filter((c) => c.length > 0)
+          .forEach((c) => this.classList.remove(c));
         return this;
       };
     },
@@ -35,7 +43,11 @@ export const domExtensions: { [key: string]: PropertyDescriptor } = {
   toggleClass: {
     get(this: HTMLElement): (classes: string) => HTMLElement {
       return (classes: string) => {
-        classes.split(/\s+/).forEach((c) => this.classList.toggle(c.trim()));
+        classes
+          .split(/\s+/)
+          .map((c) => c.trim())
+          .filter((c) => c.length > 0)
+          .forEach((c) => this.classList.toggle(c));
         return this;
       };
     },

@@ -2,54 +2,57 @@ import {
   BOUND,
   type AnyFn,
   type BoundFn,
-  type Data,
+  type State,
   type Methods,
 } from "../types";
+import { logger } from "./logger";
 
-export function bindOnce(fn: AnyFn, bindings: Data): AnyFn {
+/**
+ * Binds a function to a context once, preventing multiple bindings.
+ * Uses a symbol to mark bound functions.
+ * @param fn - Function to bind
+ * @param userContext - Context to bind function to
+ * @returns Bound function (or original if already bound or not a function)
+ */
+export function bindOnce(fn: AnyFn, userContext: State): AnyFn {
   if (typeof fn !== "function") return fn;
 
   const maybe = fn as BoundFn;
   if (maybe[BOUND]) return fn;
 
-  const bound = fn.bind(bindings) as BoundFn;
+  const bound = fn.bind(userContext) as BoundFn;
   bound[BOUND] = true;
   return bound;
 }
 
 /**
- * Binds all methods from the `methods` object to the provided `data` context.
+ * Binds all methods from the `methods` object to the provided `userContext`.
  *
- * @param data - The reactive data object (usually `this`)
  * @param methods - A map of method names and functions
+ * @param userContext - The user context object (this context for user functions)
  */
-// export function bindMethods(data: Data, methods: Methods): void {
-//   for (const method in methods) {
-//     if (
-//       Object.prototype.hasOwnProperty.call(methods, method) &&
-//       methods[method]
-//     ) {
-//       data[method] = methods[method]!.bind(data);
-//     }
-//   }
-// }
-
-export function bindMethods(methods: Methods, bindings: Data): void {
+export function bindMethods(methods: Methods, userContext: State): void {
   for (const name in methods) {
     const fn = methods[name];
     if (
       Object.prototype.hasOwnProperty.call(methods, name) &&
       typeof fn === "function"
     ) {
-      // methods[name] = fn.bind(bindings as Data);
-      methods[name] = bindOnce(fn, bindings);
+      try {
+        methods[name] = bindOnce(fn, userContext);
+      } catch (error) {
+        logger.errorWithContext(
+          `Failed to bind method "${name}"`,
+          { methodName: name },
+          error
+        );
+      }
     }
   }
 }
 
 /**
  * Checks if a string contains basic HTML tags.
- *
  * @param input - The input string to check
  * @returns True if the string contains HTML-like syntax, otherwise false
  */
@@ -59,9 +62,11 @@ export function containsHTML(input: string): boolean {
 
 /**
  * Safely retrieves a value from a nested object using a string path.
- *
- * - Supports dot/bracket notation: "foo.bar[0].baz"
- * - Does NOT throw (returns undefined on invalid access)
+ * Supports dot/bracket notation: "foo.bar[0].baz"
+ * Does NOT throw (returns undefined on invalid access).
+ * @param obj - Object to read from
+ * @param path - Property path (dot/bracket notation)
+ * @returns Value at path or undefined if not found
  */
 export function getValueByPath(obj: any, path: string): any {
   if (obj == null || typeof path !== "string") return undefined;
@@ -83,10 +88,8 @@ export function getValueByPath(obj: any, path: string): any {
 }
 
 /**
- * Attempts to resolve a type constructor or string into a normalized lowercase type name.
- *
+ * Resolves a type constructor or string into a normalized lowercase type name.
  * Used for comparing prop types during runtime validation.
- *
  * @param input - A string type name or a constructor function
  * @returns A lowercase string type (e.g. "string", "array") or "unknown"
  */
@@ -100,11 +103,9 @@ export function getExpectedPropTypeName(input: unknown): string {
 
 /**
  * Checks whether a string is a simple property path expression.
- *
- * Supports:
- * - foo.bar.baz
- * - foo[0].bar
- * - foo.bar[0].baz
+ * Supports: foo.bar.baz, foo[0].bar, foo.bar[0].baz
+ * @param expression - Expression string to check
+ * @returns True if expression is a simple path
  */
 export function isSimplePathExpression(expression: string): boolean {
   const exp = expression.trim();
@@ -118,10 +119,13 @@ export function isSimplePathExpression(expression: string): boolean {
 
 /**
  * Sets a value on a nested object using a dot/bracket-notated path.
- *
- * - Does NOT create missing objects/arrays. Childs may not "invent" structure in parent.
- * - Throws descriptive errors when the path is invalid or non-writable.
- * - Supports bracket tokens like [0] or [key] (key treated as string unless numeric).
+ * Does NOT create missing objects/arrays. Children may not "invent" structure in parent.
+ * Throws descriptive errors when the path is invalid or non-writable.
+ * Supports bracket tokens like [0] or [key] (key treated as string unless numeric).
+ * @param obj - Object to write to
+ * @param path - Property path (dot/bracket notation)
+ * @param value - Value to set
+ * @throws Error if path is invalid or property is read-only
  */
 export function setValueByPath(obj: any, path: string, value: any): void {
   if (obj == null || (typeof obj !== "object" && typeof obj !== "function")) {

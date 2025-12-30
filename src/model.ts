@@ -1,26 +1,57 @@
 import { IS_PROXY, WatchListSnapshot } from "./types";
 
 /**
- * WeakMap für Proxy Cache - global für alle Models
+ * WeakMap for Proxy cache - global for all models.
+ * Maps original object -> proxy
  */
 const globalProxyCache = new WeakMap<object, object>();
 
+/**
+ * WeakMap for reverse lookup - proxy -> original object.
+ * This allows us to find the original object from a proxy.
+ */
+const globalProxyToOriginalCache = new WeakMap<object, object>();
+
+/**
+ * Type guard to check if value is an object.
+ */
 const isObject = (value: unknown): value is object =>
   typeof value === "object" && value !== null;
 
+/**
+ * Converts a property key to a string.
+ */
 const toPropName = (property: PropertyKey): string =>
   typeof property === "symbol" ? property.toString() : String(property);
 
+/**
+ * Gets cached proxy for an object if it exists.
+ */
 const getCachedProxy = <O extends object>(obj: O): O | undefined => {
   const cached = globalProxyCache.get(obj);
   return cached && isObject(cached) ? (cached as O) : undefined;
 };
 
+// Get the original object from a proxy (if it's a proxy) or return the object itself
+const getOriginalObject = (obj: object): object => {
+  // Check if obj is a proxy by looking in the reverse cache
+  const original = globalProxyToOriginalCache.get(obj);
+  if (original) return original;
+  // If not found, obj is likely the original
+  return obj;
+};
+
+/**
+ * Checks if an object is a reactive proxy.
+ */
 const isProxy = (obj: unknown): boolean => {
   if (!isObject(obj)) return false;
   return Reflect.get(obj, IS_PROXY) === true;
 };
 
+/**
+ * Checks if a value is a primitive type.
+ */
 const isPrimitive = (value: unknown): boolean =>
   value !== null &&
   (typeof value === "string" ||
@@ -29,6 +60,13 @@ const isPrimitive = (value: unknown): boolean =>
     typeof value === "function" ||
     typeof value === "undefined");
 
+/**
+ * Creates a reactive model with proxy-based reactivity.
+ * Tracks property changes and notifies observers when watched properties change.
+ * Supports deep watching and array diffing for efficient updates.
+ * @param initialData - Initial state object
+ * @returns Reactive model with watch/unwatch and observer methods
+ */
 export function createModel<T extends Record<string, unknown>>(
   initialData: T
 ): {
@@ -42,6 +80,7 @@ export function createModel<T extends Record<string, unknown>>(
   // Private state
   const observers = new Set<() => void>();
   const watchList = new Map<object, Set<string>>();
+  const deepWatchedObjects = new WeakSet<object>();
 
   // Enhanced callback that also notifies observers
   const enhancedCallback = () => {
@@ -240,7 +279,12 @@ export function createModel<T extends Record<string, unknown>>(
     const proxy = new Proxy(obj, {
       get: (target, property, receiver) => {
         if (property === IS_PROXY) return true;
-        return Reflect.get(target, property, receiver) as unknown;
+        const value = Reflect.get(target, property, receiver) as unknown;
+        // Automatically make nested objects reactive when accessed
+        if (isObject(value) && !isProxy(value) && !Array.isArray(value)) {
+          return makeReactive(value);
+        }
+        return value;
       },
 
       set: (target, property, value, receiver) => {
@@ -249,11 +293,12 @@ export function createModel<T extends Record<string, unknown>>(
 
         const propName = toPropName(property);
 
-        const receiverObj = isObject(receiver) ? receiver : undefined;
+        // target is always the original object (not the proxy)
+        // We store the original object in watchList, so check target directly
+        const isWatchedProperty = isWatched(target, propName);
 
-        const isWatchedProperty =
-          isWatched(target, propName) ||
-          (receiverObj ? isWatched(receiverObj, propName) : false);
+        // Check if target is deep watched - if so, any property change should trigger observers
+        const isDeepWatched = deepWatchedObjects.has(target);
 
         // Special array handling
         if (
@@ -295,7 +340,8 @@ export function createModel<T extends Record<string, unknown>>(
         // Standard property assignment
         const result = Reflect.set(target, property, value, receiver);
 
-        if (isWatchedProperty && oldValue !== value) {
+        // Trigger callback if property is watched OR if parent is deep watched
+        if ((isWatchedProperty || isDeepWatched) && oldValue !== value) {
           if (isObject(value) && !isProxy(value)) {
             const reactive = makeReactive(value);
             Reflect.set(target, property, reactive, receiver);
@@ -325,6 +371,7 @@ export function createModel<T extends Record<string, unknown>>(
     });
 
     globalProxyCache.set(obj, proxy);
+    globalProxyToOriginalCache.set(proxy, obj);
     return proxy;
   };
 
@@ -342,7 +389,7 @@ export function createModel<T extends Record<string, unknown>>(
 
   const processWatchString = (
     path: string,
-    data: T
+    dataProxy: T
   ): {
     grandParent?: Record<string, unknown>;
     parentPropertyName?: string;
@@ -358,36 +405,76 @@ export function createModel<T extends Record<string, unknown>>(
     const property = segments.pop()!;
     if (segments.length > 0) parentPropertyName = segments.pop()!;
 
-    let temp: unknown = data;
+    // Start with original data, not the proxy
+    // This ensures we always work with original objects for watchList
+    let temp: unknown = originalData;
 
+    // Navigate through the path, ensuring all intermediate objects are reactive
     for (const seg of segments) {
       if (!isObject(temp)) {
         throw new Error(
           `❌ Invalid path "${path}". Segment "${seg}" is not an object.`
         );
       }
-      const next = Reflect.get(temp, seg) as unknown;
+      // Get the value - Reflect.get on a proxy returns the original object's property value
+      // If the property is an object, the get handler makes it reactive and returns the proxy
+      // But we need the original object for navigation, so we access it directly
+      // We use a workaround: get the value, make it reactive if needed, but keep the original reference
+      let next = Reflect.get(temp, seg) as unknown;
       if (!next) {
         throw new Error(
           `❌ Invalid path "${path}". Segment "${seg}" does not exist.`
         );
       }
-      temp = next;
+      // Make sure intermediate objects are reactive
+      // makeReactive returns the proxy, but we need to keep the original for navigation
+      // So we store the original before making it reactive
+      const originalNext = next;
+      if (isObject(next) && !isProxy(next)) {
+        makeReactive(next);
+        // Keep the original object for further navigation
+        // When we access properties on the proxy, Reflect.get will return original values
+        temp = originalNext;
+      } else {
+        temp = next;
+      }
     }
 
     let parent: unknown;
     if (parentPropertyName !== undefined) {
       grandParent = temp as Record<string, unknown>;
-      parent = grandParent[parentPropertyName];
-      if (!isObject(parent)) {
+      // Get the parent - Reflect.get on a proxy returns the original object's property
+      // If grandParent is a proxy, we get the original object's property value
+      const parentValue = Reflect.get(
+        grandParent,
+        parentPropertyName
+      ) as unknown;
+      if (!isObject(parentValue)) {
         throw new Error(
           `❌ Invalid path. No parent object for property "${parentPropertyName}".`
         );
+      }
+      // Store original before making reactive
+      const originalParent = parentValue;
+      parent = originalParent;
+      // Ensure parent is reactive (this creates a proxy, but we keep the original)
+      if (isObject(parent) && !isProxy(parent)) {
+        makeReactive(parent);
+        // Keep the original object reference
+        parent = originalParent;
       }
     } else {
       parent = temp;
       if (!isObject(parent)) {
         throw new Error(`❌ Invalid path "${path}". Parent is not an object.`);
+      }
+      // Store original before making reactive
+      const originalParent = parent;
+      // Ensure parent is reactive
+      if (!isProxy(parent)) {
+        makeReactive(parent);
+        // Keep the original object reference
+        parent = originalParent;
       }
     }
 
@@ -402,6 +489,10 @@ export function createModel<T extends Record<string, unknown>>(
   // Create reactive data
   const data = makeReactive(initialData);
 
+  // Store reference to original data for processWatchString
+  // This allows us to always get the original object, even when navigating through proxies
+  const originalData = initialData;
+
   // Public API
   return {
     data,
@@ -409,13 +500,42 @@ export function createModel<T extends Record<string, unknown>>(
     watch(path: string, deep = false): void {
       const { parent, property } = processWatchString(path, data);
 
+      // Make parent reactive if it's not already
+      if (isObject(parent)) {
+        makeReactive(parent);
+      }
+
+      // Store the original object (not the proxy) in watchList
+      // because set() receives the original object as target
       if (hasWatchEntry(parent, property)) return;
 
       const value = parent[property];
 
       if (isObject(value)) {
-        if (deep) deepReactive(value);
-        else if (!Array.isArray(value)) makeReactive(value);
+        if (deep) {
+          deepReactive(value);
+          // Mark this object as deep watched
+          deepWatchedObjects.add(value);
+          // For deep watching, we need to watch all nested properties recursively
+          // This ensures that changes to nested properties trigger observers
+          const watchNestedProperties = (obj: object) => {
+            for (const key in obj) {
+              if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
+              const nestedValue = Reflect.get(obj, key);
+              // Watch this nested property
+              addWatchEntry(obj, key);
+              if (isObject(nestedValue) && !Array.isArray(nestedValue)) {
+                // Mark nested objects as deep watched too
+                deepWatchedObjects.add(nestedValue);
+                // Recursively watch nested properties
+                watchNestedProperties(nestedValue);
+              }
+            }
+          };
+          watchNestedProperties(value);
+        } else if (!Array.isArray(value)) {
+          makeReactive(value);
+        }
       }
 
       addWatchEntry(parent, property);

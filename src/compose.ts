@@ -1,11 +1,43 @@
 import { ComposeOptions } from "./types";
+import { logger } from "./utils/logger";
 
+/**
+ * Composes multiple objects into a single Proxy that delegates property access.
+ * Properties are read from the first layer that contains them.
+ * Writes go to the layer where the property exists, or to defaultWriteIndex if not found.
+ * @param layers - Array of objects to compose
+ * @param options - Composition options
+ * @returns Proxy object that combines all layers
+ * @throws Error if layers is empty or contains invalid objects
+ */
 export function composeBySource<T extends object[]>(
   layers: T,
   options: ComposeOptions = {}
 ): T[number] {
+  if (!Array.isArray(layers) || layers.length === 0) {
+    throw new Error("composeBySource: layers must be a non-empty array");
+  }
+
+  if (layers.some((layer) => layer == null || typeof layer !== "object")) {
+    throw new Error("composeBySource: all layers must be objects");
+  }
+
   const { defaultWriteIndex = layers.length - 1, includePrototype = false } =
     options;
+
+  const validWriteIndex =
+    defaultWriteIndex >= 0 &&
+    defaultWriteIndex < layers.length &&
+    Number.isInteger(defaultWriteIndex)
+      ? defaultWriteIndex
+      : layers.length - 1;
+
+  if (defaultWriteIndex !== validWriteIndex) {
+    logger.warnWithContext(
+      `Invalid defaultWriteIndex ${defaultWriteIndex}, using ${validWriteIndex}`,
+      { defaultWriteIndex, validWriteIndex, layersLength: layers.length }
+    );
+  }
 
   const has = (obj: object, key: PropertyKey) =>
     includePrototype
@@ -19,7 +51,7 @@ export function composeBySource<T extends object[]>(
     return -1;
   };
 
-  return new Proxy(layers[defaultWriteIndex] as object, {
+  return new Proxy(layers[validWriteIndex] as object, {
     get(_target, prop) {
       const idx = findLayerIndex(prop);
       if (idx !== -1) return (layers[idx] as any)[prop];
@@ -28,7 +60,7 @@ export function composeBySource<T extends object[]>(
 
     set(_target, prop, value) {
       const idx = findLayerIndex(prop);
-      const writeTo = idx !== -1 ? idx : defaultWriteIndex;
+      const writeTo = idx !== -1 ? idx : validWriteIndex;
       (layers[writeTo] as any)[prop] = value;
       return true;
     },

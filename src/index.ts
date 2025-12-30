@@ -5,6 +5,7 @@ import {
   patchGlobalEventTracking,
   startGlobalDisconnectionObserver,
 } from "./global-event-cleaner";
+import { logger, LogLevel } from "./utils/logger";
 
 import type { CoreCallable, CoreCtx, TakeArgs } from "./types";
 
@@ -21,16 +22,24 @@ export type {
   TakeArgs,
   Props,
   Events,
-  Data,
+  State,
   Refs,
   Methods,
   LifecycleHook,
 } from "./types";
 
+// Public Logger
+export { logger, LogLevel } from "./utils/logger";
+
 let initialized = false;
 let domInitialized = false;
 let queuedTakes: TakeArgs[] = [];
 
+/**
+ * Initializes the DOM environment.
+ * Patches global event tracking, extends HTMLElement, and starts disconnection observer.
+ * Safe to call multiple times (idempotent).
+ */
 export function initDomEnvironment(): void {
   if (domInitialized) return;
   domInitialized = true;
@@ -44,13 +53,17 @@ export function initDomEnvironment(): void {
   startGlobalDisconnectionObserver();
 }
 
+/**
+ * Performs the take operation for a component, plugin, or module.
+ * @param args - Either [ComponentSource, name] or [IPlugin | IModule]
+ */
 function performTake(...args: TakeArgs): void {
   const ext = args[0];
   const name = args[1];
 
   if (isComponentSource(ext)) {
     if (!name) {
-      console.error("ComponentSource requires a component name when calling take()");
+      logger.error("ComponentSource requires a component name when calling take()");
       return;
     }
     registerComponent(name, ext);
@@ -65,20 +78,33 @@ function performTake(...args: TakeArgs): void {
       take: Core.take,
     };
 
-    ext.install(ctx);
+    try {
+      ext.install(ctx);
 
-    if (isPlugin(ext)) {
-      ExtensionRegistry.plugins[ext.name] = ext;
-    } else {
-      ExtensionRegistry.modules[ext.name] = ext;
+      if (isPlugin(ext)) {
+        ExtensionRegistry.plugins[ext.name] = ext;
+      } else {
+        ExtensionRegistry.modules[ext.name] = ext;
+      }
+    } catch (error) {
+      logger.errorWithContext(
+        "Failed to install extension",
+        { name: ext.name, type: isPlugin(ext) ? "plugin" : "module" },
+        error
+      );
     }
 
     return;
   }
 
-  console.error("❌ Unknown extension type:", ext);
+  logger.error("Unknown extension type", ext);
 }
 
+/**
+ * Initializes the core framework.
+ * Processes all queued take operations and marks core as initialized.
+ * Safe to call multiple times (idempotent).
+ */
 function initialize(): void {
   if (initialized) return;
   initialized = true;
@@ -86,9 +112,13 @@ function initialize(): void {
   queuedTakes.forEach((args) => performTake(...args));
   queuedTakes = [];
 
-  console.log("🚀 Core initialized");
+  logger.info("Core initialized");
 }
 
+/**
+ * Main Core API.
+ * Call as function to initialize, or use Core.take() to register components/extensions.
+ */
 export const Core = (() => {
   const callable = Object.assign(
     () => {
