@@ -12,7 +12,7 @@ import { logger } from "./utils/logger";
  */
 export function composeBySource<T extends object[]>(
   layers: T,
-  options: ComposeOptions = {}
+  options: ComposeOptions = {},
 ): T[number] {
   if (!Array.isArray(layers) || layers.length === 0) {
     throw new Error("composeBySource: layers must be a non-empty array");
@@ -35,7 +35,7 @@ export function composeBySource<T extends object[]>(
   if (defaultWriteIndex !== validWriteIndex) {
     logger.warnWithContext(
       `Invalid defaultWriteIndex ${defaultWriteIndex}, using ${validWriteIndex}`,
-      { defaultWriteIndex, validWriteIndex, layersLength: layers.length }
+      { defaultWriteIndex, validWriteIndex, layersLength: layers.length },
     );
   }
 

@@ -21,4 +21,3 @@ function walk(dir) {
 
 walk(srcDir);
 console.info("✅ Copied src/**/*.d.ts → dist/");
-

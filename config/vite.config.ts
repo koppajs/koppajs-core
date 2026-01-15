@@ -1,7 +1,7 @@
-import path from "node:path"
-import { fileURLToPath } from "node:url"
-import { defineConfig } from "vite"
-import pkg from "../package.json" with { type: "json" }
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { defineConfig } from 'vite'
+import pkg from '../package.json' with { type: 'json' }
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -24,7 +24,7 @@ const pkgJson = pkg as unknown as PkgJson
  */
 const getLibraryName = () =>
   pkgJson.name
-    .replace(/^@.*\//, "")
+    .replace(/^@.*\//, '')
     .replace(/[-_/](\w)/g, (_, c) => c.toUpperCase())
     .replace(/^\w/, (c) => c.toUpperCase())
 
@@ -40,13 +40,13 @@ const externals = [
 export default defineConfig({
   build: {
     // Hidden sourcemaps keep memory usage low while preserving debug ability
-    sourcemap: "hidden",
+    sourcemap: 'hidden',
     minify: true,
 
     lib: {
-      entry: path.resolve(__dirname, "../src/index.ts"),
+      entry: path.resolve(__dirname, '../src/index.ts'),
       name: getLibraryName(),
-      formats: ["es", "cjs"],
+      formats: ['es', 'cjs'],
       fileName: (format) => `index.${format}.js`,
     },
 

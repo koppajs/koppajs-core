@@ -13,7 +13,7 @@ export function setupEvents(
   userContext: State,
   events: Events,
   container: DocumentFragment,
-  refs: Refs
+  refs: Refs,
 ): void {
   if (!Array.isArray(events)) return;
 
@@ -68,7 +68,7 @@ export function setupEvents(
  */
 export function bindNativeEvents(
   userContext: State,
-  fragment: DocumentFragment
+  fragment: DocumentFragment,
 ): void {
   const events = [
     "click",
@@ -119,14 +119,20 @@ export function bindNativeEvents(
   ];
 
   for (const type of events) {
-    for (const el of fragment.querySelectorAll(`[on${type}]`)) {
-      const handlerName = el.getAttribute(`on${type}`);
-      if (handlerName) {
-        const handler = userContext[handlerName];
-        if (typeof handler === "function") {
-          // Handler is already bound via bindMethods, use directly
-          el.removeAttribute(`on${type}`);
-          el.addEventListener(type, handler as AnyFn);
+    // Support both lowercase (onclick) and camelCase (onClick) attribute names
+    const camelCase = `on${type.charAt(0).toUpperCase()}${type.slice(1)}`;
+    const lowerCase = `on${type}`;
+
+    for (const attrName of [camelCase, lowerCase]) {
+      for (const el of fragment.querySelectorAll(`[${attrName}]`)) {
+        const handlerName = el.getAttribute(attrName);
+        if (handlerName) {
+          const handler = userContext[handlerName];
+          if (typeof handler === "function") {
+            // Handler is already bound via bindMethods, use directly
+            el.removeAttribute(attrName);
+            el.addEventListener(type, handler as AnyFn);
+          }
         }
       }
     }
@@ -141,7 +147,7 @@ export function bindNativeEvents(
  */
 export function bindNativeEventsForComposite(
   methods: Methods,
-  fragment: DocumentFragment
+  fragment: DocumentFragment,
 ): void {
   const events = [
     "click",
@@ -192,14 +198,20 @@ export function bindNativeEventsForComposite(
   ];
 
   for (const type of events) {
-    for (const el of fragment.querySelectorAll(`[on${type}]`)) {
-      const handlerName = el.getAttribute(`on${type}`);
-      if (handlerName) {
-        const handler = methods[handlerName];
-        if (typeof handler === "function") {
-          // For composite type, use handler directly without binding
-          el.removeAttribute(`on${type}`);
-          el.addEventListener(type, handler);
+    // Support both lowercase (onclick) and camelCase (onClick) attribute names
+    const camelCase = `on${type.charAt(0).toUpperCase()}${type.slice(1)}`;
+    const lowerCase = `on${type}`;
+
+    for (const attrName of [camelCase, lowerCase]) {
+      for (const el of fragment.querySelectorAll(`[${attrName}]`)) {
+        const handlerName = el.getAttribute(attrName);
+        if (handlerName) {
+          const handler = methods[handlerName];
+          if (typeof handler === "function") {
+            // For composite type, use handler directly without binding
+            el.removeAttribute(attrName);
+            el.addEventListener(type, handler);
+          }
         }
       }
     }
@@ -220,7 +232,7 @@ export function setupEventsForComposite(
   state: State,
   events: Events,
   container: DocumentFragment,
-  refs: Refs
+  refs: Refs,
 ): void {
   if (!Array.isArray(events)) return;
 

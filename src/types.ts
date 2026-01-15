@@ -154,6 +154,18 @@ export interface IModule extends IBaseExtension {
  * Component source interface.
  * This is the payload produced by the Vite plugin for `.kpa` files.
  */
+/**
+ * Information about a single imported dependency.
+ */
+export interface DepInfo {
+  (): Promise<unknown>;
+}
+
+/**
+ * Map of dependency identifiers to async import functions.
+ */
+export type Deps = Record<string, DepInfo> | null;
+
 export interface ComponentSource {
   template: string;
   script: string;
@@ -174,6 +186,13 @@ export interface ComponentSource {
    * If not specified, defaults to "options".
    */
   type?: "options" | "composite";
+
+  /**
+   * Imported dependencies from [ts] block.
+   * Each key is the local identifier, value is an async function that resolves the import.
+   * The core runtime resolves these before evaluating the controller script.
+   */
+  deps?: Deps;
 }
 
 /**
@@ -319,7 +338,7 @@ export type CompiledScript = (context: ComponentContext) => ComponentController;
  */
 export interface ComponentController extends LifecycleHooks {
   /** Component reactive state */
-  state: State;
+  state?: State;
   /** User context (composed from methods + state for "options" type) */
   userContext?: State;
   /** Component methods */

@@ -19,6 +19,7 @@ export type {
   CoreCtx,
   IPlugin,
   IModule,
+  ModuleContext,
   TakeArgs,
   Props,
   Events,
@@ -63,7 +64,9 @@ function performTake(...args: TakeArgs): void {
 
   if (isComponentSource(ext)) {
     if (!name) {
-      logger.error("ComponentSource requires a component name when calling take()");
+      logger.error(
+        "ComponentSource requires a component name when calling take()",
+      );
       return;
     }
     registerComponent(name, ext);
@@ -90,7 +93,7 @@ function performTake(...args: TakeArgs): void {
       logger.errorWithContext(
         "Failed to install extension",
         { name: ext.name, type: isPlugin(ext) ? "plugin" : "module" },
-        error
+        error,
       );
     }
 

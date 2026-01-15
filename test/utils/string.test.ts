@@ -28,10 +28,10 @@ describe("evaluateExpression", () => {
   });
 
   it("blocks forbidden keywords", () => {
-    expect(evaluateExpression("window", {})).toBe(false);
-    expect(evaluateExpression("document", {})).toBe(false);
-    expect(evaluateExpression("eval", {})).toBe(false);
-    expect(evaluateExpression("this", {})).toBe(false);
+    expect(evaluateExpression("window", {})).toBeUndefined();
+    expect(evaluateExpression("document", {})).toBeUndefined();
+    expect(evaluateExpression("eval", {})).toBeUndefined();
+    expect(evaluateExpression("this", {})).toBeUndefined();
   });
 
   it("evaluates simple path expressions", () => {
@@ -62,13 +62,26 @@ describe("evaluateExpression", () => {
     expect(evaluateExpression("a * b", state)).toBe(50);
   });
 
-  it("returns false on evaluation error", () => {
+  it("returns undefined on evaluation error", () => {
     const state = {};
-    expect(evaluateExpression("invalid.syntax.(", state)).toBe(false);
+    expect(evaluateExpression("invalid.syntax.(", state)).toBeUndefined();
   });
 
   it("handles array access in paths", () => {
     const state = { items: [{ name: "first" }, { name: "second" }] };
     expect(evaluateExpression("items[0].name", state)).toBe("first");
+  });
+
+  // Three Test Rule: valid, error, and forbidden cases
+  it("returns real boolean false for valid comparison", () => {
+    expect(evaluateExpression("a > b", { a: 1, b: 2 })).toBe(false);
+  });
+
+  it("returns undefined for syntax error", () => {
+    expect(evaluateExpression("invalid.syntax.(", {})).toBeUndefined();
+  });
+
+  it("returns undefined for forbidden keyword", () => {
+    expect(evaluateExpression("window", {})).toBeUndefined();
   });
 });

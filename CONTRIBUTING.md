@@ -221,7 +221,7 @@ KoppaJS Core adheres to:
 | `pnpm analyze-code`   | Analyze project structure and output report (`---code_analysis`) |
 | `pnpm list-structure` | Dump all tracked project files                                   |
 | `pnpm clean`          | Remove dist and coverage directories                             |
-| `pnpm deepclean`      | Remove node_modules, dist, and pnpm-lock.yaml                     |
+| `pnpm deepclean`      | Remove node_modules, dist, and pnpm-lock.yaml                    |
 
 <p align="right">(<a href="#contributing-top">back to top</a>)</p>
 

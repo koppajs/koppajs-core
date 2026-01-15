@@ -62,7 +62,9 @@ describe("event-handler", () => {
       parent.appendChild(child);
       refs.container = parent;
       const handler = vi.fn();
-      const events: Events = [["click", { ref: "container", selector: ".btn" }, handler]];
+      const events: Events = [
+        ["click", { ref: "container", selector: ".btn" }, handler],
+      ];
       const userContext: State = {};
 
       setupEvents(userContext, events, container, refs);
@@ -75,7 +77,9 @@ describe("event-handler", () => {
       const events: Events = [["click", "window", null as any]];
       const userContext: State = {};
 
-      expect(() => setupEvents(userContext, events, container, refs)).not.toThrow();
+      expect(() =>
+        setupEvents(userContext, events, container, refs),
+      ).not.toThrow();
     });
   });
 
@@ -141,5 +145,3 @@ describe("event-handler", () => {
     });
   });
 });
-
-

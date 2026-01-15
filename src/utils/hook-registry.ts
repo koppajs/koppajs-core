@@ -69,7 +69,7 @@ export async function hookEmit(
       logger.errorWithContext(
         `Hook "${name}" callback failed`,
         { hook: name },
-        error
+        error,
       );
     }
   }

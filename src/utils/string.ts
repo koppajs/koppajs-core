@@ -1,5 +1,5 @@
-import { getValueByPath, isSimplePathExpression } from './helper'
-import { logger } from './logger'
+import { getValueByPath, isSimplePathExpression } from "./helper";
+import { logger } from "./logger";
 
 /**
  * Converts a kebab-case string to camelCase.
@@ -24,40 +24,40 @@ const FORBIDDEN_KEYWORDS_REGEX =
  * Note: This is not a full sandbox. It's "restricted and pragmatic".
  * @param expression - Expression string to evaluate
  * @param state - State object to use as context
- * @returns Evaluated result or false on error/forbidden keywords
+ * @returns Evaluated result or undefined on error/forbidden keywords
  */
 export function evaluateExpression(
   expression: string,
   state: Record<string, any> = {},
 ): any {
-  const exp = (expression ?? '').trim()
-  if (!exp) return undefined
+  const exp = (expression ?? "").trim();
+  if (!exp) return undefined;
 
   try {
     if (FORBIDDEN_KEYWORDS_REGEX.test(exp)) {
-      return false
+      return undefined;
     }
 
     // Simple paths: resolve safely (supports brackets via isSimplePathExpression)
     if (isSimplePathExpression(exp)) {
-      const value = getValueByPath(state, exp)
-      if (typeof value === 'function') return value.call(state)
-      return value
+      const value = getValueByPath(state, exp);
+      if (typeof value === "function") return value.call(state);
+      return value;
     }
 
     // Complex expression:
     // Only expose top-level keys from state as function parameters.
     // Everything else is not directly reachable unless referenced through those vars.
-    const allowedVars = Object.keys(state)
+    const allowedVars = Object.keys(state);
 
     // Use strict mode; expression is evaluated as a return value.
-    const functionBody = `"use strict"; return (${exp});`
+    const functionBody = `"use strict"; return (${exp});`;
 
-    const evalFunction = new Function(...allowedVars, functionBody)
+    const evalFunction = new Function(...allowedVars, functionBody);
 
-    return evalFunction(...allowedVars.map((key) => state[key]))
+    return evalFunction(...allowedVars.map((key) => state[key]));
   } catch (error) {
-    logger.debug(`Expression evaluation failed: ${exp}`, error)
-    return false
+    logger.debug(`Expression evaluation failed: ${exp}`, error);
+    return undefined;
   }
 }

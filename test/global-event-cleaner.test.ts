@@ -207,4 +207,3 @@ describe("global-event-cleaner", () => {
     });
   });
 });
-

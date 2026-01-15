@@ -4,6 +4,7 @@ import {
   setupEvents,
   setupEventsForComposite,
 } from "./event-handler";
+import { cleanupSubtree } from "./global-event-cleaner";
 import { createModel } from "./model";
 import { processTemplate } from "./template-processor";
 import {
@@ -20,7 +21,6 @@ import {
   isSimplePathExpression,
   kebabToCamel,
   setValueByPath,
-  extractWatchListFromTemplate,
   bindOnce,
   logger,
 } from "./utils";
@@ -72,7 +72,7 @@ export function processSlots({
 }): void {
   const slotContent = Array.from(host.childNodes).filter(
     (node) =>
-      node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE
+      node.nodeType === Node.ELEMENT_NODE || node.nodeType === Node.TEXT_NODE,
   );
 
   const slotMap: Record<string, Node[]> = {};
@@ -145,7 +145,7 @@ export function validateProp({
   if (!typeMatches) {
     logger.error(
       `Prop "${propName}" should be of type "${expectedType}", but got "${actualType}".`,
-      pValue
+      pValue,
     );
     return false;
   }
@@ -156,7 +156,7 @@ export function validateProp({
     !new RegExp(propOptions.regex).test(pValue)
   ) {
     logger.error(
-      `Prop "${propName}" does not match regex "${propOptions.regex}".`
+      `Prop "${propName}" does not match regex "${propOptions.regex}".`,
     );
     return false;
   }
@@ -202,7 +202,7 @@ function processProps({
           logger.errorWithContext(
             `Failed to set bound prop "${propName}" → "${parentPath}"`,
             { propName, parentPath },
-            error
+            error,
           );
         }
       },
@@ -286,7 +286,7 @@ function processProps({
  */
 export function registerComponent(
   componentName: string,
-  source: ComponentSource
+  source: ComponentSource,
 ): void {
   customElements.define(
     componentName,
@@ -297,6 +297,13 @@ export function registerComponent(
        * Nicht private: wir wollen kompatibel bleiben und über HTMLElementWithInstance arbeiten.
        */
       public instance?: ComponentInstance;
+
+      // Cleanup state for deterministic teardown
+      private _isDisconnected = false;
+      private _model?: ReturnType<typeof createModel>;
+      private _observerFn?: () => void;
+      private _renderAborted = false;
+      private _pendingRender: (() => Promise<void>) | null = null;
 
       constructor() {
         super();
@@ -315,15 +322,34 @@ export function registerComponent(
         const parent = getParentInstance(host);
 
         const clonedTemplate = this.template.cloneNode(
-          true
+          true,
         ) as HTMLTemplateElement;
 
-        const compiledScript = compileCode(source.script);
+        // Resolve deps BEFORE compiling the controller script
+        // This allows imports from [ts] block to be injected as local variables
+        let resolvedDeps: Record<string, unknown> | undefined;
+        if (source.deps) {
+          resolvedDeps = {};
+          const depEntries = Object.entries(source.deps);
+          const resolvedValues = await Promise.all(
+            depEntries.map(([, importFn]) => importFn()),
+          );
+          for (let i = 0; i < depEntries.length; i++) {
+            resolvedDeps[depEntries[i][0]] = resolvedValues[i];
+          }
+        }
+
+        const compiledScript = compileCode(source.script, resolvedDeps);
 
         const refs: Refs = {};
         let isMounted = false;
         let isRendering = false;
-        let lastRenderedData = "";
+        let lastRenderedStateVersion = -1; // Track state version instead of serialized data
+
+        // Reset disconnected state for new connection
+        this._isDisconnected = false;
+        this._renderAborted = false;
+        this._pendingRender = null;
 
         const lifecycleRegistry = createHookRegistry();
 
@@ -356,7 +382,7 @@ export function registerComponent(
           if (!plugin || typeof plugin.setup !== "function") {
             logger.warnWithContext(
               `Plugin "${pluginName}" not found or has no setup method`,
-              { pluginName }
+              { pluginName },
             );
             return undefined;
           }
@@ -369,7 +395,7 @@ export function registerComponent(
             logger.errorWithContext(
               `Plugin "${pluginName}" setup failed`,
               { pluginName },
-              error
+              error,
             );
             return undefined;
           }
@@ -378,7 +404,7 @@ export function registerComponent(
         // Modules attach
         const attachedModules: Record<string, any> = {};
         for (const [moduleName, module] of Object.entries(
-          ExtensionRegistry.modules
+          ExtensionRegistry.modules,
         )) {
           if (typeof module.attach === "function") {
             const attached = module.attach.call({
@@ -429,18 +455,21 @@ export function registerComponent(
           }
         };
 
-        // Script ausführen
-        const controller = compiledScript({
+        // Build component context with all $*-prefixed variables
+        const componentContext = {
           $refs: refs,
           $parent: parent,
           $emit,
           $take: take,
           ...attachedModules,
-        });
+        };
+
+        // Script ausführen
+        const controller = compiledScript(componentContext);
 
         // Model setup
         const model = createModel(controller.state ?? {});
-        state = model.data;
+        state = model.state;
 
         // Controller Bits
         const methods = controller.methods || {};
@@ -449,7 +478,18 @@ export function registerComponent(
 
         let watchList = controller.watchList || [];
 
+        // Extract all $*-prefixed variables from component context for closure variables
+        // These must be available as closure variables, NOT in userContext
+        const closureVars: Record<string, any> = {};
+        for (const [key, value] of Object.entries(componentContext)) {
+          if (key.startsWith("$")) {
+            closureVars[key] = value;
+          }
+        }
+
         // Create userContext only for "options" type
+        // IMPORTANT: Do NOT include $*-prefixed variables in userContext
+        // They must only be available as closure variables
         if (useUserContext) {
           userContext = composeBySource([methods, state]);
         }
@@ -462,8 +502,11 @@ export function registerComponent(
         });
 
         // Bind methods only if userContext exists
+        // Pass all $*-prefixed variables as closure variables so they remain accessible in bound methods
+        // This ensures closure variables work reliably even when methods are called via userContext
+        // Only $*-prefixed variables are passed as closure variables, nothing else
         if (useUserContext && userContext) {
-          bindMethods(methods, userContext);
+          bindMethods(methods, userContext, closureVars);
         }
 
         // Hooks registrieren
@@ -480,42 +523,67 @@ export function registerComponent(
           }
         }
 
-        const autoWatch = extractWatchListFromTemplate(
-          this.template.innerHTML
-        ).filter((p) => {
-          const root = p.split(".")[0]!;
-          return Object.prototype.hasOwnProperty.call(state, root);
-        });
-
-        // Watch setup
-        watchList = Array.from(
-          new Set([...watchList, ...autoWatch, ...Object.keys(props)])
-        );
-        watchList.forEach((path) => model.watch(path));
+        // Store model reference for cleanup in disconnectedCallback
+        this._model = model;
 
         /**
          * render zuerst definieren (sonst TDZ wenn Observer feuert)
          */
         const render = async () => {
-          if (isRendering) return;
+          // Exit early if component has been disconnected
+          if (this._isDisconnected) {
+            return;
+          }
 
-          const currentState = JSON.stringify(state);
-          if (lastRenderedData === currentState) return;
+          // If already rendering, abort current render and schedule new one
+          if (isRendering) {
+            this._renderAborted = true;
+            this._pendingRender = render;
+            return;
+          }
+
+          // Use state version instead of JSON.stringify for comparison
+          // This is more performant and avoids circular reference issues
+          const currentStateVersion = model.getStateVersion();
+          if (lastRenderedStateVersion === currentStateVersion) return;
 
           isRendering = true;
+          this._renderAborted = false;
+          // Set flag on instance so child components can check
+          if (host.instance) {
+            (host.instance as any).isRendering = true;
+          }
 
           try {
             const container = clonedTemplate.content.cloneNode(
-              true
+              true,
             ) as DocumentFragment;
 
             processSlots({ container, host });
 
-            await processTemplate(container, state, refs);
+            // Use userContext (which includes methods) for template processing
+            // This allows template expressions to call component methods
+            const templateContext =
+              useUserContext && userContext ? userContext : state;
+            await processTemplate(container, templateContext, refs);
+
+            // Check if render was aborted during template processing
+            if (this._renderAborted) {
+              // Schedule new render with latest state
+              this._pendingRender = render;
+              return;
+            }
+
             const hookContext =
               useUserContext && userContext ? userContext : state;
             await hookEmit("global", "processed", hookContext);
             await hookEmit(lifecycleRegistry, "processed");
+
+            // Check again if render was aborted
+            if (this._renderAborted) {
+              this._pendingRender = render;
+              return;
+            }
 
             if (useUserContext && userContext) {
               bindNativeEvents(userContext, container);
@@ -526,32 +594,82 @@ export function registerComponent(
               setupEventsForComposite(methods, state, events, container, refs);
             }
 
+            // Flush changes and get changed paths for lifecycle hooks
+            const changedPaths = model.flushChanges();
+
+            // Extend hook context with changedPaths metadata
+            // Assign changedPaths directly to the context object so it's available as this.changedPaths
+            (hookContext as any).changedPaths = changedPaths;
+
             await hookEmit(
               "global",
               isMounted ? "beforeUpdate" : "beforeMount",
-              hookContext
+              hookContext,
             );
             await hookEmit(
               lifecycleRegistry,
-              isMounted ? "beforeUpdate" : "beforeMount"
+              isMounted ? "beforeUpdate" : "beforeMount",
+              hookContext,
             );
+
+            // Final check before DOM update
+            if (this._renderAborted) {
+              // Clean up ephemeral metadata before aborting
+              delete (hookContext as any).changedPaths;
+              this._pendingRender = render;
+              return;
+            }
 
             host.replaceChildren(container);
 
+            // Update changedPaths for updated hook (same set from beforeUpdate)
+            (hookContext as any).changedPaths = changedPaths;
+
             await hookEmit("global", "updated", hookContext);
             if (isMounted) {
-              await hookEmit(lifecycleRegistry, "updated");
+              await hookEmit(lifecycleRegistry, "updated", hookContext);
             }
 
-            lastRenderedData = currentState;
+            // Remove ephemeral metadata after hooks complete
+            delete (hookContext as any).changedPaths;
+
+            // Update last rendered state version
+            lastRenderedStateVersion = currentStateVersion;
           } catch (error) {
             logger.errorWithContext(
               "Error during render",
               { componentName },
-              error
+              error,
             );
           } finally {
+            // Ensure ephemeral metadata is cleaned up even on error
+            const hookContext =
+              useUserContext && userContext ? userContext : state;
+            delete (hookContext as any).changedPaths;
+
             isRendering = false;
+            // Reset flag on instance
+            if (host.instance) {
+              (host.instance as any).isRendering = false;
+            }
+
+            // Execute pending render if one was scheduled (only if still connected)
+            if (this._pendingRender && !this._isDisconnected) {
+              const nextRender = this._pendingRender;
+              this._pendingRender = null;
+              // Use requestAnimationFrame to ensure DOM is ready
+              requestAnimationFrame(() => {
+                // Double-check disconnection state in RAF callback
+                if (this._isDisconnected) return;
+                void nextRender().catch((error) => {
+                  logger.errorWithContext(
+                    "Error during pending render",
+                    { componentName },
+                    error,
+                  );
+                });
+              });
+            }
           }
         };
 
@@ -574,20 +692,43 @@ export function registerComponent(
           readyPromise: ready.promise,
           lifecycleRegistry,
           ...attachedModules,
-        } satisfies ComponentInstance;
+          // Internal flag for rendering control (prevents child self-rendering during parent render)
+          isRendering: false,
+        } as ComponentInstance & { isRendering: boolean };
 
-        // Observer hinzufügen (jetzt render bereits definiert)
-        model.addObserver(() => {
+        // Observer function stored in variable for later removal
+        this._observerFn = () => {
+          // Exit early if component has been disconnected
+          if (this._isDisconnected) return;
+
+          // Prevent child self-rendering if any ancestor is currently rendering
+          // Ancestor render will update child props automatically through processTemplate
+          // Check entire parent chain to see if any ancestor is rendering
+          let currentParent: ComponentInstance | undefined = parent;
+          while (currentParent) {
+            if ((currentParent as any).isRendering) {
+              // An ancestor is rendering, so this child should not self-render
+              // The ancestor's render will update this child's props automatically
+              return;
+            }
+            currentParent = currentParent.$parent;
+          }
+
           requestAnimationFrame(() => {
+            // Double-check disconnection state in RAF callback
+            if (this._isDisconnected) return;
             void render().catch((error) => {
               logger.errorWithContext(
                 "Error during render (observer)",
                 { componentName },
-                error
+                error,
               );
             });
           });
-        });
+        };
+
+        // Register observer (render is already defined)
+        model.addObserver(this._observerFn);
 
         // created
         const hookContext = useUserContext && userContext ? userContext : state;
@@ -613,19 +754,40 @@ export function registerComponent(
 
         const instance = host.instance;
 
+        // 1. Set disconnected flag to prevent pending/scheduled renders
+        this._isDisconnected = true;
+        this._renderAborted = true;
+        this._pendingRender = null;
+
+        // 2. Remove model observer to stop reactive updates
+        if (this._model && this._observerFn) {
+          this._model.removeObserver(this._observerFn);
+        }
+
+        // 3. Emit beforeDestroy hooks
         const destroyContext = instance.userContext || instance.state;
         await hookEmit("global", "beforeDestroy", destroyContext);
         await hookEmit(instance.lifecycleRegistry, "beforeDestroy");
 
+        // 5. Cleanup DOM event listeners for this component subtree
+        cleanupSubtree(this);
+
+        // 6. Remove component style if no other instances exist
         if (!document.body.querySelector(this.tagName.toLowerCase())) {
           document.head
             .querySelector(`style#style-${this.tagName.toLowerCase()}`)
             ?.remove();
         }
 
+        // 7. Emit destroyed hooks
         await hookEmit("global", "destroyed", destroyContext);
         await hookEmit(instance.lifecycleRegistry, "destroyed");
+
+        // 8. Release strong references for GC
+        this._model = undefined;
+        this._observerFn = undefined;
+        host.instance = undefined;
       }
-    }
+    },
   );
 }

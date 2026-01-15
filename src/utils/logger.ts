@@ -49,8 +49,7 @@ class Logger {
 
     // Default: ERROR in production, DEBUG in development
     this.level =
-      options?.level ??
-      (this.isDevelopment ? LogLevel.DEBUG : LogLevel.ERROR);
+      options?.level ?? (this.isDevelopment ? LogLevel.DEBUG : LogLevel.ERROR);
   }
 
   /**
@@ -76,7 +75,7 @@ class Logger {
   private formatMessage(
     emoji: string,
     message: string,
-    context?: LogContext
+    context?: LogContext,
   ): string {
     const parts = [emoji, message];
 
@@ -141,7 +140,7 @@ class Logger {
   errorWithContext(
     message: string,
     context: LogContext,
-    error?: Error | unknown
+    error?: Error | unknown,
   ): void {
     if (!this.shouldLog(LogLevel.ERROR)) return;
     const formatted = this.formatMessage(EMOJIS.ERROR, message, context);
@@ -168,4 +167,3 @@ export const logger = new Logger();
 
 // Auto-initialize on import
 logger.init();
-

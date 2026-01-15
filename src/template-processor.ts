@@ -1,33 +1,77 @@
-import { containsHTML, evaluateExpression, isValidLoopMatch, logger } from './utils'
-import type { State, Refs } from './types'
+import { containsHTML, evaluateExpression, logger } from "./utils";
+import type { State, Refs } from "./types";
 
 type IfChainState = {
-  hasHead: boolean
-  resolved: boolean // true if chain already resolved by a kept if/else-if, so rest is removed
+  hasHead: boolean;
+  resolved: boolean; // true if chain already resolved by a kept if/else-if, so rest is removed
+};
+
+/**
+ * Represents a parsed loop binding - either a single variable or a tuple [key, value].
+ */
+type LoopBinding =
+  | { type: "single"; itemVar: string }
+  | { type: "tuple"; keyVar: string; itemVar: string };
+
+const IDENTIFIER_REGEX = /^[A-Za-z_$][A-Za-z0-9_$]*$/;
+
+/**
+ * Parses loop binding syntax: either "item" or "[key, item]".
+ * @param bindingStr - The binding string to parse
+ * @returns Parsed binding object
+ * @throws Error if binding syntax is invalid
+ */
+function parseLoopBinding(bindingStr: string): LoopBinding {
+  const trimmed = bindingStr.trim();
+
+  // Check for tuple binding: [key, item]
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    const inner = trimmed.slice(1, -1);
+    const parts = inner.split(",").map((p) => p.trim());
+
+    if (parts.length !== 2) {
+      throw new Error("Invalid loop binding: expected <id> or [<id>, <id>]");
+    }
+
+    const [keyVar, itemVar] = parts;
+
+    if (!IDENTIFIER_REGEX.test(keyVar) || !IDENTIFIER_REGEX.test(itemVar)) {
+      throw new Error("Invalid loop binding: expected <id> or [<id>, <id>]");
+    }
+
+    return { type: "tuple", keyVar, itemVar };
+  }
+
+  // Single binding: item
+  if (!IDENTIFIER_REGEX.test(trimmed)) {
+    throw new Error("Invalid loop binding: expected <id> or [<id>, <id>]");
+  }
+
+  return { type: "single", itemVar: trimmed };
 }
 
 function createFilteredTreeWalker(rootElement: Node): TreeWalker {
   const filter: NodeFilter = {
     acceptNode(node: Node): number {
-      if (node.nodeType === Node.ELEMENT_NODE) return NodeFilter.FILTER_ACCEPT
+      if (node.nodeType === Node.ELEMENT_NODE) return NodeFilter.FILTER_ACCEPT;
 
       // Text nodes only if they contain {{ ... }}
       if (
         node.nodeType === Node.TEXT_NODE &&
-        /\{\{(.+?)\}\}/g.test(node.nodeValue || '')
+        /\{\{(.+?)\}\}/g.test(node.nodeValue || "")
       ) {
-        return NodeFilter.FILTER_ACCEPT
+        return NodeFilter.FILTER_ACCEPT;
       }
 
-      return NodeFilter.FILTER_SKIP
+      return NodeFilter.FILTER_SKIP;
     },
-  }
+  };
 
   return document.createTreeWalker(
     rootElement,
     NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT,
     filter,
-  )
+  );
 }
 
 /**
@@ -36,10 +80,55 @@ function createFilteredTreeWalker(rootElement: Node): TreeWalker {
  * @returns Next node or null
  */
 function skipNode(walker: TreeWalker): Node | null {
-  const current = walker.currentNode
+  const current = walker.currentNode;
   return current?.nextSibling
     ? (walker.currentNode = current.nextSibling)
-    : walker.nextNode()
+    : walker.nextNode();
+}
+
+/**
+ * Skips the entire subtree of the current node and moves to the next sibling or ancestor's sibling.
+ * This is used to skip processing children of loop elements since they will be processed
+ * recursively with the correct local state.
+ * @param walker - TreeWalker instance
+ * @param element - The element whose subtree should be skipped
+ * @returns Next node outside the subtree or null
+ */
+function skipSubtree(walker: TreeWalker, element: Node): Node | null {
+  let next: Node | null = element.nextSibling;
+
+  // If no next sibling, walk up to find an ancestor with a next sibling
+  if (!next) {
+    let parent = element.parentNode;
+    while (parent && parent !== walker.root) {
+      if (parent.nextSibling) {
+        next = parent.nextSibling;
+        break;
+      }
+      parent = parent.parentNode;
+    }
+  }
+
+  if (next) {
+    walker.currentNode = next;
+    return next;
+  }
+
+  return null;
+}
+
+/**
+ * Converts a template expression result to a string for rendering.
+ * - null/undefined => ""
+ * - true/false => ""
+ * - otherwise => String(value) (e.g., 0 becomes "0")
+ * @param value - The value to stringify
+ * @returns String representation for template output
+ */
+function stringifyTemplateValue(value: unknown): string {
+  if (value == null) return "";
+  if (value === true || value === false) return "";
+  return String(value);
 }
 
 /**
@@ -50,82 +139,102 @@ function skipNode(walker: TreeWalker): Node | null {
  */
 function replaceTemplateString(template: string, state: State): string {
   return template.replace(/\{\{(.+?)\}\}/g, (_, expression) => {
-    const result = evaluateExpression(expression.trim(), state)
-    return result == null ? '' : String(result)
-  })
+    const result = evaluateExpression(expression.trim(), state);
+    return stringifyTemplateValue(result);
+  });
 }
 
 /**
  * Applies loop directive to an element, creating multiple instances.
+ * Supports both single binding (item in items) and tuple binding ([key, item] in items).
  * @param element - Element with loop attribute
  * @param state - Component state
  * @param refs - Component element references
  */
-async function applyLoop(element: HTMLElement, state: State, refs: Refs): Promise<void> {
-  const loopDefinition = element.getAttribute('loop')
-  if (!loopDefinition) return
+async function applyLoop(
+  element: HTMLElement,
+  state: State,
+  refs: Refs,
+): Promise<void> {
+  const loopDefinition = element.getAttribute("loop");
+  if (!loopDefinition) return;
 
-  element.removeAttribute('loop')
+  element.removeAttribute("loop");
 
   // allow: <div loop="x in items" if="..."> ... </div>
-  const toplevelIf = element.getAttribute('if')
-  if (toplevelIf) element.removeAttribute('if')
+  const toplevelIf = element.getAttribute("if");
+  if (toplevelIf) element.removeAttribute("if");
 
-  const match = loopDefinition.match(/^(\w+)\s+in\s+(\w+)$/)
-  if (!isValidLoopMatch(match)) {
-    logger.error('Invalid loop definition', loopDefinition)
-    return
+  // Updated regex to capture the full binding part (single or tuple)
+  const match = loopDefinition.match(/^(.+?)\s+in\s+(.+)$/);
+  if (!match) {
+    throw new Error("Invalid loop binding: expected <id> or [<id>, <id>]");
   }
 
-  const [, itemVar, collectionExp] = match
-  const raw = evaluateExpression(collectionExp, state)
+  const [, bindingStr, collectionExp] = match;
+  const binding = parseLoopBinding(bindingStr);
+  const raw = evaluateExpression(collectionExp.trim(), state);
 
-  if (!raw || typeof raw !== 'object' || raw === null) {
-    logger.error('State source is not iterable', { collectionExp, raw })
-    return
+  // Allow empty arrays/objects - they just render nothing
+  if (raw === null || raw === undefined) {
+    element.remove();
+    return;
   }
 
-  if (Array.isArray(raw)) {
-    logger.error('Loop source must be a plain object, not an array', {
-      collectionExp,
-      raw,
-    })
-    return
+  if (typeof raw !== "object") {
+    logger.error("State source is not iterable", { collectionExp, raw });
+    return;
   }
 
-  const entries = Object.entries(raw)
-  const totalCount = entries.length
-  const fragment = document.createDocumentFragment()
+  const isArray = Array.isArray(raw);
+  const entries: [string, unknown][] = isArray
+    ? (raw as unknown[]).map((value, idx) => [String(idx), value])
+    : Object.entries(raw);
+  const totalCount = entries.length;
+  const fragment = document.createDocumentFragment();
 
-  let index = 0
+  let index = 0;
   for (const [key, value] of entries) {
-    const localState = {
+    // Build local state with binding variables and implicit loop variables
+    const localState: State = {
       ...state,
-      [itemVar]: value,
+      // Implicit loop variables (always available for backwards compatibility)
       index,
       key,
       isFirst: index === 0,
       isLast: index === totalCount - 1,
       isEven: index % 2 === 0,
       isOdd: index % 2 !== 0,
+    };
+
+    // Apply binding
+    if (binding.type === "single") {
+      localState[binding.itemVar] = value;
+    } else {
+      // Tuple binding: first identifier gets key, second gets value
+      localState[binding.keyVar] = key;
+      localState[binding.itemVar] = value;
     }
 
     if (toplevelIf && !evaluateExpression(toplevelIf, localState)) {
-      index++
-      continue
+      index++;
+      continue;
     }
 
-    const cloned = element.cloneNode(true)
+    const cloned = element.cloneNode(true);
     if (cloned instanceof HTMLElement) {
-      await processTemplate(cloned, localState, refs)
-      fragment.appendChild(cloned)
+      await processTemplate(cloned, localState, refs);
+      fragment.appendChild(cloned);
     }
 
-    index++
+    index++;
   }
 
   if (fragment.childNodes.length > 0 && element.parentNode) {
-    element.parentNode.replaceChild(fragment, element)
+    element.parentNode.replaceChild(fragment, element);
+  } else {
+    // Empty collection - remove the template element
+    element.remove();
   }
 }
 
@@ -146,91 +255,91 @@ function applyIfChainVueLoose(
   state: State,
   chainByParent: WeakMap<Node, IfChainState>,
 ): void {
-  const parent = element.parentNode
+  const parent = element.parentNode;
 
   // Helper: get existing chain, or empty one
   const getChain = (): IfChainState | undefined => {
-    if (!parent) return undefined
-    return chainByParent.get(parent)
-  }
+    if (!parent) return undefined;
+    return chainByParent.get(parent);
+  };
 
   const setChain = (next: IfChainState) => {
-    if (!parent) return
-    chainByParent.set(parent, next)
-  }
+    if (!parent) return;
+    chainByParent.set(parent, next);
+  };
 
   const clearChain = () => {
-    if (!parent) return
-    chainByParent.delete(parent)
-  }
+    if (!parent) return;
+    chainByParent.delete(parent);
+  };
 
   // IF
-  const ifCond = element.getAttribute('if')
+  const ifCond = element.getAttribute("if");
   if (ifCond !== null) {
-    const ok = !!evaluateExpression(ifCond, state)
+    const ok = !!evaluateExpression(ifCond, state);
 
     // New IF starts a new chain for this parent (overwrite)
-    setChain({ hasHead: true, resolved: ok })
+    setChain({ hasHead: true, resolved: ok });
 
     if (!ok) {
-      element.remove()
+      element.remove();
     } else {
-      element.removeAttribute('if')
+      element.removeAttribute("if");
     }
-    return
+    return;
   }
 
   // ELSE-IF
-  const elseIfCond = element.getAttribute('else-if')
+  const elseIfCond = element.getAttribute("else-if");
   if (elseIfCond !== null) {
-    const chain = getChain()
+    const chain = getChain();
 
     // No preceding chain
     if (!chain?.hasHead) {
-      element.remove()
-      return
+      element.remove();
+      return;
     }
 
     // Chain already resolved by earlier if/else-if => remove
     if (chain.resolved) {
-      element.remove()
-      return
+      element.remove();
+      return;
     }
 
-    const ok = !!evaluateExpression(elseIfCond, state)
+    const ok = !!evaluateExpression(elseIfCond, state);
 
     // Update chain resolution
-    setChain({ hasHead: true, resolved: ok })
+    setChain({ hasHead: true, resolved: ok });
 
     if (!ok) {
-      element.remove()
+      element.remove();
     } else {
-      element.removeAttribute('else-if')
+      element.removeAttribute("else-if");
     }
-    return
+    return;
   }
 
   // ELSE
-  if (element.hasAttribute('else')) {
-    const chain = getChain()
+  if (element.hasAttribute("else")) {
+    const chain = getChain();
 
     // No preceding chain
     if (!chain?.hasHead) {
-      element.remove()
-      return
+      element.remove();
+      return;
     }
 
     if (chain.resolved) {
       // Something earlier was kept => else removed
-      element.remove()
+      element.remove();
     } else {
       // Nothing earlier kept => else kept
-      element.removeAttribute('else')
+      element.removeAttribute("else");
     }
 
     // ELSE always consumes the chain
-    clearChain()
-    return
+    clearChain();
+    return;
   }
 
   // Any other element: neutral (does NOT break chain)
@@ -242,47 +351,47 @@ async function processNodeBatch(
   batchSize = 50,
 ): Promise<void> {
   // Persist across batches: chain must survive batch boundaries
-  const chainByParent = new WeakMap<Node, IfChainState>()
+  const chainByParent = new WeakMap<Node, IfChainState>();
 
   for (let i = 0; i < pendingNodes.length; i += batchSize) {
-    const batch = pendingNodes.slice(i, i + batchSize)
+    const batch = pendingNodes.slice(i, i + batchSize);
 
     for (const { node, state } of batch) {
       if (node instanceof HTMLElement) {
         // LOOP handled separately
-        if (node.hasAttribute('loop')) {
-          await applyLoop(node, state, refs).catch((err) =>
-            logger.errorWithContext('Error in applyLoop', {}, err)
-          )
-          continue
+        if (node.hasAttribute("loop")) {
+          await applyLoop(node, state, refs);
+          continue;
         }
 
         // IF / ELSE-IF / ELSE
         if (
-          node.hasAttribute('if') ||
-          node.hasAttribute('else') ||
-          node.hasAttribute('else-if')
+          node.hasAttribute("if") ||
+          node.hasAttribute("else") ||
+          node.hasAttribute("else-if")
         ) {
-          applyIfChainVueLoose(node, state, chainByParent)
-          continue
+          applyIfChainVueLoose(node, state, chainByParent);
+          continue;
         }
 
         // Any other element is neutral for the chain
-        continue
+        continue;
       }
 
       // TEXT is neutral for the chain
-      const newContent = replaceTemplateString(node.nodeValue!, state)
+      const newContent = replaceTemplateString(node.nodeValue!, state);
       if (containsHTML(newContent)) {
-        const frag = document.createRange().createContextualFragment(newContent)
-        node.replaceWith(frag)
+        const frag = document
+          .createRange()
+          .createContextualFragment(newContent);
+        node.replaceWith(frag);
       } else {
-        node.nodeValue = newContent
+        node.nodeValue = newContent;
       }
     }
 
     if (i + batchSize < pendingNodes.length) {
-      await new Promise(requestAnimationFrame)
+      await new Promise(requestAnimationFrame);
     }
   }
 }
@@ -294,82 +403,154 @@ async function processNodeBatch(
  * @param state - Component state for expression evaluation
  * @param refs - Component element references (populated during processing)
  */
-export async function processTemplate(root: Node, state: State, refs: Refs): Promise<void> {
+export async function processTemplate(
+  root: Node,
+  state: State,
+  refs: Refs,
+): Promise<void> {
   try {
-    const walker = createFilteredTreeWalker(root)
-    const processed = new Set<Node>()
-    const pending: { node: HTMLElement | Text; state: State }[] = []
+    const walker = createFilteredTreeWalker(root);
+    const processed = new Set<Node>();
+    const pending: { node: HTMLElement | Text; state: State }[] = [];
 
-    let current: Node | null = walker.currentNode
+    let current: Node | null = walker.currentNode;
 
     while (current) {
       if (processed.has(current)) {
-        current = walker.nextNode()
-        continue
+        current = walker.nextNode();
+        continue;
       }
 
-      processed.add(current)
+      processed.add(current);
 
-      if (current.nodeType === Node.ELEMENT_NODE && current instanceof HTMLElement) {
-        const el = current
+      if (
+        current.nodeType === Node.ELEMENT_NODE &&
+        current instanceof HTMLElement
+      ) {
+        const el = current;
 
-        // Queue loops (and skip their subtree)
-        if (el.hasAttribute('loop')) {
-          pending.push({ node: el, state })
-          current = skipNode(walker) || walker.nextNode()
-          continue
+        // Queue loops (and skip their subtree completely)
+        if (el.hasAttribute("loop")) {
+          pending.push({ node: el, state });
+          current = skipSubtree(walker, el);
+          continue;
         }
 
         // Queue if/else-if/else nodes for ordered evaluation
-        if (el.hasAttribute('if') || el.hasAttribute('else') || el.hasAttribute('else-if')) {
-          pending.push({ node: el, state })
+        if (
+          el.hasAttribute("if") ||
+          el.hasAttribute("else") ||
+          el.hasAttribute("else-if")
+        ) {
+          pending.push({ node: el, state });
         }
 
-        // refs + attribute interpolation
+        // refs + attribute interpolation + dynamic bindings
         for (const attr of Array.from(el.attributes)) {
-          if (attr.name === 'ref') refs[attr.value] = el
+          if (attr.name === "ref") refs[attr.value] = el;
 
-          if (attr.value.includes('{{')) {
+          // Handle dynamic attribute bindings (:class, :href, :data-*, etc.)
+          if (attr.name.startsWith(":")) {
+            const realAttrName = attr.name.slice(1);
+            const expr = attr.value.trim();
+
             try {
-              const updated = replaceTemplateString(attr.value, state)
-              if (updated !== attr.value) el.setAttribute(attr.name, updated)
+              const evaluated = evaluateExpression(expr, state);
+
+              // Special handling for :class with object syntax
+              if (
+                realAttrName === "class" &&
+                typeof evaluated === "object" &&
+                evaluated !== null
+              ) {
+                const classesToAdd: string[] = [];
+                for (const [className, condition] of Object.entries(
+                  evaluated,
+                )) {
+                  if (condition) {
+                    classesToAdd.push(className);
+                  }
+                }
+                if (classesToAdd.length > 0) {
+                  const existingClasses = el.getAttribute("class") || "";
+                  const newClasses = existingClasses
+                    ? `${existingClasses} ${classesToAdd.join(" ")}`
+                    : classesToAdd.join(" ");
+                  el.setAttribute("class", newClasses);
+                }
+              } else if (
+                evaluated !== null &&
+                evaluated !== undefined &&
+                evaluated !== false
+              ) {
+                // For boolean true, just set the attribute without value
+                if (evaluated === true) {
+                  el.setAttribute(realAttrName, "");
+                } else {
+                  el.setAttribute(realAttrName, String(evaluated));
+                }
+              }
+
+              // Remove the dynamic binding attribute
+              el.removeAttribute(attr.name);
+            } catch (err) {
+              logger.errorWithContext(
+                `Error evaluating dynamic attribute "${attr.name}"`,
+                { attributeName: attr.name, expression: expr },
+                err,
+              );
+            }
+            continue;
+          }
+
+          if (attr.value.includes("{{")) {
+            try {
+              let updated = replaceTemplateString(attr.value, state);
+              // Normalize whitespace for class attributes only
+              if (attr.name === "class") {
+                updated = updated.replace(/\s+/g, " ").trim();
+              }
+              if (updated !== attr.value) el.setAttribute(attr.name, updated);
             } catch (err) {
               logger.errorWithContext(
                 `Error replacing attribute "${attr.name}"`,
                 { attributeName: attr.name },
-                err
-              )
+                err,
+              );
             }
           }
         }
 
         // Don't traverse into custom elements
-        if (el.tagName.includes('-')) {
-          current = skipNode(walker) || walker.nextNode()
-          continue
+        if (el.tagName.includes("-")) {
+          current = skipNode(walker) || walker.nextNode();
+          continue;
         }
-      } else if (current.nodeType === Node.TEXT_NODE && current instanceof Text) {
+      } else if (
+        current.nodeType === Node.TEXT_NODE &&
+        current instanceof Text
+      ) {
         // Skip text nodes inside custom elements
-        let parent = current.parentElement
-        let isInsideCustomElement = false
+        let parent = current.parentElement;
+        let isInsideCustomElement = false;
         while (parent) {
-          if (parent.tagName.includes('-')) {
-            isInsideCustomElement = true
-            break
+          if (parent.tagName.includes("-")) {
+            isInsideCustomElement = true;
+            break;
           }
-          parent = parent.parentElement
+          parent = parent.parentElement;
         }
         if (!isInsideCustomElement) {
-          pending.push({ node: current, state })
+          pending.push({ node: current, state });
         }
       }
 
-      current = walker.nextNode()
+      current = walker.nextNode();
     }
 
-    await processNodeBatch(pending, refs)
+    await processNodeBatch(pending, refs);
   } catch (error) {
-    logger.errorWithContext('Error processing template', {}, error)
-    throw error
+    logger.errorWithContext("Error processing template", {}, error);
+    throw error;
   }
 }

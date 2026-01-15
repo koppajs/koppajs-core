@@ -57,7 +57,7 @@ describe("hook-registry", () => {
 
     it("handles non-existent hook gracefully", () => {
       expect(() =>
-        hookOff(registry, "nonexistent" as LifecycleHook, vi.fn())
+        hookOff(registry, "nonexistent" as LifecycleHook, vi.fn()),
       ).not.toThrow();
     });
   });

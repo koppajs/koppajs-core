@@ -46,7 +46,9 @@ export function isModule(ext: any): ext is IModule {
  * @param el - The value to check
  * @returns True if el is an HTMLElement and carries an `instance` property
  */
-export function isHTMLElementWithInstance(el: unknown): el is HTMLElementWithInstance {
+export function isHTMLElementWithInstance(
+  el: unknown,
+): el is HTMLElementWithInstance {
   return el instanceof HTMLElement && "instance" in el;
 }
 
@@ -77,5 +79,7 @@ export function hasComponentInstance(
 export function isValidLoopMatch(
   match: RegExpMatchArray | null,
 ): match is [string, string, string] {
-  return !!match && match.length === 3 && Boolean(match[1]) && Boolean(match[2]);
+  return (
+    !!match && match.length === 3 && Boolean(match[1]) && Boolean(match[2])
+  );
 }

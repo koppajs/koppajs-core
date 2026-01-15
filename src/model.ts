@@ -1,4 +1,4 @@
-import { IS_PROXY, WatchListSnapshot } from "./types";
+import { IS_PROXY } from "./types";
 
 /**
  * WeakMap for Proxy cache - global for all models.
@@ -33,18 +33,18 @@ const getCachedProxy = <O extends object>(obj: O): O | undefined => {
 };
 
 // Get the original object from a proxy (if it's a proxy) or return the object itself
-const getOriginalObject = (obj: object): object => {
+export function getOriginalObject(obj: object): object {
   // Check if obj is a proxy by looking in the reverse cache
   const original = globalProxyToOriginalCache.get(obj);
   if (original) return original;
   // If not found, obj is likely the original
   return obj;
-};
+}
 
 /**
  * Checks if an object is a reactive proxy.
  */
-const isProxy = (obj: unknown): boolean => {
+export const isProxy = (obj: unknown): boolean => {
   if (!isObject(obj)) return false;
   return Reflect.get(obj, IS_PROXY) === true;
 };
@@ -61,81 +61,83 @@ const isPrimitive = (value: unknown): boolean =>
     typeof value === "undefined");
 
 /**
+ * Watcher callback info passed to watch callbacks.
+ */
+export interface WatcherInfo {
+  changedPaths: Set<string>;
+}
+
+/**
+ * Watcher callback type.
+ */
+export type WatcherCallback = (info: WatcherInfo) => void;
+
+/**
  * Creates a reactive model with proxy-based reactivity.
- * Tracks property changes and notifies observers when watched properties change.
- * Supports deep watching and array diffing for efficient updates.
+ * Tracks property changes and notifies observers when state changes.
+ * Supports effect subscriptions via watch() with prefix-matching and batching.
  * @param initialData - Initial state object
- * @returns Reactive model with watch/unwatch and observer methods
+ * @returns Reactive model with watch and observer methods
  */
 export function createModel<T extends Record<string, unknown>>(
-  initialData: T
+  initialData: T,
 ): {
-  data: T;
-  watch: (path: string, deep?: boolean) => void;
-  unwatch: (path: string) => void;
+  state: T;
+  watch: (path: string, cb: WatcherCallback) => () => void;
   addObserver: (observer: () => void) => void;
   removeObserver: (observer: () => void) => void;
-  getWatchList: () => WatchListSnapshot[];
+  getStateVersion: () => number;
+  flushChanges: () => Set<string>;
 } {
   // Private state
   const observers = new Set<() => void>();
-  const watchList = new Map<object, Set<string>>();
-  const deepWatchedObjects = new WeakSet<object>();
+  const objectPaths = new WeakMap<object, string>(); // Track each object's path in the state tree
+  let stateVersion = 0; // Version counter for state changes
+  let changedPaths = new Set<string>();
 
-  // Enhanced callback that also notifies observers
-  const enhancedCallback = () => {
-    observers.forEach((observer) => observer());
-  };
+  // Watcher subscriptions: path prefix -> Set of callbacks
+  const watchers = new Map<string, Set<WatcherCallback>>();
 
-  const hasWatchEntry = (
-    parentObj?: object,
-    property?: string,
-    value?: unknown
+  /**
+   * Checks if a changed path matches a watcher's path prefix.
+   * A watcher for "user" matches "user" and anything starting with "user.".
+   */
+  const pathMatchesPrefix = (
+    changedPath: string,
+    watchPrefix: string,
   ): boolean => {
-    if (parentObj && property) {
-      return watchList.get(parentObj)?.has(property) ?? false;
-    }
-
-    if (value !== undefined) {
-      for (const [parent, props] of watchList.entries()) {
-        for (const prop of props) {
-          if (Reflect.get(parent, prop) === value) return true;
-        }
-      }
-    }
-
+    if (changedPath === watchPrefix) return true;
+    if (changedPath.startsWith(watchPrefix + ".")) return true;
     return false;
   };
 
-  const isWatched = (parent: object, property: string): boolean =>
-    hasWatchEntry(parent, property);
-
-  const isWholeValueWatched = (value: unknown): boolean =>
-    hasWatchEntry(undefined, undefined, value);
-
-  const addWatchEntry = (parent: object, prop: string) => {
-    const set = watchList.get(parent) ?? new Set<string>();
-    set.add(prop);
-    if (!watchList.has(parent)) watchList.set(parent, set);
+  /**
+   * Builds the fully qualified path for a property on a target object.
+   */
+  const buildPath = (target: object, property: string): string => {
+    const parentPath = objectPaths.get(target) ?? "";
+    return parentPath ? `${parentPath}.${property}` : property;
   };
 
-  const removeWatchEntry = (parent: object, prop: string): void => {
-    const watchedProps = watchList.get(parent);
-    if (!watchedProps) return;
-
-    watchedProps.delete(prop);
-    if (watchedProps.size === 0) watchList.delete(parent);
+  /**
+   * Single code path for notifying observers after a state mutation.
+   * Records the path, increments stateVersion exactly once, and notifies all observers.
+   */
+  const notifyObservers = (path: string): void => {
+    changedPaths.add(path);
+    stateVersion++;
+    observers.forEach((observer) => observer());
   };
 
-  // Diff functions for arrays
+  // Diff functions for arrays - now accept a path for notifying observers
   const findLCSByRef = (
     oldArr: unknown[],
-    newArr: unknown[]
+    newArr: unknown[],
   ): [number, number][] => {
     const lenA = oldArr.length;
     const lenB = newArr.length;
     const dp: number[][] = Array.from({ length: lenA + 1 }, () =>
-      new Array(lenB + 1).fill(0)
+      new Array(lenB + 1).fill(0),
     );
 
     for (let i = 1; i <= lenA; i++) {
@@ -169,11 +171,13 @@ export function createModel<T extends Record<string, unknown>>(
 
   const diffArraysByReferenceNoDeepMerge = (
     oldArr: unknown[],
-    newArr: unknown[]
+    newArr: unknown[],
+    path: string,
   ): void => {
     if (oldArr === newArr) return;
 
     const lcsPairs = findLCSByRef(oldArr, newArr);
+    let hasChanges = false;
     let i = 0;
     let j = 0;
     let pairIndex = 0;
@@ -189,12 +193,12 @@ export function createModel<T extends Record<string, unknown>>(
           : [oldArr.length, newArr.length];
 
       while (i < lcsI) {
-        enhancedCallback();
+        hasChanges = true;
         i++;
       }
 
       while (j < lcsJ) {
-        enhancedCallback();
+        hasChanges = true;
         j++;
       }
 
@@ -206,17 +210,48 @@ export function createModel<T extends Record<string, unknown>>(
     }
 
     oldArr.splice(0, oldArr.length, ...newArr);
+
+    if (hasChanges) {
+      notifyObservers(path);
+    }
   };
 
-  const diffArraysSimple = (oldArr: unknown[], newArr: unknown[]): void => {
+  const diffArraysSimple = (
+    oldArr: unknown[],
+    newArr: unknown[],
+    path: string,
+  ): void => {
     const oldSet = new Set(oldArr);
     const newSet = new Set(newArr);
 
-    for (const item of oldSet) if (!newSet.has(item)) enhancedCallback();
-    for (const item of newSet) if (!oldSet.has(item)) enhancedCallback();
+    let hasChanges = false;
+    for (const item of oldSet) {
+      if (!newSet.has(item)) {
+        hasChanges = true;
+        break;
+      }
+    }
+    if (!hasChanges) {
+      for (const item of newSet) {
+        if (!oldSet.has(item)) {
+          hasChanges = true;
+          break;
+        }
+      }
+    }
+
+    if (hasChanges) {
+      // Mutate oldArr to match newArr before notifying
+      oldArr.splice(0, oldArr.length, ...newArr);
+      notifyObservers(path);
+    }
   };
 
-  const diffArraysOptimized = (oldArr: unknown[], newArr: unknown[]): void => {
+  const diffArraysOptimized = (
+    oldArr: unknown[],
+    newArr: unknown[],
+    path: string,
+  ): void => {
     const oldSet = new Set(oldArr);
     const newSet = new Set(newArr);
 
@@ -225,20 +260,23 @@ export function createModel<T extends Record<string, unknown>>(
       [...oldSet].some((item) => !newSet.has(item)) ||
       [...newSet].some((item) => !oldSet.has(item));
 
-    if (onlyAddedOrRemoved) diffArraysSimple(oldArr, newArr);
-    else diffArraysByReferenceNoDeepMerge(oldArr, newArr);
+    if (onlyAddedOrRemoved) diffArraysSimple(oldArr, newArr, path);
+    else diffArraysByReferenceNoDeepMerge(oldArr, newArr, path);
   };
 
   const mergeInPlaceObject = (
     oldObj: Record<string, unknown>,
-    newObj: Record<string, unknown>
-  ): void => {
-    if (oldObj === newObj) return;
+    newObj: Record<string, unknown>,
+    basePath: string,
+  ): boolean => {
+    if (oldObj === newObj) return false;
+
+    let hasChanges = false;
 
     // Remove properties not in new object
     for (const key of Object.keys(oldObj)) {
       if (!(key in newObj)) {
-        if (isWatched(oldObj, key)) enhancedCallback();
+        hasChanges = true;
         Reflect.deleteProperty(oldObj, key);
       }
     }
@@ -250,39 +288,70 @@ export function createModel<T extends Record<string, unknown>>(
 
       if (oldVal === newVal) continue;
 
+      const nestedPath = basePath ? `${basePath}.${key}` : key;
+
       if (
         isObject(oldVal) &&
         isProxy(oldVal) &&
         isObject(newVal) &&
         !isProxy(newVal)
       ) {
-        mergeInPlaceObject(
+        const nestedChanged = mergeInPlaceObject(
           oldVal as Record<string, unknown>,
-          newVal as Record<string, unknown>
+          newVal as Record<string, unknown>,
+          nestedPath,
         );
-        if (oldVal !== newVal && isWatched(oldObj, key)) {
-          enhancedCallback();
+        if (nestedChanged) {
+          hasChanges = true;
+        }
+        if (oldVal !== newVal) {
+          hasChanges = true;
           Reflect.set(oldObj, key, newVal);
         }
       } else {
-        if (isWatched(oldObj, key)) enhancedCallback();
+        hasChanges = true;
         Reflect.set(oldObj, key, newVal);
       }
     }
+
+    return hasChanges;
   };
 
   // Main reactive wrapper
-  const makeReactive = <O extends object>(obj: O): O => {
+  const makeReactive = <O extends object>(obj: O, parentPath = ""): O => {
+    // Don't make DOM nodes, Window, or Document reactive - Proxies don't work with native DOM APIs
+    if (
+      obj instanceof Node ||
+      obj instanceof Window ||
+      obj instanceof Document
+    ) {
+      return obj;
+    }
+
     const cached = getCachedProxy(obj);
     if (cached) return cached;
+
+    // Track this object's path in the state tree
+    if (parentPath) {
+      objectPaths.set(obj, parentPath);
+    }
 
     const proxy = new Proxy(obj, {
       get: (target, property, receiver) => {
         if (property === IS_PROXY) return true;
+        // Handle toJSON for JSON.stringify - return the original object to avoid circular references
+        if (property === "toJSON") {
+          return function () {
+            // Return the original object (not the proxy) to avoid circular references
+            return getOriginalObject(target);
+          };
+        }
         const value = Reflect.get(target, property, receiver) as unknown;
         // Automatically make nested objects reactive when accessed
         if (isObject(value) && !isProxy(value) && !Array.isArray(value)) {
-          return makeReactive(value);
+          const propName = toPropName(property);
+          const nestedPath = buildPath(target, propName);
+          return makeReactive(value, nestedPath);
         }
         return value;
       },
@@ -292,47 +361,37 @@ export function createModel<T extends Record<string, unknown>>(
         if (oldValue === value) return true;
 
         const propName = toPropName(property);
+        const path = buildPath(target, propName);
 
-        // target is always the original object (not the proxy)
-        // We store the original object in watchList, so check target directly
-        const isWatchedProperty = isWatched(target, propName);
-
-        // Check if target is deep watched - if so, any property change should trigger observers
-        const isDeepWatched = deepWatchedObjects.has(target);
-
-        // Special array handling
+        // Special array handling - diff and notify once
         if (
-          isWatchedProperty &&
           Array.isArray(oldValue) &&
           !isPrimitive(value) &&
-          Array.isArray(value) &&
-          isWholeValueWatched(oldValue)
+          Array.isArray(value)
         ) {
-          diffArraysOptimized(oldValue, value);
+          diffArraysOptimized(oldValue, value, path);
           return true;
         }
 
-        // Special object handling
+        // Special object handling - merge in place and notify once
         if (
-          isWatchedProperty &&
           isObject(oldValue) &&
           isProxy(oldValue) &&
           isObject(value) &&
           !isProxy(value)
         ) {
-          mergeInPlaceObject(
+          const hasChanges = mergeInPlaceObject(
             oldValue as Record<string, unknown>,
-            value as Record<string, unknown>
+            value as Record<string, unknown>,
+            path,
           );
-          if (oldValue !== value) {
-            enhancedCallback();
-
+          if (hasChanges) {
             let finalVal: unknown = value;
             if (isObject(finalVal) && !isProxy(finalVal)) {
-              finalVal = makeReactive(finalVal);
+              finalVal = makeReactive(finalVal, path);
             }
-
             Reflect.set(target, property, finalVal, receiver);
+            notifyObservers(path);
           }
           return true;
         }
@@ -340,32 +399,27 @@ export function createModel<T extends Record<string, unknown>>(
         // Standard property assignment
         const result = Reflect.set(target, property, value, receiver);
 
-        // Trigger callback if property is watched OR if parent is deep watched
-        if ((isWatchedProperty || isDeepWatched) && oldValue !== value) {
-          if (isObject(value) && !isProxy(value)) {
-            const reactive = makeReactive(value);
-            Reflect.set(target, property, reactive, receiver);
-          }
-          enhancedCallback();
+        if (isObject(value) && !isProxy(value)) {
+          const reactive = makeReactive(value, path);
+          Reflect.set(target, property, reactive, receiver);
         }
+
+        // Single notification for this mutation
+        notifyObservers(path);
 
         return result;
       },
 
       deleteProperty: (target, property) => {
         const propName = toPropName(property);
+        const path = buildPath(target, propName);
         const oldValue = Reflect.get(target, property) as unknown;
-
-        const maybeProxy = globalProxyCache.get(target);
-        const proxyObj = isObject(maybeProxy) ? maybeProxy : undefined;
-
-        const isWatchedProperty =
-          isWatched(target, propName) ||
-          (proxyObj ? isWatched(proxyObj, propName) : false);
 
         const isDeleted = Reflect.deleteProperty(target, property);
 
-        if (isWatchedProperty && oldValue !== undefined) enhancedCallback();
+        if (isDeleted && oldValue !== undefined) {
+          notifyObservers(path);
+        }
         return isDeleted;
       },
     });
@@ -375,186 +429,49 @@ export function createModel<T extends Record<string, unknown>>(
     return proxy;
   };
 
-  const deepReactive = (obj: unknown): void => {
-    if (!isObject(obj)) return;
-
-    const reactiveObj = makeReactive(obj);
-    for (const key in reactiveObj as Record<string, unknown>) {
-      if (!Object.prototype.hasOwnProperty.call(reactiveObj, key)) continue;
-
-      const value = (reactiveObj as Record<string, unknown>)[key];
-      if (isObject(value)) deepReactive(value);
-    }
-  };
-
-  const processWatchString = (
-    path: string,
-    dataProxy: T
-  ): {
-    grandParent?: Record<string, unknown>;
-    parentPropertyName?: string;
-    parent: Record<string, unknown>;
-    property: string;
-  } => {
-    const segments = path.split(".");
-    if (segments.length === 0) throw new Error(`❌ Invalid path: "${path}".`);
-
-    let grandParent: Record<string, unknown> | undefined = undefined;
-    let parentPropertyName: string | undefined = undefined;
-
-    const property = segments.pop()!;
-    if (segments.length > 0) parentPropertyName = segments.pop()!;
-
-    // Start with original data, not the proxy
-    // This ensures we always work with original objects for watchList
-    let temp: unknown = originalData;
-
-    // Navigate through the path, ensuring all intermediate objects are reactive
-    for (const seg of segments) {
-      if (!isObject(temp)) {
-        throw new Error(
-          `❌ Invalid path "${path}". Segment "${seg}" is not an object.`
-        );
-      }
-      // Get the value - Reflect.get on a proxy returns the original object's property value
-      // If the property is an object, the get handler makes it reactive and returns the proxy
-      // But we need the original object for navigation, so we access it directly
-      // We use a workaround: get the value, make it reactive if needed, but keep the original reference
-      let next = Reflect.get(temp, seg) as unknown;
-      if (!next) {
-        throw new Error(
-          `❌ Invalid path "${path}". Segment "${seg}" does not exist.`
-        );
-      }
-      // Make sure intermediate objects are reactive
-      // makeReactive returns the proxy, but we need to keep the original for navigation
-      // So we store the original before making it reactive
-      const originalNext = next;
-      if (isObject(next) && !isProxy(next)) {
-        makeReactive(next);
-        // Keep the original object for further navigation
-        // When we access properties on the proxy, Reflect.get will return original values
-        temp = originalNext;
-      } else {
-        temp = next;
-      }
-    }
-
-    let parent: unknown;
-    if (parentPropertyName !== undefined) {
-      grandParent = temp as Record<string, unknown>;
-      // Get the parent - Reflect.get on a proxy returns the original object's property
-      // If grandParent is a proxy, we get the original object's property value
-      const parentValue = Reflect.get(
-        grandParent,
-        parentPropertyName
-      ) as unknown;
-      if (!isObject(parentValue)) {
-        throw new Error(
-          `❌ Invalid path. No parent object for property "${parentPropertyName}".`
-        );
-      }
-      // Store original before making reactive
-      const originalParent = parentValue;
-      parent = originalParent;
-      // Ensure parent is reactive (this creates a proxy, but we keep the original)
-      if (isObject(parent) && !isProxy(parent)) {
-        makeReactive(parent);
-        // Keep the original object reference
-        parent = originalParent;
-      }
-    } else {
-      parent = temp;
-      if (!isObject(parent)) {
-        throw new Error(`❌ Invalid path "${path}". Parent is not an object.`);
-      }
-      // Store original before making reactive
-      const originalParent = parent;
-      // Ensure parent is reactive
-      if (!isProxy(parent)) {
-        makeReactive(parent);
-        // Keep the original object reference
-        parent = originalParent;
-      }
-    }
-
-    return {
-      grandParent,
-      parentPropertyName,
-      parent: parent as Record<string, unknown>,
-      property,
-    };
-  };
-
-  // Create reactive data
-  const data = makeReactive(initialData);
-
-  // Store reference to original data for processWatchString
-  // This allows us to always get the original object, even when navigating through proxies
-  const originalData = initialData;
+  // Create reactive state
+  const state = makeReactive(initialData);
 
   // Public API
   return {
-    data,
+    state,
 
-    watch(path: string, deep = false): void {
-      const { parent, property } = processWatchString(path, data);
-
-      // Make parent reactive if it's not already
-      if (isObject(parent)) {
-        makeReactive(parent);
+    /**
+     * Registers a watcher for a path prefix.
+     * The callback is called at most once per flush cycle with the subset of
+     * changed paths that match this watcher's prefix.
+     *
+     * Prefix-match rules:
+     * - A watcher for "user" matches "user" and anything starting with "user."
+     *
+     * @param path - The path prefix to watch
+     * @param cb - Callback receiving { changedPaths: Set<string> } with matching paths
+     * @returns A cleanup function stop() that unregisters this watcher (idempotent)
+     */
+    watch(path: string, cb: WatcherCallback): () => void {
+      let callbacks = watchers.get(path);
+      if (!callbacks) {
+        callbacks = new Set();
+        watchers.set(path, callbacks);
       }
+      callbacks.add(cb);
 
-      // Store the original object (not the proxy) in watchList
-      // because set() receives the original object as target
-      if (hasWatchEntry(parent, property)) return;
+      // Track if already stopped to make stop() idempotent
+      let stopped = false;
 
-      const value = parent[property];
+      // Return cleanup function
+      return () => {
+        if (stopped) return;
+        stopped = true;
 
-      if (isObject(value)) {
-        if (deep) {
-          deepReactive(value);
-          // Mark this object as deep watched
-          deepWatchedObjects.add(value);
-          // For deep watching, we need to watch all nested properties recursively
-          // This ensures that changes to nested properties trigger observers
-          const watchNestedProperties = (obj: object) => {
-            for (const key in obj) {
-              if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
-              const nestedValue = Reflect.get(obj, key);
-              // Watch this nested property
-              addWatchEntry(obj, key);
-              if (isObject(nestedValue) && !Array.isArray(nestedValue)) {
-                // Mark nested objects as deep watched too
-                deepWatchedObjects.add(nestedValue);
-                // Recursively watch nested properties
-                watchNestedProperties(nestedValue);
-              }
-            }
-          };
-          watchNestedProperties(value);
-        } else if (!Array.isArray(value)) {
-          makeReactive(value);
+        const cbs = watchers.get(path);
+        if (cbs) {
+          cbs.delete(cb);
+          if (cbs.size === 0) {
+            watchers.delete(path);
+          }
         }
-      }
-
-      addWatchEntry(parent, property);
-    },
-
-    unwatch(path: string): void {
-      const { parent, property } = processWatchString(path, data);
-      removeWatchEntry(parent, property);
-
-      const value = parent[property];
-      if (!isObject(value)) return;
-
-      // Wenn das Value-Objekt nirgendwo mehr als Parent im watchList steht, darf es aus dem Cache
-      for (const [watchedParent] of watchList.entries()) {
-        if (watchedParent === value) return;
-      }
-
-      const cached = getCachedProxy(value);
-      if (cached) globalProxyCache.delete(value);
+      };
     },
 
     addObserver(observer: () => void): void {
@@ -565,11 +482,56 @@ export function createModel<T extends Record<string, unknown>>(
       observers.delete(observer);
     },
 
-    getWatchList(): WatchListSnapshot[] {
-      return Array.from(watchList.entries()).map(([parent, props]) => ({
-        parent,
-        properties: Array.from(props),
-      }));
+    getStateVersion(): number {
+      return stateVersion;
+    },
+
+    /**
+     * Flushes changed paths and notifies watchers.
+     * Each watcher callback is called at most once with the subset of changed paths
+     * that match its prefix.
+     *
+     * @returns A copy of all changed paths since the last flush
+     */
+    flushChanges(): Set<string> {
+      const result = new Set(changedPaths);
+
+      // Notify watchers with their relevant subset of changed paths (batched)
+      if (result.size > 0 && watchers.size > 0) {
+        // Collect callbacks and their matching paths to avoid issues during iteration
+        const callbacksToNotify = new Map<WatcherCallback, Set<string>>();
+
+        for (const [prefix, callbacks] of watchers) {
+          const matchingPaths = new Set<string>();
+          for (const changedPath of result) {
+            if (pathMatchesPrefix(changedPath, prefix)) {
+              matchingPaths.add(changedPath);
+            }
+          }
+
+          if (matchingPaths.size > 0) {
+            for (const cb of callbacks) {
+              // Merge paths if callback is registered under multiple prefixes
+              const existingPaths = callbacksToNotify.get(cb);
+              if (existingPaths) {
+                for (const p of matchingPaths) {
+                  existingPaths.add(p);
+                }
+              } else {
+                callbacksToNotify.set(cb, new Set(matchingPaths));
+              }
+            }
+          }
+        }
+
+        // Call each callback exactly once with its merged matching paths
+        for (const [cb, paths] of callbacksToNotify) {
+          cb({ changedPaths: paths });
+        }
+      }
+
+      changedPaths = new Set<string>();
+      return result;
     },
   };
 }

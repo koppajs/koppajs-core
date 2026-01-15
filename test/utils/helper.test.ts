@@ -129,26 +129,26 @@ describe("setValueByPath", () => {
 
   it("throws error for null target", () => {
     expect(() => setValueByPath(null, "x", 10)).toThrow(
-      "target must be an object"
+      "target must be an object",
     );
   });
 
   it("throws error for undefined target", () => {
     expect(() => setValueByPath(undefined, "x", 10)).toThrow(
-      "target must be an object"
+      "target must be an object",
     );
   });
 
   it("throws error for non-object target", () => {
     expect(() => setValueByPath("string", "x", 10)).toThrow(
-      "target must be an object"
+      "target must be an object",
     );
   });
 
   it("throws error for empty path", () => {
     const obj = { x: 5 };
     expect(() => setValueByPath(obj, "", 10)).toThrow(
-      "path must be a non-empty string"
+      "path must be a non-empty string",
     );
   });
 

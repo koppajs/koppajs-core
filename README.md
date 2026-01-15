@@ -55,7 +55,7 @@
 
 ## What is KoppaJS?
 
-> *Oh no, not another frontend framework!*
+> _Oh no, not another frontend framework!_
 
 That’s probably what you're thinking — and fair enough.
 
@@ -126,18 +126,18 @@ pnpm add @koppajs/koppajs-core
 pnpm add @koppajs/koppajs-vite-plugin -D
 ```
 
-***1. Configure Vite (`vite.config.ts`)***
+**_1. Configure Vite (`vite.config.ts`)_**
 
 ```ts
 import { defineConfig } from 'vite'
 import koppajs from '@koppajs/koppajs-vite-plugin'
 
 export default defineConfig({
-  plugins: [koppajs()]
+  plugins: [koppajs()],
 })
 ```
 
-***2. Set up your entry file (`main.ts`)***
+**_2. Set up your entry file (`main.ts`)_**
 
 ```ts
 import { Core } from '@koppajs/koppajs-core'
@@ -147,40 +147,21 @@ Core.take(BtnCount, 'btn-count')
 Core()
 ```
 
-***3. Create a `.kpa` Single File Component***
+**_3. Create a `.kpa` Single File Component_**
 
 ```html
-[template]
-  <button class="btn" onClick="increment">Count: {{ count }}</button>
-[/template]
-
-[js]
-  return {
-    state: { count: 0 },
-    methods: {
-      increment() {
-        this.count++
-      }
-    }
-  }
-[/js]
-
-[css]
-  .btn {
-    padding: 0.5rem 1rem;
-    background: #007acc;
-    color: white;
-    border: none;
-    border-radius: 4px;
-  }
-[/css]
+[template]  
+<button class="btn" onClick="increment">Count: {{ count }}</button> [/template] [js]
+return { state: { count: 0 }, methods: { increment() { this.count++ } } } [/js] [css]  
+.btn {     padding: 0.5rem 1rem;     background: #007acc;     color: white;     border:
+none;     border-radius: 4px;   } [/css]
 ```
 
-***4. Reference the component in your HTML (`index.html`)***
+**_4. Reference the component in your HTML (`index.html`)_**
 
 ```html
 <body>
-  <btn-count></btn-count>
+    <btn-count></btn-count>
 </body>
 ```
 

@@ -275,7 +275,6 @@ describe("domExtensions", () => {
     it("inserts string after element", () => {
       const nextSibling = document.createElement("div");
       container.appendChild(nextSibling);
-
       (element as any).after("text content");
 
       expect(element.nextSibling?.textContent).toContain("text content");
