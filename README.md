@@ -176,6 +176,18 @@ For more examples, advanced setups, and full API reference, visit the [Documenta
 
 ## Roadmap
 
+## Identity (structId / slotId)
+
+KoppaJS uses a minimal identity contract to manage DOM and model consistency:
+
+- **structId** is injected at build time by the Vite plugin as a `data-k-struct` attribute on elements. This uniquely identifies component structures in the DOM.
+- **slotId** is managed by the core model sidecar for array items, ensuring stable identity for repeated elements.
+- The `reconcileDOM` process uses these identities to move or preserve custom elements, preventing unnecessary remounts and maintaining state across updates.
+- This mechanism avoids remount loops and helps keep component and DOM state in sync, especially for dynamic lists.
+- No global registry or runtime diffing is used—identity is local and explicit.
+
+This contract is internal and not required for most user code, but is essential for predictable updates and efficient DOM reconciliation.
+
 Planned extensions and enhancements for the evolving KoppaJS ecosystem are outlined below – from core tooling to developer experience.
 
 - Router module (in progress)  

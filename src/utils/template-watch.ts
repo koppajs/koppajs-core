@@ -4,7 +4,7 @@ const MUSTACHE_RE = /\{\{([\s\S]+?)\}\}/g;
 
 const STRIP_STRINGS_RE = /(["'`])(?:\\.|(?!\1)[^\\])*\1/g; // entfernt "..." '...' `...`
 
-const PATH_TOKEN_RE =
+const PATH_EXPR_RE =
   /[A-Za-z_$][0-9A-Za-z_$]*(?:\[(?:\d+|\w+)\]|\.[A-Za-z_$][0-9A-Za-z_$]*)*/g;
 
 const KEYWORDS = new Set([
@@ -46,7 +46,7 @@ function extractFromExpression(expression: string): string[] {
 
   const out: string[] = [];
 
-  for (const match of safe.matchAll(PATH_TOKEN_RE)) {
+  for (const match of safe.matchAll(PATH_EXPR_RE)) {
     const token = match[0];
     if (!token || KEYWORDS.has(token)) continue;
 

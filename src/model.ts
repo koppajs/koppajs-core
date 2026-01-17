@@ -13,6 +13,37 @@ const globalProxyCache = new WeakMap<object, object>();
 const globalProxyToOriginalCache = new WeakMap<object, object>();
 
 /**
+ * WeakMap for slot sidecars - tracks slotIds for each reactive array.
+ * Maps array -> string[] where each string is a unique slotId for that array position.
+ * 
+ * SLOT SIDECAR SYSTEM:
+ * ====================
+ * Reactive arrays maintain a parallel "sidecar" array of unique slot identifiers (slotIds).
+ * Each element in a reactive array has a corresponding slotId that follows it through operations.
+ * 
+ * Semantics:
+ * - Structural operations (push/pop/shift/unshift/splice/reverse/sort) update slotIds identically
+ * - Non-structural updates (arr[i] = x) preserve the slotId at index i
+ * - Full array replacement (state.arr = newArr) creates a fresh sidecar with all new slotIds
+ * 
+ * This enables frameworks to track element identity across array mutations for efficient
+ * DOM reconciliation and state management.
+ */
+const globalSlotSidecars = new WeakMap<unknown[], string[]>();
+
+/**
+ * Counter for generating unique slot IDs.
+ */
+let slotIdCounter = 0;
+
+/**
+ * Generates a new unique slot ID.
+ */
+const generateSlotId = (): string => {
+  return `slot-${++slotIdCounter}`;
+};
+
+/**
  * Type guard to check if value is an object.
  */
 const isObject = (value: unknown): value is object =>
@@ -50,6 +81,20 @@ export const isProxy = (obj: unknown): boolean => {
 };
 
 /**
+ * Gets the slotIds for a reactive array, if present.
+ * Returns the sidecar array containing unique slot identifiers for each element,
+ * or undefined if the array is not reactive or has no sidecar.
+ * The returned array is readonly and should not be mutated directly.
+ * @param arr - The array to retrieve slotIds for
+ * @returns Readonly array of slotIds, or undefined if no sidecar exists
+ */
+export function getSlotIdsForArray(arr: unknown[]): readonly string[] | undefined {
+  // Get the original array if arr is a proxy
+  const originalArr = isProxy(arr) ? (getOriginalObject(arr) as unknown[]) : arr;
+  return globalSlotSidecars.get(originalArr);
+}
+
+/**
  * Checks if a value is a primitive type.
  */
 const isPrimitive = (value: unknown): boolean =>
@@ -59,6 +104,34 @@ const isPrimitive = (value: unknown): boolean =>
     typeof value === "boolean" ||
     typeof value === "function" ||
     typeof value === "undefined");
+
+/**
+ * Gets or initializes the slotIds array for a reactive array.
+ * If the array doesn't have a sidecar yet, creates one with fresh slotIds for each element.
+ * @internal
+ */
+const getOrInitSlotIdsForArray = (arr: unknown[]): string[] => {
+  let slotIds = globalSlotSidecars.get(arr);
+  if (!slotIds) {
+    slotIds = arr.map(() => generateSlotId());
+    globalSlotSidecars.set(arr, slotIds);
+  }
+  return slotIds;
+};
+
+/**
+ * Ensures the slot sidecar invariant: slotIds array must have the same length as the data array.
+ * This should be called after any structural mutation to validate consistency.
+ * @internal
+ */
+const ensureSlotSidecarInvariant = (arr: unknown[]): void => {
+  const slotIds = globalSlotSidecars.get(arr);
+  if (slotIds && slotIds.length !== arr.length) {
+    throw new Error(
+      `Slot sidecar invariant violation: slotIds length (${slotIds.length}) does not match array length (${arr.length})`
+    );
+  }
+};
 
 /**
  * Watcher callback info passed to watch callbacks.
@@ -317,6 +390,65 @@ export function createModel<T extends Record<string, unknown>>(
     return hasChanges;
   };
 
+  /**
+   * Updates the slot sidecar for an array after a structural mutation.
+   * Handles push, pop, shift, unshift, splice, reverse, and sort operations.
+   */
+  const updateSlotSidecarForArrayMutation = (
+    arr: unknown[],
+    method: string,
+    args: unknown[],
+  ): void => {
+    const slotIds = getOrInitSlotIdsForArray(arr);
+
+    switch (method) {
+      case "push": {
+        // Add new slotIds for each pushed element
+        const newSlotIds = Array.from({ length: args.length }, () => generateSlotId());
+        slotIds.push(...newSlotIds);
+        break;
+      }
+      case "pop": {
+        // Remove the last slotId
+        slotIds.pop();
+        break;
+      }
+      case "shift": {
+        // Remove the first slotId
+        slotIds.shift();
+        break;
+      }
+      case "unshift": {
+        // Add new slotIds at the beginning
+        const newSlotIds = Array.from({ length: args.length }, () => generateSlotId());
+        slotIds.unshift(...newSlotIds);
+        break;
+      }
+      case "splice": {
+        // Handle splice: remove elements and insert new ones
+        const start = (args[0] as number) ?? 0;
+        const deleteCount = args[1] !== undefined ? (args[1] as number) : arr.length - start;
+        const itemsToInsert = args.slice(2);
+        const newSlotIds = Array.from({ length: itemsToInsert.length }, () => generateSlotId());
+        slotIds.splice(start, deleteCount, ...newSlotIds);
+        break;
+      }
+      case "reverse": {
+        // Reverse the slotIds array to match the reversed data array
+        slotIds.reverse();
+        break;
+      }
+      case "sort": {
+        // For sort, we need to reorder slotIds based on how the array was sorted
+        // We'll store the original indices before sort and then reorder slotIds accordingly
+        // This is handled by creating a copy of slotIds before sort and reordering after
+        break;
+      }
+    }
+
+    ensureSlotSidecarInvariant(arr);
+  };
+
   // Main reactive wrapper
   const makeReactive = <O extends object>(obj: O, parentPath = ""): O => {
     // Don't make DOM nodes, Window, or Document reactive - Proxies don't work with native DOM APIs
@@ -336,6 +468,11 @@ export function createModel<T extends Record<string, unknown>>(
       objectPaths.set(obj, parentPath);
     }
 
+    // Initialize slot sidecar for arrays
+    if (Array.isArray(obj)) {
+      getOrInitSlotIdsForArray(obj);
+    }
+
     const proxy = new Proxy(obj, {
       get: (target, property, receiver) => {
         if (property === IS_PROXY) return true;
@@ -346,12 +483,63 @@ export function createModel<T extends Record<string, unknown>>(
             return getOriginalObject(target);
           };
         }
+        
+        // Intercept array mutating methods to update slot sidecars
+        if (Array.isArray(target) && typeof property === "string") {
+          const arrayMutatingMethods = ["push", "pop", "shift", "unshift", "splice", "reverse", "sort"];
+          if (arrayMutatingMethods.includes(property)) {
+            const originalMethod = (target as unknown[])[property as keyof unknown[]];
+            if (typeof originalMethod === "function") {
+              return function (this: unknown[], ...args: unknown[]) {
+                // For sort, we need to track the reordering by snapshotting before
+                if (property === "sort") {
+                  const slotIds = getOrInitSlotIdsForArray(target);
+                  // Create a snapshot of elements paired with their slotIds
+                  const snapshot = target.map((el, i) => ({ el, slotId: slotIds[i] || generateSlotId() }));
+                  
+                  // Execute the sort
+                  const result = originalMethod.apply(this, args as never);
+                  
+                  // Reorder slotIds to match the sorted array
+                  const used = new Set<number>();
+                  for (let i = 0; i < target.length; i++) {
+                    const element = target[i];
+                    // Find the first unused matching element in snapshot
+                    const matchIdx = snapshot.findIndex((item, idx) => 
+                      item.el === element && !used.has(idx)
+                    );
+                    if (matchIdx !== -1) {
+                      slotIds[i] = snapshot[matchIdx]!.slotId;
+                      used.add(matchIdx);
+                    } else {
+                      slotIds[i] = generateSlotId();
+                    }
+                  }
+                  
+                  ensureSlotSidecarInvariant(target);
+                  return result;
+                } else {
+                  // For other methods, call the method first then update sidecar
+                  const result = originalMethod.apply(this, args as never);
+                  updateSlotSidecarForArrayMutation(target, property, args);
+                  return result;
+                }
+              };
+            }
+          }
+        }
+        
         const value = Reflect.get(target, property, receiver) as unknown;
-        // Automatically make nested objects reactive when accessed
-        if (isObject(value) && !isProxy(value) && !Array.isArray(value)) {
-          const propName = toPropName(property);
-          const nestedPath = buildPath(target, propName);
-          return makeReactive(value, nestedPath);
+        // Automatically make nested objects/arrays reactive when accessed
+        // Exception: don't make array elements reactive (when parent is array and property is numeric)
+        const isArrayElement = Array.isArray(target) && typeof property === "string" && /^\d+$/.test(property);
+        if (isObject(value) && !isProxy(value) && !isArrayElement) {
+          // Make nested arrays reactive, but not other objects within arrays
+          if (Array.isArray(value) || !Array.isArray(target)) {
+            const propName = toPropName(property);
+            const nestedPath = buildPath(target, propName);
+            return makeReactive(value, nestedPath);
+          }
         }
         return value;
       },
@@ -363,13 +551,31 @@ export function createModel<T extends Record<string, unknown>>(
         const propName = toPropName(property);
         const path = buildPath(target, propName);
 
-        // Special array handling - diff and notify once
+        // Handle direct array index assignment (non-structural update)
+        // e.g., arr[2] = newValue - should keep the same slotId at index 2
+        if (Array.isArray(target) && typeof property === "string" && /^\d+$/.test(property)) {
+          const index = parseInt(property, 10);
+          if (index >= 0 && index < target.length) {
+            // This is a non-structural update - just update the value, slotId stays the same
+            const result = Reflect.set(target, property, value, receiver);
+            notifyObservers(path);
+            return result;
+          }
+        }
+
+        // Special array handling - full array replacement creates fresh sidecar
         if (
           Array.isArray(oldValue) &&
           !isPrimitive(value) &&
           Array.isArray(value)
         ) {
+          // Mutate oldValue in place to match the new array content
           diffArraysOptimized(oldValue, value, path);
+          // Create a fresh slot sidecar for the mutated array (all new slotIds)
+          // IMPORTANT: Derive slotIds from oldValue (the live array instance after mutation),
+          // not from the transient 'value' reference that won't be stored
+          const newSlotIds = oldValue.map(() => generateSlotId());
+          globalSlotSidecars.set(oldValue, newSlotIds);
           return true;
         }
 
@@ -402,6 +608,10 @@ export function createModel<T extends Record<string, unknown>>(
         if (isObject(value) && !isProxy(value)) {
           const reactive = makeReactive(value, path);
           Reflect.set(target, property, reactive, receiver);
+          // If the value is an array, initialize its slot sidecar
+          if (Array.isArray(value)) {
+            getOrInitSlotIdsForArray(value);
+          }
         }
 
         // Single notification for this mutation

@@ -23,6 +23,7 @@ import {
   setValueByPath,
   bindOnce,
   logger,
+  reconcileDOM,
 } from "./utils";
 
 import { Core } from ".";
@@ -300,6 +301,7 @@ export function registerComponent(
 
       // Cleanup state for deterministic teardown
       private _isDisconnected = false;
+      private _isMounted = false; // Track if component has been mounted (persists across connectedCallback calls)
       private _model?: ReturnType<typeof createModel>;
       private _observerFn?: () => void;
       private _renderAborted = false;
@@ -313,6 +315,42 @@ export function registerComponent(
 
       async connectedCallback() {
         const host = this as HTMLElementWithInstance;
+
+        // ============================================================
+        // SCENARIO 1: RERENDER/RECONNECT - Reuse existing instance
+        // ============================================================
+        // Wenn bereits eine Instanz existiert (nach disconnect/connect),
+        // wiederverwenden statt neu erstellen
+        if (host.instance && this._model && this._observerFn) {
+          const existingInstance = host.instance;
+          const parent = getParentInstance(host);
+          
+          // Update parent reference (kann sich geändert haben)
+          existingInstance.$parent = parent;
+          
+          // Reset disconnected state für Reconnect
+          this._isDisconnected = false;
+          this._renderAborted = false;
+          this._pendingRender = null;
+          
+          // Props neu verarbeiten (können sich geändert haben)
+          processProps({
+            ele: host,
+            parent,
+            props: existingInstance.props,
+            state: existingInstance.state,
+          });
+          
+          // WICHTIG: mounted() Hook darf NICHT nochmal feuern beim Reconnect
+          // mounted() geht nur einmal beim ersten Create/Render
+          // Observer wird automatisch Renders triggern wenn nötig
+          return;
+        }
+
+        // ============================================================
+        // SCENARIO 2: CREATE - Neue Instanz erstellen
+        // ============================================================
+        // Nur wenn noch keine Instanz existiert
 
         // Component type bestimmen (default: "options")
         const componentType = source.type || "options";
@@ -342,7 +380,6 @@ export function registerComponent(
         const compiledScript = compileCode(source.script, resolvedDeps);
 
         const refs: Refs = {};
-        let isMounted = false;
         let isRendering = false;
         let lastRenderedStateVersion = -1; // Track state version instead of serialized data
 
@@ -535,15 +572,15 @@ export function registerComponent(
             return;
           }
 
-          // If already rendering, abort current render and schedule new one
+          // RENDERING GUARD: Wenn bereits am Rendern, kein neuer Render-Prozess
+          // Stattdessen neuen Render planen für nach dem aktuellen Render
           if (isRendering) {
             this._renderAborted = true;
             this._pendingRender = render;
             return;
           }
 
-          // Use state version instead of JSON.stringify for comparison
-          // This is more performant and avoids circular reference issues
+          // State-Version Check: Nur rendern wenn sich State geändert hat
           const currentStateVersion = model.getStateVersion();
           if (lastRenderedStateVersion === currentStateVersion) return;
 
@@ -601,14 +638,18 @@ export function registerComponent(
             // Assign changedPaths directly to the context object so it's available as this.changedPaths
             (hookContext as any).changedPaths = changedPaths;
 
+            // MOUNTED GUARD: mounted() Hook darf nur einmal feuern beim ersten Render
+            // Wenn bereits gemountet (_isMounted = true), dann ist es ein Update, kein Mount
+            const isFirstRender = !this._isMounted;
+            
             await hookEmit(
               "global",
-              isMounted ? "beforeUpdate" : "beforeMount",
+              isFirstRender ? "beforeMount" : "beforeUpdate",
               hookContext,
             );
             await hookEmit(
               lifecycleRegistry,
-              isMounted ? "beforeUpdate" : "beforeMount",
+              isFirstRender ? "beforeMount" : "beforeUpdate",
               hookContext,
             );
 
@@ -620,13 +661,16 @@ export function registerComponent(
               return;
             }
 
-            host.replaceChildren(container);
+            // Use DOM reconciliation instead of replaceChildren to preserve
+            // custom element instances and prevent infinite mount loops
+            reconcileDOM(host, container, !this._isMounted, source.structAttr);
 
             // Update changedPaths for updated hook (same set from beforeUpdate)
             (hookContext as any).changedPaths = changedPaths;
 
-            await hookEmit("global", "updated", hookContext);
-            if (isMounted) {
+            // Update Hook: Nur wenn bereits gemountet (nicht beim ersten Render)
+            if (this._isMounted) {
+              await hookEmit("global", "updated", hookContext);
               await hookEmit(lifecycleRegistry, "updated", hookContext);
             }
 
@@ -635,6 +679,10 @@ export function registerComponent(
 
             // Update last rendered state version
             lastRenderedStateVersion = currentStateVersion;
+            // Store in instance for reuse
+            if (host.instance) {
+              (host.instance as any)._lastRenderedStateVersion = lastRenderedStateVersion;
+            }
           } catch (error) {
             logger.errorWithContext(
               "Error during render",
@@ -738,11 +786,13 @@ export function registerComponent(
         // initial render
         await render();
 
-        // mounted
-        if (!isMounted) {
+        // MOUNTED HOOK: Nur einmal beim ersten Render, nie beim Reconnect
+        // _isMounted wird nur beim ersten Render auf true gesetzt
+        // Beim Reconnect wird diese Stelle nie erreicht (Early Return oben)
+        if (!this._isMounted) {
           await hookEmit("global", "mounted", hookContext);
           await hookEmit(lifecycleRegistry, "mounted");
-          isMounted = true;
+          this._isMounted = true; // Flag setzen - mounted() wird nie wieder feuern
         }
 
         ready.resolve();
@@ -751,6 +801,10 @@ export function registerComponent(
       async disconnectedCallback() {
         const host = this as HTMLElementWithInstance;
         if (!host.instance) return;
+
+        // Reset mounted state when component is disconnected
+        // This allows the component to be properly mounted again if reconnected
+        this._isMounted = false;
 
         const instance = host.instance;
 

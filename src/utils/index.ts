@@ -11,3 +11,6 @@ export * from "./logger";
 export { ExtensionRegistry } from "./extension-registry";
 export * from "./type-guards";
 export { extend } from "./extend";
+export { reconcileDOM } from "./reconcile";
+
+export * from "./identity";

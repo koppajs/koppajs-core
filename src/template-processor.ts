@@ -1,4 +1,6 @@
 import { containsHTML, evaluateExpression, logger } from "./utils";
+import { setSlotId } from "./utils";
+import { getSlotIdsForArray } from "./model";
 import type { State, Refs } from "./types";
 
 type IfChainState = {
@@ -151,7 +153,7 @@ function replaceTemplateString(template: string, state: State): string {
  * @param state - Component state
  * @param refs - Component element references
  */
-async function applyLoop(
+export async function applyLoop(
   element: HTMLElement,
   state: State,
   refs: Refs,
@@ -222,6 +224,14 @@ async function applyLoop(
     }
 
     const cloned = element.cloneNode(true);
+    // Attach slotId from model sidecar for array iteration
+    if (isArray && cloned instanceof HTMLElement) {
+      const slotIds = getSlotIdsForArray(raw as unknown[]);
+      if (slotIds && slotIds[index] !== undefined) {
+        setSlotId(cloned, slotIds[index]);
+      }
+      // If slotIds is missing or slotIds[index] is missing, gracefully skip (no slotId attached)
+    }
     if (cloned instanceof HTMLElement) {
       await processTemplate(cloned, localState, refs);
       fragment.appendChild(cloned);

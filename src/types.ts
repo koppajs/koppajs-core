@@ -193,6 +193,14 @@ export interface ComponentSource {
    * The core runtime resolves these before evaluating the controller script.
    */
   deps?: Deps;
+
+  /**
+   * Optional HTML attribute name to use for structural identity fallback.
+   * If specified and no structId is set via runtime helper, the reconciliation
+   * will attempt to read structId from this attribute.
+   * Default: 'data-k-struct'
+   */
+  structAttr?: string;
 }
 
 /**

@@ -7,6 +7,7 @@ import {
 import type { Props, ComponentSource } from "../src/types";
 import { ExtensionRegistry } from "../src/utils/index";
 import * as globalEventCleaner from "../src/global-event-cleaner";
+import { flushRender } from "./helpers/flush-render";
 
 describe("component", () => {
   describe("processSlots", () => {
@@ -949,5 +950,131 @@ describe("component", () => {
       expect(element.textContent).toContain("My App");
       expect(element.textContent).toContain("3 items");
     });
+
+    it("handles nested custom elements without infinite mount loops", async () => {
+      // Track mount counts to detect infinite loops
+      const mountCounts = { parent: 0, child: 0 };
+
+      // Register child component first
+      const childSource: ComponentSource = {
+        template: "<div class='child-content'>Child Component</div>",
+        script: `{
+          state: {},
+          mounted() {
+            window.__childMountCount = (window.__childMountCount || 0) + 1;
+          }
+        }`,
+        style: "",
+      };
+      registerComponent("test-nested-child", childSource);
+
+      // Register parent component that contains the child
+      const parentSource: ComponentSource = {
+        template: "<div class='parent'><test-nested-child></test-nested-child></div>",
+        script: `{
+          state: {},
+          mounted() {
+            window.__parentMountCount = (window.__parentMountCount || 0) + 1;
+          }
+        }`,
+        style: "",
+      };
+      registerComponent("test-nested-parent", parentSource);
+
+      // Reset mount counts
+      (window as any).__parentMountCount = 0;
+      (window as any).__childMountCount = 0;
+
+      const element = document.createElement("test-nested-parent");
+      document.body.appendChild(element);
+
+      // Wait for component to mount
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Each component should only mount once
+      expect((window as any).__parentMountCount).toBe(1);
+      expect((window as any).__childMountCount).toBe(1);
+
+      // Verify DOM structure
+      expect(element.querySelector(".parent")).toBeTruthy();
+      expect(element.querySelector(".child-content")).toBeTruthy();
+      expect(element.textContent).toContain("Child Component");
+
+      // Clean up
+      delete (window as any).__parentMountCount;
+      delete (window as any).__childMountCount;
+    });
+
+    it("preserves nested custom elements on parent re-render", async () => {
+      // Register child component
+      const childSource: ComponentSource = {
+        template: "<div class='child'>Child: {{ message }}</div>",
+        script: `{
+          props: { message: { type: String, default: 'default' } },
+          state: {},
+          mounted() {
+            window.__preserveChildMounts = (window.__preserveChildMounts || 0) + 1;
+          }
+        }`,
+        style: "",
+      };
+      registerComponent("test-preserve-child", childSource);
+
+      // Register parent with reactive state that will trigger re-render
+      const parentSource: ComponentSource = {
+        template: "<div class='parent'><span>Count: {{ count }}</span><test-preserve-child :message='greeting'></test-preserve-child></div>",
+        script: `{
+          state: { count: 0, greeting: 'Hello' },
+          methods: {
+            increment() {
+              this.count++;
+            }
+          },
+          mounted() {
+            window.__preserveParentMounts = (window.__preserveParentMounts || 0) + 1;
+          }
+        }`,
+        style: "",
+      };
+      registerComponent("test-preserve-parent", parentSource);
+
+      // Reset mount counts
+      (window as any).__preserveParentMounts = 0;
+      (window as any).__preserveChildMounts = 0;
+
+      const element = document.createElement("test-preserve-parent") as any;
+      document.body.appendChild(element);
+
+      // Wait for initial mount
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      expect((window as any).__preserveParentMounts).toBe(1);
+      expect((window as any).__preserveChildMounts).toBe(1);
+      expect(element.textContent).toContain("Count: 0");
+
+      // Trigger parent re-render by updating state
+      element.instance.state.count = 1;
+
+      // Wait for re-render
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Parent should NOT re-mount, child should NOT re-mount
+      expect((window as any).__preserveParentMounts).toBe(1);
+      expect((window as any).__preserveChildMounts).toBe(1);
+      expect(element.textContent).toContain("Count: 1");
+
+      // Clean up
+      delete (window as any).__preserveParentMounts;
+      delete (window as any).__preserveChildMounts;
+    });
+
+    // NOTE: Tests for child local state and closure variable preservation
+    // are verified at the integration level (koppajs-example) since the
+    // Vite plugin handles script wrapping differently than compileCode().
+    // The key behavior tested here is that nested custom elements are NOT
+    // disconnected/reconnected on parent re-render, which means:
+    // - connectedCallback is NOT called again
+    // - The component's closure (including local variables) is preserved
+    // - The component's state is preserved
   });
 });
