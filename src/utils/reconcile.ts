@@ -36,8 +36,7 @@ function getNodeIdentity(node: Node, structAttr?: string): string | null {
   let structId = getStructId(node);
   const slotId = getSlotId(node);
   
-  // Defensive fallback: if no structId is set via runtime helper,
-  // attempt to read it once from element attribute and cache it
+  // Fallback: if no structId is set via runtime helper, read from attribute
   if (structId === undefined && structAttr) {
     const attrValue = (node as HTMLElement).getAttribute(structAttr);
     if (attrValue !== null) {

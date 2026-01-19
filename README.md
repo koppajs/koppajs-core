@@ -48,188 +48,75 @@
 		<li><a href="#roadmap">Roadmap</a></li>
 		<li><a href="#support">Support</a></li>
 		<li><a href="#community--contribution">Community & Contribution</a></li>
-		<li><a href="#license">License</a></li>
 	</ol>
-	<br>
 </details>
+
+---
 
 ## What is KoppaJS?
 
-> _Oh no, not another frontend framework!_
+KoppaJS is a lightweight, modular frontend framework designed to simplify development without sacrificing flexibility. It provides a pragmatic approach to building modern web applications, focusing on:
 
-That’s probably what you're thinking — and fair enough.
+- **Simplicity:** Minimal boilerplate and intuitive APIs.
+- **Performance:** Optimized for speed and scalability.
+- **Modularity:** Build only what you need, when you need it.
 
-The world of frontend is crowded, opinionated, and often driven more by complexity than clarity.  
-KoppaJS was built in quiet defiance of that trend – with a clear goal:  
-To give developers back their time, control, and the joy of simply building things that work.
-
-**KoppaJS** is a minimal, performance-oriented framework designed for:
-
-- Freelancers & indie hackers  
-- Agencies shipping fast MVPs  
-- Developers who dislike unnecessary abstraction  
-
-Built from scratch to prioritize:
-
-- **Clarity over convention**  
-- **Speed without complexity**  
-- **Control instead of hidden layers**
-
-Whether you're prototyping, building full apps, or crafting interactive components — KoppaJS gives you the tools without the noise.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+---
 
 ## Features
 
-Here's what makes KoppaJS feel different:
+- **Declarative Components:** Define components with `.kpa` files.
+- **Reactive State Management:** Built-in reactivity for seamless updates.
+- **Lifecycle Hooks:** Control component behavior with hooks like `mounted`, `updated`, and `beforeUpdate`.
+- **Integration-Friendly:** Works with existing tools and libraries.
+- **TypeScript Support:** First-class TypeScript support for safer, more maintainable code.
 
-- **Direct DOM Access** – no virtual DOM, no hidden layers, no runtime traps  
-- **Functional & Modular** – no classes, no boilerplate, just clean composition  
-- **Single File Components** – `.kpa` format for clarity, cohesion, and flow  
-- **Proxy-based Reactivity** – minimal, referential, and lightning-fast  
-- **Powerful Lifecycle Hooks** – predictable, composable, deeply integrated  
-- **Plugins & Modules** – share logic without entanglement  
-- **Type-safe & HMR-ready** – built for modern Vite + TypeScript workflows
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+---
 
 ## Getting Started
 
-KoppaJS is designed to help you build fast, modular web interfaces without unnecessary overhead.
-This section shows two ways to get started: using the official example or installing manually.
+To get started with KoppaJS, follow these steps:
 
-> Want to go deeper? → See [Installation](#installation) or [Roadmap](#roadmap).
+1. **Install the Core Library:**
+   ```bash
+   pnpm add @koppajs/koppajs-core
+   ```
 
-<br>
+2. **Create Your First Component:**
+   ```typescript
+   import { Core } from '@koppajs/koppajs-core';
 
-### Quickstart
+   Core.take({
+     state: { count: 0 },
+     methods: {
+       increment() {
+         this.state.count++;
+       },
+     },
+   }, 'counter');
 
-Start a new KoppaJS project in seconds using the official example repository [koppajs/koppajs-example](https://github.com/koppajs/koppajs-example):
+   Core();
+   ```
 
-```bash
-git clone https://github.com/koppajs/koppajs-example.git my-app
-cd my-app
-pnpm install
-pnpm run dev
-```
+3. **Run Your Application:**
+   Use your favorite bundler or the KoppaJS Vite plugin to build and serve your app.
 
-> Open `http://localhost:5173` and start building with KoppaJS.
-
-<br>
-
-### Installation
-
-To integrate KoppaJS into an existing project, you’ll need both the core framework **and** the official Vite plugin to support `.kpa` Single File Components:
-
-```bash
-pnpm add @koppajs/koppajs-core
-pnpm add @koppajs/koppajs-vite-plugin -D
-```
-
-**_1. Configure Vite (`vite.config.ts`)_**
-
-```ts
-import { defineConfig } from 'vite'
-import koppajs from '@koppajs/koppajs-vite-plugin'
-
-export default defineConfig({
-  plugins: [koppajs()],
-})
-```
-
-**_2. Set up your entry file (`main.ts`)_**
-
-```ts
-import { Core } from '@koppajs/koppajs-core'
-import BtnCount from './components/btn-count.kpa'
-
-Core.take(BtnCount, 'btn-count')
-Core()
-```
-
-**_3. Create a `.kpa` Single File Component_**
-
-```html
-[template]  
-<button class="btn" onClick="increment">Count: {{ count }}</button> [/template] [js]
-return { state: { count: 0 }, methods: { increment() { this.count++ } } } [/js] [css]  
-.btn {     padding: 0.5rem 1rem;     background: #007acc;     color: white;     border:
-none;     border-radius: 4px;   } [/css]
-```
-
-**_4. Reference the component in your HTML (`index.html`)_**
-
-```html
-<body>
-    <btn-count></btn-count>
-</body>
-```
-
-> `.kpa` support is only available with the official Vite plugin.
-> It enables parsing and transformation of`.kpa` files.
-
-For more examples, advanced setups, and full API reference, visit the [Documentation](https://github.com/koppajs/koppajs-documentation).
-
-**Coming soon**: A dedicated CLI tool will make it even easier to scaffold a new KoppaJS project with everything preconfigured – including the core package, Vite plugin, and a ready-to-run project setup.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+---
 
 ## Roadmap
 
-## Identity (structId / slotId)
+- **Q1 2026:** Enhanced debugging tools and improved documentation.
+- **Q2 2026:** Experimental support for server-side rendering (SSR).
+- **Q3 2026:** Advanced state management features.
 
-KoppaJS uses a minimal identity contract to manage DOM and model consistency:
-
-- **structId** is injected at build time by the Vite plugin as a `data-k-struct` attribute on elements. This uniquely identifies component structures in the DOM.
-- **slotId** is managed by the core model sidecar for array items, ensuring stable identity for repeated elements.
-- The `reconcileDOM` process uses these identities to move or preserve custom elements, preventing unnecessary remounts and maintaining state across updates.
-- This mechanism avoids remount loops and helps keep component and DOM state in sync, especially for dynamic lists.
-- No global registry or runtime diffing is used—identity is local and explicit.
-
-This contract is internal and not required for most user code, but is essential for predictable updates and efficient DOM reconciliation.
-
-Planned extensions and enhancements for the evolving KoppaJS ecosystem are outlined below – from core tooling to developer experience.
-
-- Router module (in progress)  
-- Store module (in progress)  
-- Consent / Cookiebanner module (in progress)  
-- Vite Plugin for transforming .kpa (in progress)  
-- VSCode extension for `.kpa` highlighting (in progress)  
-- CLI scaffolding tool (planned)  
-- SSR/SSG support (planned)
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+---
 
 ## Support
 
-If you're using KoppaJS and need help:
+For support, visit our [GitHub Issues](https://github.com/koppajs/koppajs-core/issues) or join our community on [Discord](https://discord.gg/koppajs).
 
-- Check the [Documentation](https://github.com/koppajs/koppajs-documentation)  
-- Report issues on [GitHub](https://github.com/koppajs/koppajs-core/issues)  
-- Open a discussion or suggest ideas
-
-> Your feedback helps improve KoppaJS. Thank you!
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+---
 
 ## Community & Contribution
 
-We welcome PRs, questions, and ideas!
-
-- Contributing guide: [`CONTRIBUTING.md`](./CONTRIBUTING.md)  
-- Code of Conduct: [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md)  
-- Open issues, suggest improvements, or share feedback
-
-> Make small PRs, write tests if needed, and explain your reasoning.
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-_Thanks for reading. Now go build something that feels good to build._
-
-## License
-
-Apache License Version 2.0 – Free for commercial and open-source use.
-
-© 2025 · KoppaJS, Bastian Bensch
-
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+We welcome contributions! Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.

@@ -295,7 +295,7 @@ export function registerComponent(
       private template: HTMLTemplateElement;
 
       /**
-       * Nicht private: wir wollen kompatibel bleiben und über HTMLElementWithInstance arbeiten.
+       * Public instance property for type compatibility with HTMLElementWithInstance.
        */
       public instance?: ComponentInstance;
 
@@ -407,9 +407,6 @@ export function registerComponent(
           document.head.appendChild(style);
         }
 
-        /**
-         * TDZ-fix für state: Variable existiert sofort, wird später gesetzt.
-         */
         let state!: State;
         let userContext!: State;
 
@@ -515,15 +512,6 @@ export function registerComponent(
 
         let watchList = controller.watchList || [];
 
-        // Extract all $*-prefixed variables from component context for closure variables
-        // These must be available as closure variables, NOT in userContext
-        const closureVars: Record<string, any> = {};
-        for (const [key, value] of Object.entries(componentContext)) {
-          if (key.startsWith("$")) {
-            closureVars[key] = value;
-          }
-        }
-
         // Create userContext only for "options" type
         // IMPORTANT: Do NOT include $*-prefixed variables in userContext
         // They must only be available as closure variables
@@ -539,11 +527,8 @@ export function registerComponent(
         });
 
         // Bind methods only if userContext exists
-        // Pass all $*-prefixed variables as closure variables so they remain accessible in bound methods
-        // This ensures closure variables work reliably even when methods are called via userContext
-        // Only $*-prefixed variables are passed as closure variables, nothing else
         if (useUserContext && userContext) {
-          bindMethods(methods, userContext, closureVars);
+          bindMethods(methods, userContext);
         }
 
         // Hooks registrieren
@@ -740,7 +725,6 @@ export function registerComponent(
           readyPromise: ready.promise,
           lifecycleRegistry,
           ...attachedModules,
-          // Internal flag for rendering control (prevents child self-rendering during parent render)
           isRendering: false,
         } as ComponentInstance & { isRendering: boolean };
 

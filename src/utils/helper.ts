@@ -4,33 +4,24 @@ import {
   type BoundFn,
   type State,
   type Methods,
-  type Refs,
 } from "../types";
 import { logger } from "./logger";
 
 /**
  * Binds a function to a context once, preventing multiple bindings.
  * Uses a symbol to mark bound functions.
- * Creates a wrapper that preserves closure variables like $refs.
  * @param fn - Function to bind
  * @param userContext - Context to bind function to
- * @param closureVars - Optional closure variables (e.g., $refs) to preserve
  * @returns Bound function (or original if already bound or not a function)
  */
 export function bindOnce(
   fn: AnyFn,
   userContext: State,
-  closureVars?: { $refs?: Refs; [key: string]: any },
 ): AnyFn {
   if (typeof fn !== "function") return fn;
 
   const maybe = fn as BoundFn;
   if (maybe[BOUND]) return fn;
-
-  // The original function (fn) already has closure vars in its closure from compileCode.
-  // When we bind with .bind(userContext), the closure is preserved.
-  // We don't need to re-expose closure variables here - they're already accessible via fn's closure.
-  // closureVars parameter is kept for API compatibility but not used for re-binding.
 
   const bound = fn.bind(userContext) as BoundFn;
   bound[BOUND] = true;
@@ -39,16 +30,12 @@ export function bindOnce(
 
 /**
  * Binds all methods from the `methods` object to the provided `userContext`.
- * Preserves closure variables like $refs so they remain accessible in bound methods.
- *
  * @param methods - A map of method names and functions
  * @param userContext - The user context object (this context for user functions)
- * @param closureVars - Optional closure variables (e.g., $refs) to preserve
  */
 export function bindMethods(
   methods: Methods,
   userContext: State,
-  closureVars?: { $refs?: Refs; [key: string]: any },
 ): void {
   for (const name in methods) {
     const fn = methods[name];
@@ -57,7 +44,7 @@ export function bindMethods(
       typeof fn === "function"
     ) {
       try {
-        methods[name] = bindOnce(fn, userContext, closureVars);
+        methods[name] = bindOnce(fn, userContext);
       } catch (error) {
         logger.errorWithContext(
           `Failed to bind method "${name}"`,

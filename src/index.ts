@@ -1,12 +1,8 @@
-import { extend, hookOn, isComponentSource, isModule, isPlugin } from "./utils";
-import { ExtensionRegistry } from "./utils/extension-registry";
-import { registerComponent } from "./component";
-import {
-  patchGlobalEventTracking,
-  startGlobalDisconnectionObserver,
-} from "./global-event-cleaner";
-import { logger, LogLevel } from "./utils/logger";
 
+// --- KoppaJS Core Public API ---
+// Only exports intended for stable, public use are exposed here.
+
+import { logger, LogLevel } from "./utils/logger";
 import type { CoreCallable, CoreCtx, TakeArgs } from "./types";
 
 // Public Types
@@ -29,17 +25,39 @@ export type {
   LifecycleHook,
 } from "./types";
 
-// Public Logger
+
+/**
+ * KoppaJS logger singleton and log level enum.
+ * @public
+ */
 export { logger, LogLevel } from "./utils/logger";
+
+
+// --- Internal implementation below ---
+// (not exported)
+import { extend, hookOn, isComponentSource, isModule, isPlugin } from "./utils";
+import { ExtensionRegistry } from "./utils/extension-registry";
+import { registerComponent } from "./component";
+import {
+  patchGlobalEventTracking,
+  startGlobalDisconnectionObserver,
+} from "./global-event-cleaner";
 
 let initialized = false;
 let domInitialized = false;
 let queuedTakes: TakeArgs[] = [];
 
+
 /**
- * Initializes the DOM environment.
- * Patches global event tracking, extends HTMLElement, and starts disconnection observer.
+ * Initializes the DOM environment for KoppaJS.
+ *
+ * - Patches global event tracking
+ * - Extends HTMLElement with KoppaJS helpers
+ * - Starts disconnection observer
+ *
  * Safe to call multiple times (idempotent).
+ *
+ * @public
  */
 export function initDomEnvironment(): void {
   if (domInitialized) return;
@@ -118,9 +136,19 @@ function initialize(): void {
   logger.info("Core initialized");
 }
 
+
 /**
- * Main Core API.
- * Call as function to initialize, or use Core.take() to register components/extensions.
+ * Main KoppaJS Core API.
+ *
+ * - Call as a function to initialize the framework (processes all registrations)
+ * - Use `Core.take()` to register components, plugins, or modules before initialization
+ *
+ * @example
+ *   import { Core } from '@koppajs/koppajs-core';
+ *   Core.take(MyComponent, 'my-component');
+ *   Core();
+ *
+ * @public
  */
 export const Core = (() => {
   const callable = Object.assign(
@@ -135,6 +163,5 @@ export const Core = (() => {
       },
     },
   ) satisfies CoreCallable;
-
   return callable;
 })();
