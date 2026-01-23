@@ -50,7 +50,8 @@
     "generate:types": "tsc --project config/tsconfig.types.json",
     "copy:dts": "node scripts/copy-dts.js",
     "clean": "rimraf dist coverage",
-    "deepclean": "rimraf node_modules dist pnpm-lock.yaml",
+    "deepclean": "rimraf node_modules dist",
+    "nuke": "rimraf node_modules dist pnpm-lock.yaml",
     "pretypecheck": "rimraf dist",
     "typecheck": "tsc --project config/tsconfig.json",
     "build": "pnpm run typecheck && vite build --config config/vite.config.ts && pnpm generate:types && pnpm run copy:dts",
@@ -92,7 +93,8 @@
     "typescript": "^5.7.2",
     "vite": "^7.2.6",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^4.0.15"
+    "vitest": "^4.0.15",
+    "fflate": "^0.8.2"
   },
   "overrides": {
     "glob": "^11.0.0"

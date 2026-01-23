@@ -9,7 +9,7 @@
 
 <!-- TITLE -->
 <div align="center">
-  <h1 align="center">Contributing to KoppaJS Core</h1>
+  <h1 align="center">Contributing to KoppaJS Projects</h1>
   <h3 align="center">Build with intention. Contribute with clarity.</h3>
   <p align="center">
     <i align="center">A framework powered by simplicity, transparency, and responsibility.</i>
