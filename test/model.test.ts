@@ -1,344 +1,344 @@
-import { describe, it, expect, vi } from "vitest";
-import { createModel } from "../src/model";
+import { describe, it, expect, vi } from 'vitest'
+import { createModel } from '../src/model'
 
-describe("createModel", () => {
-  describe("basic reactivity", () => {
-    it("creates reactive model", () => {
-      const model = createModel({ count: 0 });
-      expect(model.state.count).toBe(0);
-    });
+describe('createModel', () => {
+  describe('basic reactivity', () => {
+    it('creates reactive model', () => {
+      const model = createModel({ count: 0 })
+      expect(model.state.count).toBe(0)
+    })
 
-    it("notifies observers on property change", () => {
-      const model = createModel({ count: 0 });
-      const observer = vi.fn();
-      model.addObserver(observer);
+    it('notifies observers on property change', () => {
+      const model = createModel({ count: 0 })
+      const observer = vi.fn()
+      model.addObserver(observer)
 
-      model.state.count = 10;
-      expect(observer).toHaveBeenCalled();
-    });
+      model.state.count = 10
+      expect(observer).toHaveBeenCalled()
+    })
 
     it("does not notify when value doesn't change", () => {
-      const model = createModel({ count: 0 });
-      const observer = vi.fn();
-      model.addObserver(observer);
+      const model = createModel({ count: 0 })
+      const observer = vi.fn()
+      model.addObserver(observer)
 
-      model.state.count = 0;
-      expect(observer).not.toHaveBeenCalled();
-    });
-  });
+      model.state.count = 0
+      expect(observer).not.toHaveBeenCalled()
+    })
+  })
 
-  describe("watch - effect subscriptions", () => {
-    it("watches path prefix and batches notifications", () => {
-      const model = createModel({ user: { name: "John", age: 30 } });
-      const watchCallback = vi.fn();
-      const stop = model.watch("user", watchCallback);
+  describe('watch - effect subscriptions', () => {
+    it('watches path prefix and batches notifications', () => {
+      const model = createModel({ user: { name: 'John', age: 30 } })
+      const watchCallback = vi.fn()
+      const stop = model.watch('user', watchCallback)
 
-      model.state.user.name = "Jane";
-      model.state.user.age = 31;
+      model.state.user.name = 'Jane'
+      model.state.user.age = 31
 
       // Changes are accumulated in changedPaths
-      model.flushChanges();
+      model.flushChanges()
       expect(watchCallback).toHaveBeenCalledWith({
         changedPaths: expect.any(Set),
-      });
+      })
 
       // Cleanup works
-      expect(typeof stop).toBe("function");
-    });
+      expect(typeof stop).toBe('function')
+    })
 
-    it("uses prefix-matching for watchers", () => {
+    it('uses prefix-matching for watchers', () => {
       const model = createModel({
-        user: { name: "John", details: { age: 30 } },
-      });
-      const watchCallback = vi.fn();
-      model.watch("user", watchCallback);
+        user: { name: 'John', details: { age: 30 } },
+      })
+      const watchCallback = vi.fn()
+      model.watch('user', watchCallback)
 
       // Both direct and nested changes match the prefix
-      model.state.user.name = "Jane";
-      model.state.user.details.age = 31;
+      model.state.user.name = 'Jane'
+      model.state.user.details.age = 31
 
-      model.flushChanges();
-      expect(watchCallback).toHaveBeenCalled();
+      model.flushChanges()
+      expect(watchCallback).toHaveBeenCalled()
 
-      const info = watchCallback.mock.calls[0][0];
-      expect(info.changedPaths).toContain("user.name");
-      expect(info.changedPaths).toContain("user.details.age");
-    });
+      const info = watchCallback.mock.calls[0][0]
+      expect(info.changedPaths).toContain('user.name')
+      expect(info.changedPaths).toContain('user.details.age')
+    })
 
-    it("receives only matching paths in callback", () => {
+    it('receives only matching paths in callback', () => {
       const model = createModel({
-        user: { name: "John" },
-        settings: { theme: "dark" },
-      });
-      const userWatcher = vi.fn();
-      const settingsWatcher = vi.fn();
+        user: { name: 'John' },
+        settings: { theme: 'dark' },
+      })
+      const userWatcher = vi.fn()
+      const settingsWatcher = vi.fn()
 
-      model.watch("user", userWatcher);
-      model.watch("settings", settingsWatcher);
+      model.watch('user', userWatcher)
+      model.watch('settings', settingsWatcher)
 
-      model.state.user.name = "Jane";
-      model.state.settings.theme = "light";
+      model.state.user.name = 'Jane'
+      model.state.settings.theme = 'light'
 
-      model.flushChanges();
-      expect(userWatcher).toHaveBeenCalled();
-      expect(settingsWatcher).toHaveBeenCalled();
+      model.flushChanges()
+      expect(userWatcher).toHaveBeenCalled()
+      expect(settingsWatcher).toHaveBeenCalled()
 
       // Each watcher should only receive its matching paths
-      const userInfo = userWatcher.mock.calls[0][0];
-      expect(userInfo.changedPaths).toContain("user.name");
-      expect(userInfo.changedPaths).not.toContain("settings.theme");
+      const userInfo = userWatcher.mock.calls[0][0]
+      expect(userInfo.changedPaths).toContain('user.name')
+      expect(userInfo.changedPaths).not.toContain('settings.theme')
 
-      const settingsInfo = settingsWatcher.mock.calls[0][0];
-      expect(settingsInfo.changedPaths).toContain("settings.theme");
-      expect(settingsInfo.changedPaths).not.toContain("user.name");
-    });
+      const settingsInfo = settingsWatcher.mock.calls[0][0]
+      expect(settingsInfo.changedPaths).toContain('settings.theme')
+      expect(settingsInfo.changedPaths).not.toContain('user.name')
+    })
 
-    it("returns idempotent cleanup function", () => {
-      const model = createModel({ count: 0 });
-      const watchCallback = vi.fn();
-      const stop = model.watch("count", watchCallback);
+    it('returns idempotent cleanup function', () => {
+      const model = createModel({ count: 0 })
+      const watchCallback = vi.fn()
+      const stop = model.watch('count', watchCallback)
 
-      stop();
-      stop(); // Calling stop again should be safe
-      expect(() => stop()).not.toThrow();
-    });
+      stop()
+      stop() // Calling stop again should be safe
+      expect(() => stop()).not.toThrow()
+    })
 
-    it("cleanup function unregisters watcher", () => {
-      const model = createModel({ count: 0 });
-      const watchCallback = vi.fn();
-      const stop = model.watch("count", watchCallback);
+    it('cleanup function unregisters watcher', () => {
+      const model = createModel({ count: 0 })
+      const watchCallback = vi.fn()
+      const stop = model.watch('count', watchCallback)
 
-      model.state.count = 1;
-      model.flushChanges();
-      expect(watchCallback).toHaveBeenCalledTimes(1);
+      model.state.count = 1
+      model.flushChanges()
+      expect(watchCallback).toHaveBeenCalledTimes(1)
 
-      stop();
+      stop()
 
-      model.state.count = 2;
-      model.flushChanges();
-      expect(watchCallback).toHaveBeenCalledTimes(1); // Still 1, not called again
-    });
+      model.state.count = 2
+      model.flushChanges()
+      expect(watchCallback).toHaveBeenCalledTimes(1) // Still 1, not called again
+    })
 
-    it("batches watcher callbacks once per flush cycle", () => {
-      const model = createModel({ user: { name: "John", age: 30 } });
-      const watchCallback = vi.fn();
-      model.watch("user", watchCallback);
+    it('batches watcher callbacks once per flush cycle', () => {
+      const model = createModel({ user: { name: 'John', age: 30 } })
+      const watchCallback = vi.fn()
+      model.watch('user', watchCallback)
 
-      model.state.user.name = "Jane";
-      model.state.user.age = 31;
-      model.state.user.name = "Bob";
+      model.state.user.name = 'Jane'
+      model.state.user.age = 31
+      model.state.user.name = 'Bob'
 
       // Even though we changed 3 times, callback is only called once per flush
-      model.flushChanges();
-      expect(watchCallback).toHaveBeenCalledTimes(1);
-    });
-  });
+      model.flushChanges()
+      expect(watchCallback).toHaveBeenCalledTimes(1)
+    })
+  })
 
-  describe("watchers do not affect rendering", () => {
-    it("observers still drive rendering independently", () => {
-      const model = createModel({ count: 0 });
-      const observer = vi.fn();
-      const watchCallback = vi.fn();
+  describe('watchers do not affect rendering', () => {
+    it('observers still drive rendering independently', () => {
+      const model = createModel({ count: 0 })
+      const observer = vi.fn()
+      const watchCallback = vi.fn()
 
-      model.addObserver(observer);
-      model.watch("count", watchCallback);
+      model.addObserver(observer)
+      model.watch('count', watchCallback)
 
-      model.state.count = 10;
+      model.state.count = 10
 
       // Both observer and watcher callback should be called
-      expect(observer).toHaveBeenCalled();
-      expect(watchCallback).not.toHaveBeenCalled(); // Not yet, needs flush
-    });
-  });
+      expect(observer).toHaveBeenCalled()
+      expect(watchCallback).not.toHaveBeenCalled() // Not yet, needs flush
+    })
+  })
 
-  describe("array handling", () => {
-    it("handles array replacement", () => {
-      const model = createModel({ items: [1, 2, 3] });
-      const observer = vi.fn();
-      model.addObserver(observer);
+  describe('array handling', () => {
+    it('handles array replacement', () => {
+      const model = createModel({ items: [1, 2, 3] })
+      const observer = vi.fn()
+      model.addObserver(observer)
 
-      model.state.items = [4, 5, 6];
-      expect(observer).toHaveBeenCalled();
-    });
+      model.state.items = [4, 5, 6]
+      expect(observer).toHaveBeenCalled()
+    })
 
-    it("updates stored array content when items are added", () => {
-      const model = createModel({ items: [1, 2, 3] });
-      const observer = vi.fn();
-      model.addObserver(observer);
+    it('updates stored array content when items are added', () => {
+      const model = createModel({ items: [1, 2, 3] })
+      const observer = vi.fn()
+      model.addObserver(observer)
 
-      const originalArray = model.state.items;
-      model.state.items = [1, 2, 3, 4];
-
-      // Observer should be notified exactly once
-      expect(observer).toHaveBeenCalledTimes(1);
-
-      // Array should be updated in place (same reference)
-      expect(model.state.items).toBe(originalArray);
-      expect(Array.from(model.state.items)).toEqual([1, 2, 3, 4]);
-    });
-
-    it("updates stored array content when items are removed", () => {
-      const model = createModel({ items: [1, 2, 3, 4] });
-      const observer = vi.fn();
-      model.addObserver(observer);
-
-      const originalArray = model.state.items;
-      model.state.items = [1, 2];
+      const originalArray = model.state.items
+      model.state.items = [1, 2, 3, 4]
 
       // Observer should be notified exactly once
-      expect(observer).toHaveBeenCalledTimes(1);
+      expect(observer).toHaveBeenCalledTimes(1)
 
       // Array should be updated in place (same reference)
-      expect(model.state.items).toBe(originalArray);
-      expect(Array.from(model.state.items)).toEqual([1, 2]);
-    });
+      expect(model.state.items).toBe(originalArray)
+      expect(Array.from(model.state.items)).toEqual([1, 2, 3, 4])
+    })
 
-    it("does not notify when array is set to same contents", () => {
-      const model = createModel({ items: [1, 2, 3] });
-      const observer = vi.fn();
-      model.addObserver(observer);
+    it('updates stored array content when items are removed', () => {
+      const model = createModel({ items: [1, 2, 3, 4] })
+      const observer = vi.fn()
+      model.addObserver(observer)
 
-      const originalArray = model.state.items;
-      const originalContent = Array.from(originalArray);
-      model.state.items = [1, 2, 3];
+      const originalArray = model.state.items
+      model.state.items = [1, 2]
+
+      // Observer should be notified exactly once
+      expect(observer).toHaveBeenCalledTimes(1)
+
+      // Array should be updated in place (same reference)
+      expect(model.state.items).toBe(originalArray)
+      expect(Array.from(model.state.items)).toEqual([1, 2])
+    })
+
+    it('does not notify when array is set to same contents', () => {
+      const model = createModel({ items: [1, 2, 3] })
+      const observer = vi.fn()
+      model.addObserver(observer)
+
+      const originalArray = model.state.items
+      const originalContent = Array.from(originalArray)
+      model.state.items = [1, 2, 3]
 
       // Observer should not be notified
-      expect(observer).not.toHaveBeenCalled();
+      expect(observer).not.toHaveBeenCalled()
 
       // Array reference should remain the same
-      expect(model.state.items).toBe(originalArray);
+      expect(model.state.items).toBe(originalArray)
       // Content should remain unchanged
-      expect(Array.from(model.state.items)).toEqual(originalContent);
-    });
+      expect(Array.from(model.state.items)).toEqual(originalContent)
+    })
 
-    it("does not notify when array is set to same contents (different reference)", () => {
-      const model = createModel({ items: [1, 2, 3] });
-      const observer = vi.fn();
-      model.addObserver(observer);
+    it('does not notify when array is set to same contents (different reference)', () => {
+      const model = createModel({ items: [1, 2, 3] })
+      const observer = vi.fn()
+      model.addObserver(observer)
 
-      const originalArray = model.state.items;
+      const originalArray = model.state.items
       // Create a new array with same contents
-      model.state.items = [1, 2, 3];
+      model.state.items = [1, 2, 3]
 
       // Observer should not be notified (no actual changes)
-      expect(observer).not.toHaveBeenCalled();
+      expect(observer).not.toHaveBeenCalled()
 
       // Array should still be the same reference (no mutation occurred)
-      expect(model.state.items).toBe(originalArray);
-      expect(Array.from(model.state.items)).toEqual([1, 2, 3]);
-    });
+      expect(model.state.items).toBe(originalArray)
+      expect(Array.from(model.state.items)).toEqual([1, 2, 3])
+    })
 
-    it("updates stored array content when items are reordered and changed", () => {
-      const model = createModel({ items: [1, 2, 3, 4] });
-      const observer = vi.fn();
-      model.addObserver(observer);
+    it('updates stored array content when items are reordered and changed', () => {
+      const model = createModel({ items: [1, 2, 3, 4] })
+      const observer = vi.fn()
+      model.addObserver(observer)
 
-      const originalArray = model.state.items;
+      const originalArray = model.state.items
       // Reorder and change: [1, 2, 3, 4] -> [4, 5, 2, 1]
-      model.state.items = [4, 5, 2, 1];
+      model.state.items = [4, 5, 2, 1]
 
       // Observer should be notified exactly once
-      expect(observer).toHaveBeenCalledTimes(1);
+      expect(observer).toHaveBeenCalledTimes(1)
 
       // Array should be updated in place (same reference)
-      expect(model.state.items).toBe(originalArray);
-      expect(Array.from(model.state.items)).toEqual([4, 5, 2, 1]);
-    });
+      expect(model.state.items).toBe(originalArray)
+      expect(Array.from(model.state.items)).toEqual([4, 5, 2, 1])
+    })
 
-    it("updates stored array content with mixed add/remove/reorder", () => {
-      const model = createModel({ items: [1, 2, 3] });
-      const observer = vi.fn();
-      model.addObserver(observer);
+    it('updates stored array content with mixed add/remove/reorder', () => {
+      const model = createModel({ items: [1, 2, 3] })
+      const observer = vi.fn()
+      model.addObserver(observer)
 
-      const originalArray = model.state.items;
+      const originalArray = model.state.items
       // Complex change: [1, 2, 3] -> [5, 2, 7, 1]
-      model.state.items = [5, 2, 7, 1];
+      model.state.items = [5, 2, 7, 1]
 
       // Observer should be notified exactly once
-      expect(observer).toHaveBeenCalledTimes(1);
+      expect(observer).toHaveBeenCalledTimes(1)
 
       // Array should be updated in place (same reference)
-      expect(model.state.items).toBe(originalArray);
-      expect(Array.from(model.state.items)).toEqual([5, 2, 7, 1]);
-    });
+      expect(model.state.items).toBe(originalArray)
+      expect(Array.from(model.state.items)).toEqual([5, 2, 7, 1])
+    })
 
-    it("handles empty array replacement", () => {
-      const model = createModel({ items: [1, 2, 3] });
-      const observer = vi.fn();
-      model.addObserver(observer);
+    it('handles empty array replacement', () => {
+      const model = createModel({ items: [1, 2, 3] })
+      const observer = vi.fn()
+      model.addObserver(observer)
 
-      const originalArray = model.state.items;
-      model.state.items = [];
+      const originalArray = model.state.items
+      model.state.items = []
 
       // Observer should be notified exactly once
-      expect(observer).toHaveBeenCalledTimes(1);
+      expect(observer).toHaveBeenCalledTimes(1)
 
       // Array should be updated in place (same reference)
-      expect(model.state.items).toBe(originalArray);
-      expect(Array.from(model.state.items)).toEqual([]);
-    });
+      expect(model.state.items).toBe(originalArray)
+      expect(Array.from(model.state.items)).toEqual([])
+    })
 
-    it("handles replacement of empty array with items", () => {
-      const model = createModel({ items: [] });
-      const observer = vi.fn();
-      model.addObserver(observer);
+    it('handles replacement of empty array with items', () => {
+      const model = createModel({ items: [] })
+      const observer = vi.fn()
+      model.addObserver(observer)
 
-      const originalArray = model.state.items;
-      model.state.items = [1, 2, 3];
+      const originalArray = model.state.items
+      model.state.items = [1, 2, 3]
 
       // Observer should be notified exactly once
-      expect(observer).toHaveBeenCalledTimes(1);
+      expect(observer).toHaveBeenCalledTimes(1)
 
       // Array should be updated in place (same reference)
-      expect(model.state.items).toBe(originalArray);
-      expect(Array.from(model.state.items)).toEqual([1, 2, 3]);
-    });
-  });
+      expect(model.state.items).toBe(originalArray)
+      expect(Array.from(model.state.items)).toEqual([1, 2, 3])
+    })
+  })
 
-  describe("object merging", () => {
-    it("merges objects in place", () => {
-      const model = createModel({ user: { name: "John", age: 30 } });
-      const observer = vi.fn();
-      model.addObserver(observer);
+  describe('object merging', () => {
+    it('merges objects in place', () => {
+      const model = createModel({ user: { name: 'John', age: 30 } })
+      const observer = vi.fn()
+      model.addObserver(observer)
 
-      model.state.user = { name: "Jane", age: 25 };
-      expect(observer).toHaveBeenCalled();
-      expect(model.state.user.name).toBe("Jane");
-    });
-  });
+      model.state.user = { name: 'Jane', age: 25 }
+      expect(observer).toHaveBeenCalled()
+      expect(model.state.user.name).toBe('Jane')
+    })
+  })
 
-  describe("flushChanges", () => {
-    it("returns changed paths since last flush", () => {
-      const model = createModel({ a: 1, b: 2 });
+  describe('flushChanges', () => {
+    it('returns changed paths since last flush', () => {
+      const model = createModel({ a: 1, b: 2 })
 
-      model.state.a = 10;
-      model.state.b = 20;
+      model.state.a = 10
+      model.state.b = 20
 
-      const changed = model.flushChanges();
-      expect(changed).toContain("a");
-      expect(changed).toContain("b");
-    });
+      const changed = model.flushChanges()
+      expect(changed).toContain('a')
+      expect(changed).toContain('b')
+    })
 
-    it("clears changed paths after flush", () => {
-      const model = createModel({ count: 0 });
+    it('clears changed paths after flush', () => {
+      const model = createModel({ count: 0 })
 
-      model.state.count = 1;
-      model.flushChanges();
+      model.state.count = 1
+      model.flushChanges()
 
-      const changed = model.flushChanges();
-      expect(changed.size).toBe(0);
-    });
-  });
+      const changed = model.flushChanges()
+      expect(changed.size).toBe(0)
+    })
+  })
 
-  describe("removeObserver", () => {
-    it("removes observer", () => {
-      const model = createModel({ count: 0 });
-      const observer = vi.fn();
-      model.addObserver(observer);
-      model.removeObserver(observer);
+  describe('removeObserver', () => {
+    it('removes observer', () => {
+      const model = createModel({ count: 0 })
+      const observer = vi.fn()
+      model.addObserver(observer)
+      model.removeObserver(observer)
 
-      model.state.count = 10;
-      expect(observer).not.toHaveBeenCalled();
-    });
-  });
-});
+      model.state.count = 10
+      expect(observer).not.toHaveBeenCalled()
+    })
+  })
+})

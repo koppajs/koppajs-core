@@ -12,7 +12,7 @@
   <h1 align="center">Contributing to KoppaJS Projects</h1>
   <h3 align="center">Build with intention. Contribute with clarity.</h3>
   <p align="center">
-    <i align="center">A framework powered by simplicity, transparency, and responsibility.</i>
+    <i>A framework ecosystem powered by simplicity, transparency, and responsibility.</i>
   </p>
 </div>
 
@@ -22,24 +22,26 @@
 
 ## Philosophy
 
-> _"Only start things you're willing to finish with dedication."_
+> _“Only start things you are willing to finish with dedication.”_
 
-KoppaJS is more than a codebase — it is a declaration of intent.
-A belief that frontend work can be **simple**, **transparent**, and **elegant**, without the noise of unnecessary abstraction.
+KoppaJS is more than a collection of repositories — it is a declaration of intent.
+
+The project exists to prove that frontend systems can be **simple**, **explicit**,
+and **comprehensible**, without relying on unnecessary abstraction or hidden magic.
 
 KoppaJS follows **Intentional Architecture**:
 
-- **No factories. No classes. No magic.**
-  Everything is functional, explicit, and traceable.
+- **No factories. No hidden abstractions. No magic.**  
+  Behavior must be explicit, traceable, and explainable.
 
-- **Every behavior is explainable.**
-  No invisible lifecycles, no hidden state transitions.
+- **Every behavior is understandable.**  
+  No invisible lifecycles, no implicit state transitions.
 
-- **Data flows by reference.**
-  Never duplicate what can be shared.
+- **Data flows by reference.**  
+  What can be shared should not be duplicated.
 
-- **The developer is in control.**
-  KoppaJS never overrides your intent.
+- **The developer stays in control.**  
+  KoppaJS does not override intent.
 
 <p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
@@ -50,7 +52,7 @@ KoppaJS follows **Intentional Architecture**:
 Before contributing, ensure you have:
 
 - **Node.js ≥ 20**
-- **pnpm ≥ 10.24.0**
+- **pnpm ≥ 10**
 
 Install dependencies:
 
@@ -62,37 +64,30 @@ pnpm install
 
 ---
 
-## Development Setup
+## Development Workflow
 
-### 1. Build the project
+Each KoppaJS repository provides a consistent development experience.
+
+Typical workflows include:
+
+### Build
 
 ```bash
 pnpm build
 ```
 
-This performs:
+This may include:
+- Type checking
+- Bundling
+- Generation of public type definitions (where applicable)
 
-- Type checking via `pnpm typecheck`
-- Bundling with Vite
-- Generation of public type definitions via `pnpm generate:types`
-
-### 1.1 Optional: Run build steps individually
-
-```bash
-# Type-check the source using config/tsconfig.json
-pnpm typecheck
-
-# Generate public type definitions using tsconfig.types.json
-pnpm generate:types
-```
-
-### 2. Run tests
+### Testing
 
 ```bash
 pnpm test
 ```
 
-Generate coverage:
+Optional:
 
 ```bash
 pnpm test:coverage
@@ -104,23 +99,25 @@ pnpm test:coverage
 
 ## Code Style & Quality
 
-KoppaJS enforces strict consistency through:
+All KoppaJS projects enforce consistency through:
 
-- **ESLint (Flat Config)**
+- **TypeScript (strict mode where applicable)**
+- **ESLint**
 - **Prettier**
-- **TypeScript strict mode**
 
-Validate lint rules:
+Check code quality:
 
 ```bash
 pnpm lint
 ```
 
-Fix formatting:
+Format code:
 
 ```bash
 pnpm format
 ```
+
+Contributions must pass all checks enforced by CI.
 
 <p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
@@ -128,29 +125,17 @@ pnpm format
 
 ## Commit Conventions
 
-We use **Conventional Commits** (Gitmojis optional).
+KoppaJS uses **Conventional Commits**.
 
 Example:
 
 ```
-feat: ✨ add support for 'processed' lifecycle hook
+feat: add support for processed lifecycle hook
 ```
 
-All commit messages are validated through Husky and Commitlint.
+Gitmojis are optional.
 
-<p align="right">(<a href="#contributing-top">back to top</a>)</p>
-
----
-
-## Commit Hook Setup
-
-Install Husky:
-
-```bash
-pnpm prepare
-```
-
-Ensure `.husky/commit-msg` exists and is executable.
+Commit messages are validated automatically where commit hooks are enabled.
 
 <p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
@@ -158,46 +143,34 @@ Ensure `.husky/commit-msg` exists and is executable.
 
 ## Testing Guidelines
 
-KoppaJS uses **Vitest** with the **Three Test Rule**:
+Most KoppaJS projects follow the **Three Test Rule**:
 
-- **Valid Case** — expected use
-- **Error Case** — invalid input
+- **Valid Case** — expected usage
+- **Error Case** — invalid or failing input
 - **Edge Case** — unusual but valid scenario
 
-Additional rules:
+General expectations:
 
-- One `describe()` per function
-- Each exported utility gets 3 `it()` blocks
-- Test folder mirrors the source structure
-- No global mocks
-- Clear, explicit test data
-
-### Current Test Coverage
-
-- **248 tests** across **17 test files**
-- **78% statement coverage**, **68% branch coverage**, **90% function coverage**, **80% line coverage**
-- All tests passing with clean output (logger suppression in test environment)
-- Comprehensive component registration, lifecycle, and utility testing
-
-Run coverage report:
-
-```bash
-pnpm test:coverage
-```
+- Tests should mirror the source structure
+- Each exported utility or behavior should be covered
+- No global mocks unless unavoidable
+- Test data should be explicit and minimal
 
 <p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
 ---
 
-## Architecture Principles
+## Architectural Expectations
 
-KoppaJS Core adheres to:
+When contributing to KoppaJS projects:
 
-- Fully functional architecture (no classes, no factories)
-- Runtime-safe types using `satisfies`
-- Explicit, composable functions
-- Helpers and guards isolated under `utils/*`
-- Avoid unnecessary `as` assertions
+- Prefer **explicit, functional code**
+- Avoid unnecessary abstraction
+- Isolate helpers and guards clearly
+- Avoid broad `any` or unchecked assertions unless justified
+- Favor clarity over cleverness
+
+If a change cannot be clearly explained, it likely does not belong.
 
 <p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
@@ -205,23 +178,36 @@ KoppaJS Core adheres to:
 
 ## Scripts
 
-| Command               | Description                                                      |
-| --------------------- | ---------------------------------------------------------------- |
-| `pnpm build`          | Full production build: typecheck → bundle → generate `.d.ts`     |
-| `pnpm rebuild`        | Remove all build artifacts and rebuild from scratch              |
-| `pnpm typecheck`      | Run TypeScript type checking                                     |
-| `pnpm generate:types` | Generate public type definitions                                 |
-| `pnpm test`           | Run all tests once                                               |
-| `pnpm test:watch`     | Run tests in watch mode                                          |
-| `pnpm test:coverage`  | Generate coverage report                                         |
-| `pnpm test:ci`        | CI test run with coverage                                        |
-| `pnpm lint`           | Lint TS/JS via ESLint                                            |
-| `pnpm format`         | Apply Prettier formatting                                        |
-| `pnpm dump-code`      | Output a full code snapshot (`---code_dump.txt`)                 |
-| `pnpm analyze-code`   | Analyze project structure and output report (`---code_analysis`) |
-| `pnpm list-structure` | Dump all tracked project files                                   |
-| `pnpm clean`          | Remove dist and coverage directories                             |
-| `pnpm deepclean`      | Remove node_modules, dist, and pnpm-lock.yaml                    |
+Each repository defines its own scripts, but commonly available commands include:
+
+| Command        | Description                                  |
+|---------------|----------------------------------------------|
+| `pnpm build`  | Build the project                             |
+| `pnpm test`   | Run tests                                    |
+| `pnpm lint`   | Run lint checks                              |
+| `pnpm format` | Format code                                  |
+| `pnpm clean`  | Remove build artifacts                       |
+
+Refer to the repository’s `package.json` for project-specific commands.
+
+<p align="right">(<a href="#contributing-top">back to top</a>)</p>
+
+---
+
+## Releasing
+
+KoppaJS projects use a **manual, tag-driven release process**.
+
+General flow:
+
+1. Update version and changelog
+2. Commit the release preparation
+3. Tag the release (`vX.Y.Z`)
+4. Push the tag to `main`
+
+CI will validate the release and publish artifacts where applicable.
+
+Exact release behavior may vary by repository.
 
 <p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
@@ -229,9 +215,9 @@ KoppaJS Core adheres to:
 
 ## Need Help?
 
-Open an issue or start a discussion:
-https://github.com/koppajs/koppajs-core
+Open an issue or start a discussion in the relevant repository.
 
-Thank you for contributing — and welcome aboard. 🚀
+Thank you for contributing — and for helping keep KoppaJS intentional, calm,
+and a pleasure to build with.
 
 <p align="right">(<a href="#contributing-top">back to top</a>)</p>

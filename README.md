@@ -78,24 +78,29 @@ KoppaJS is a lightweight, modular frontend framework designed to simplify develo
 To get started with KoppaJS, follow these steps:
 
 1. **Install the Core Library:**
+
    ```bash
    pnpm add @koppajs/koppajs-core
    ```
 
 2. **Create Your First Component:**
-   ```typescript
-   import { Core } from '@koppajs/koppajs-core';
 
-   Core.take({
-     state: { count: 0 },
-     methods: {
-       increment() {
-         this.state.count++;
+   ```typescript
+   import { Core } from '@koppajs/koppajs-core'
+
+   Core.take(
+     {
+       state: { count: 0 },
+       methods: {
+         increment() {
+           this.state.count++
+         },
        },
      },
-   }, 'counter');
+     'counter',
+   )
 
-   Core();
+   Core()
    ```
 
 3. **Run Your Application:**

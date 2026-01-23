@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { zipSync, strToU8 } from 'fflate'
+import { zipSync } from 'fflate'
 
 const execFileAsync = promisify(execFile)
 
@@ -335,7 +335,10 @@ const options = {
     { label: 'TOKEN', rx: /\bTOKEN\s*[=:]/gi },
     { label: 'SECRET', rx: /\bSECRET\s*[=:]/gi },
     { label: 'PASSWORD', rx: /\bPASSWORD\s*[=:]/gi },
-    { label: 'PRIVATE_KEY_HEADER', rx: /-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----/gi },
+    {
+      label: 'PRIVATE_KEY_HEADER',
+      rx: /-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----/gi,
+    },
     { label: 'AUTH_BEARER', rx: /authorization\s*:\s*bearer/gi },
     { label: 'AWS_ACCESS_KEY', rx: /\bAWS_ACCESS_KEY_ID\s*[=:]/gi },
     { label: 'AWS_SECRET', rx: /\bAWS_SECRET_ACCESS_KEY\s*[=:]/gi },
@@ -1080,7 +1083,11 @@ async function generateDeltaContent(prevState, currentState) {
 
   return {
     content: lines.join('\n'),
-    stats: { added: added.length, removed: removed.length, modified: modified.length },
+    stats: {
+      added: added.length,
+      removed: removed.length,
+      modified: modified.length,
+    },
   }
 }
 

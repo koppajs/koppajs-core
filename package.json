@@ -1,7 +1,6 @@
 {
   "name": "@koppajs/koppajs-core",
   "version": "3.0.0",
-  "private": true,
   "type": "module",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.cjs.js",
@@ -51,7 +50,8 @@
     "copy:dts": "node scripts/copy-dts.js",
     "clean": "rimraf dist coverage",
     "deepclean": "rimraf node_modules dist",
-    "nuke": "rimraf node_modules dist pnpm-lock.yaml",
+    "nuke": "rimraf node_modules dist",
+    "nuke:all": "rimraf node_modules dist pnpm-lock.yaml",
     "pretypecheck": "rimraf dist",
     "typecheck": "tsc --project config/tsconfig.json",
     "build": "pnpm run typecheck && vite build --config config/vite.config.ts && pnpm generate:types && pnpm run copy:dts",

@@ -1,15 +1,11 @@
-import type {
-  CompiledScript,
-  ComponentContext,
-  ComponentController,
-} from "../types";
-import { logger } from "./logger";
+import type { CompiledScript, ComponentContext, ComponentController } from '../types'
+import { logger } from './logger'
 
 /**
  * Resolved dependencies object passed to the compiled script.
  * Keys are the local identifiers, values are the resolved import values.
  */
-export type ResolvedDeps = Record<string, unknown>;
+export type ResolvedDeps = Record<string, unknown>
 
 /**
  * Generates var declarations for injected dependencies.
@@ -19,11 +15,11 @@ export type ResolvedDeps = Record<string, unknown>;
  * @returns Injection header string to prepend to function body
  */
 function generateDepsInjectionHeader(depKeys: string[]): string {
-  if (depKeys.length === 0) return "";
+  if (depKeys.length === 0) return ''
 
   // Generate var declarations for each dependency
   // No collision handling - redeclarations will throw SyntaxError naturally
-  return depKeys.map((key) => `var ${key} = __deps.${key};`).join("\n") + "\n";
+  return depKeys.map((key) => `var ${key} = __deps.${key};`).join('\n') + '\n'
 }
 
 /**
@@ -37,15 +33,12 @@ function generateDepsInjectionHeader(depKeys: string[]): string {
  * @throws Error if compilation fails
  * @throws SyntaxError if user script redeclares an injected dependency name
  */
-export function compileCode(
-  strg: string,
-  resolvedDeps?: ResolvedDeps,
-): CompiledScript {
-  const sanitizedCode = strg.replace(/\$-\{/g, "${");
+export function compileCode(strg: string, resolvedDeps?: ResolvedDeps): CompiledScript {
+  const sanitizedCode = strg.replace(/\$-\{/g, '${')
 
   // Generate injection header for dependencies
-  const depKeys = resolvedDeps ? Object.keys(resolvedDeps) : [];
-  const depsInjection = generateDepsInjectionHeader(depKeys);
+  const depKeys = resolvedDeps ? Object.keys(resolvedDeps) : []
+  const depsInjection = generateDepsInjectionHeader(depKeys)
 
   const functionBody = `
     const { $refs, $parent, $emit, $take, $handleEventFromChild, ...rest } = context;
@@ -63,26 +56,22 @@ export function compileCode(
     ${depsInjection}
 
     return (${sanitizedCode});
-  `;
+  `
 
   try {
     // Include __deps parameter if we have dependencies
     const rawFn = resolvedDeps
-      ? new Function("context", "__deps", functionBody)
-      : new Function("context", functionBody);
+      ? new Function('context', '__deps', functionBody)
+      : new Function('context', functionBody)
 
     const compiled = ((context: ComponentContext) =>
       resolvedDeps ? rawFn(context, resolvedDeps) : rawFn(context)) satisfies (
       context: ComponentContext,
-    ) => ComponentController;
+    ) => ComponentController
 
-    return compiled;
+    return compiled
   } catch (error) {
-    logger.errorWithContext(
-      "Failed to compile dynamic code",
-      { functionBody },
-      error,
-    );
-    throw error;
+    logger.errorWithContext('Failed to compile dynamic code', { functionBody }, error)
+    throw error
   }
 }
