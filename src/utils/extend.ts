@@ -1,5 +1,5 @@
-import { objectExtensions } from './object'
-import { domExtensions } from './dom'
+import { objectExtensions } from "./object";
+import { domExtensions } from "./dom";
 
 /**
  * Extends global prototypes with KoppaJS helper utilities.
@@ -10,9 +10,9 @@ import { domExtensions } from './dom'
  * In Node/SSR environments DOM-specific extensions are skipped automatically.
  */
 export const extend = () => {
-  Object.defineProperties(Object.prototype, objectExtensions)
+  Object.defineProperties(Object.prototype, objectExtensions);
 
-  if (typeof HTMLElement !== 'undefined') {
-    Object.defineProperties(HTMLElement.prototype, domExtensions)
+  if (typeof HTMLElement !== "undefined") {
+    Object.defineProperties(HTMLElement.prototype, domExtensions);
   }
-}
+};

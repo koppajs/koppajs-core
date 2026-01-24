@@ -1,4 +1,4 @@
-import type { IModule, IPlugin } from '../types'
+import type { IModule, IPlugin } from "../types";
 
 /**
  * Global registry for extensions (plugins and modules).
@@ -6,9 +6,9 @@ import type { IModule, IPlugin } from '../types'
  * Modules provide attach methods for component elements.
  */
 export const ExtensionRegistry: {
-  modules: Record<string, IModule>
-  plugins: Record<string, IPlugin>
+  modules: Record<string, IModule>;
+  plugins: Record<string, IPlugin>;
 } = {
   modules: {},
   plugins: {},
-}
+};
