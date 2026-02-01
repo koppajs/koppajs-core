@@ -16,6 +16,18 @@ const FORBIDDEN_KEYWORDS_REGEX =
   /(?:\bwindow\b|\bdocument\b|\bglobalThis\b|\bFunction\b|\beval\b|\bsetTimeout\b|\bsetInterval\b|\bfetch\b|\bXMLHttpRequest\b|\bimport\b|\brequire\b|\bthis\b)/;
 
 /**
+ * Cache for compiled expression functions.
+ * Key format: "expression|var1,var2,var3" (expression + sorted allowed vars)
+ * This avoids recreating Functions on every render.
+ */
+const expressionCache = new Map<string, Function>();
+
+/**
+ * Maximum cache size to prevent memory leaks in long-running apps.
+ */
+const MAX_CACHE_SIZE = 1000;
+
+/**
  * Evaluates a JavaScript expression in a controlled, restricted scope.
  * Blocks access to dangerous globals (window, document, eval, etc.).
  * Treats simple property paths as "safe" and resolves them via getValueByPath.
@@ -48,12 +60,28 @@ export function evaluateExpression(
     // Complex expression:
     // Only expose top-level keys from state as function parameters.
     // Everything else is not directly reachable unless referenced through those vars.
-    const allowedVars = Object.keys(state);
+    const allowedVars = Object.keys(state).sort();
 
-    // Use strict mode; expression is evaluated as a return value.
-    const functionBody = `"use strict"; return (${exp});`;
+    // Build cache key from expression and variable names
+    const cacheKey = `${exp}|${allowedVars.join(",")}`;
 
-    const evalFunction = new Function(...allowedVars, functionBody);
+    // Check cache for compiled function
+    let evalFunction = expressionCache.get(cacheKey);
+
+    if (!evalFunction) {
+      // Use strict mode; expression is evaluated as a return value.
+      const functionBody = `"use strict"; return (${exp});`;
+      evalFunction = new Function(...allowedVars, functionBody);
+
+      // Prevent unbounded cache growth
+      if (expressionCache.size >= MAX_CACHE_SIZE) {
+        // Remove oldest entry (first inserted)
+        const firstKey = expressionCache.keys().next().value;
+        if (firstKey) expressionCache.delete(firstKey);
+      }
+
+      expressionCache.set(cacheKey, evalFunction);
+    }
 
     return evalFunction(...allowedVars.map((key) => state[key]));
   } catch (error) {

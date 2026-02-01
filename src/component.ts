@@ -590,7 +590,9 @@ export function registerComponent(
 
           // State-Version Check: Nur rendern wenn sich State geändert hat
           const currentStateVersion = model.getStateVersion();
-          if (lastRenderedStateVersion === currentStateVersion) return;
+          if (lastRenderedStateVersion === currentStateVersion) {
+            return;
+          }
 
           isRendering = true;
           this._renderAborted = false;
@@ -643,8 +645,13 @@ export function registerComponent(
             const changedPaths = model.flushChanges();
 
             // Extend hook context with changedPaths metadata
-            // Assign changedPaths directly to the context object so it's available as this.changedPaths
-            (hookContext as StateWithMetadata).changedPaths = changedPaths;
+            // Use Object.defineProperty to avoid triggering the reactive proxy
+            Object.defineProperty(hookContext, 'changedPaths', {
+              value: changedPaths,
+              writable: true,
+              configurable: true,
+              enumerable: false,
+            });
 
             // MOUNTED GUARD: mounted() Hook darf nur einmal feuern beim ersten Render
             // Wenn bereits gemountet (_isMounted = true), dann ist es ein Update, kein Mount
@@ -673,8 +680,7 @@ export function registerComponent(
             // custom element instances and prevent infinite mount loops
             reconcileDOM(host, container, !this._isMounted, source.structAttr);
 
-            // Update changedPaths for updated hook (same set from beforeUpdate)
-            (hookContext as StateWithMetadata).changedPaths = changedPaths;
+            // changedPaths is already set via defineProperty, no need to set again
 
             // Update Hook: Nur wenn bereits gemountet (nicht beim ersten Render)
             if (this._isMounted) {

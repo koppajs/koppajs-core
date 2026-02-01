@@ -197,13 +197,30 @@ export function createModel<T extends Record<string, unknown>>(
   };
 
   /**
-   * Single code path for notifying observers after a state mutation.
-   * Records the path, increments stateVersion exactly once, and notifies all observers.
+   * Batched observer notification using microtask scheduling.
+   * Multiple synchronous state mutations are coalesced into a single observer notification.
    */
+  let notifyScheduled = false;
+
   const notifyObservers = (path: string): void => {
     changedPaths.add(path);
     stateVersion++;
-    observers.forEach((observer) => observer());
+
+    // Schedule a single batched notification via microtask
+    if (!notifyScheduled) {
+      notifyScheduled = true;
+      queueMicrotask(() => {
+        notifyScheduled = false;
+        observers.forEach((observer) => {
+          try {
+            observer();
+          } catch (e) {
+            // Observers should handle their own errors
+            console.error("Observer error:", e);
+          }
+        });
+      });
+    }
   };
 
   // Diff functions for arrays - now accept a path for notifying observers
@@ -652,6 +669,11 @@ export function createModel<T extends Record<string, unknown>>(
       },
 
       deleteProperty: (target, property) => {
+        // Skip internal/ephemeral properties to avoid triggering renders
+        if (property === 'changedPaths') {
+          return Reflect.deleteProperty(target, property);
+        }
+
         const propName = toPropName(property);
         const path = buildPath(target, propName);
         const oldValue = Reflect.get(target, property) as unknown;

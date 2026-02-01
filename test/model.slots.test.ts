@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { createModel } from "../src/model";
+import { flushMicrotasks } from "./setup";
 
 // Helper to access internal slot sidecars for testing
 // Since the WeakMap is internal, we need to test slot behavior indirectly
@@ -80,7 +81,7 @@ describe("model slot sidecars", () => {
   });
 
   describe("negative cases - full array replacement", () => {
-    it("full replace recreates all slotIds (no persistence)", () => {
+    it("full replace recreates all slotIds (no persistence)", async () => {
       const model = createModel({ items: [1, 2, 3] });
       const observer = vi.fn();
       model.addObserver(observer);
@@ -89,6 +90,7 @@ describe("model slot sidecars", () => {
       model.state.items = [4, 5, 6];
 
       expect(model.state.items).toEqual([4, 5, 6]);
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
     });
 

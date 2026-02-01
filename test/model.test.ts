@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { createModel } from "../src/model";
+import { flushMicrotasks } from "./setup";
 
 describe("createModel", () => {
   describe("basic reactivity", () => {
@@ -8,12 +9,13 @@ describe("createModel", () => {
       expect(model.state.count).toBe(0);
     });
 
-    it("notifies observers on property change", () => {
+    it("notifies observers on property change", async () => {
       const model = createModel({ count: 0 });
       const observer = vi.fn();
       model.addObserver(observer);
 
       model.state.count = 10;
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
     });
 
@@ -135,7 +137,7 @@ describe("createModel", () => {
   });
 
   describe("watchers do not affect rendering", () => {
-    it("observers still drive rendering independently", () => {
+    it("observers still drive rendering independently", async () => {
       const model = createModel({ count: 0 });
       const observer = vi.fn();
       const watchCallback = vi.fn();
@@ -146,22 +148,24 @@ describe("createModel", () => {
       model.state.count = 10;
 
       // Both observer and watcher callback should be called
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
       expect(watchCallback).not.toHaveBeenCalled(); // Not yet, needs flush
     });
   });
 
   describe("array handling", () => {
-    it("handles array replacement", () => {
+    it("handles array replacement", async () => {
       const model = createModel({ items: [1, 2, 3] });
       const observer = vi.fn();
       model.addObserver(observer);
 
       model.state.items = [4, 5, 6];
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
     });
 
-    it("updates stored array content when items are added", () => {
+    it("updates stored array content when items are added", async () => {
       const model = createModel({ items: [1, 2, 3] });
       const observer = vi.fn();
       model.addObserver(observer);
@@ -170,6 +174,7 @@ describe("createModel", () => {
       model.state.items = [1, 2, 3, 4];
 
       // Observer should be notified exactly once
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalledTimes(1);
 
       // Array should be updated in place (same reference)
@@ -177,7 +182,7 @@ describe("createModel", () => {
       expect(Array.from(model.state.items)).toEqual([1, 2, 3, 4]);
     });
 
-    it("updates stored array content when items are removed", () => {
+    it("updates stored array content when items are removed", async () => {
       const model = createModel({ items: [1, 2, 3, 4] });
       const observer = vi.fn();
       model.addObserver(observer);
@@ -186,6 +191,7 @@ describe("createModel", () => {
       model.state.items = [1, 2];
 
       // Observer should be notified exactly once
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalledTimes(1);
 
       // Array should be updated in place (same reference)
@@ -228,7 +234,7 @@ describe("createModel", () => {
       expect(Array.from(model.state.items)).toEqual([1, 2, 3]);
     });
 
-    it("updates stored array content when items are reordered and changed", () => {
+    it("updates stored array content when items are reordered and changed", async () => {
       const model = createModel({ items: [1, 2, 3, 4] });
       const observer = vi.fn();
       model.addObserver(observer);
@@ -238,6 +244,7 @@ describe("createModel", () => {
       model.state.items = [4, 5, 2, 1];
 
       // Observer should be notified exactly once
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalledTimes(1);
 
       // Array should be updated in place (same reference)
@@ -245,7 +252,7 @@ describe("createModel", () => {
       expect(Array.from(model.state.items)).toEqual([4, 5, 2, 1]);
     });
 
-    it("updates stored array content with mixed add/remove/reorder", () => {
+    it("updates stored array content with mixed add/remove/reorder", async () => {
       const model = createModel({ items: [1, 2, 3] });
       const observer = vi.fn();
       model.addObserver(observer);
@@ -255,6 +262,7 @@ describe("createModel", () => {
       model.state.items = [5, 2, 7, 1];
 
       // Observer should be notified exactly once
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalledTimes(1);
 
       // Array should be updated in place (same reference)
@@ -262,7 +270,7 @@ describe("createModel", () => {
       expect(Array.from(model.state.items)).toEqual([5, 2, 7, 1]);
     });
 
-    it("handles empty array replacement", () => {
+    it("handles empty array replacement", async () => {
       const model = createModel({ items: [1, 2, 3] });
       const observer = vi.fn();
       model.addObserver(observer);
@@ -271,6 +279,7 @@ describe("createModel", () => {
       model.state.items = [];
 
       // Observer should be notified exactly once
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalledTimes(1);
 
       // Array should be updated in place (same reference)
@@ -278,7 +287,7 @@ describe("createModel", () => {
       expect(Array.from(model.state.items)).toEqual([]);
     });
 
-    it("handles replacement of empty array with items", () => {
+    it("handles replacement of empty array with items", async () => {
       const model = createModel({ items: [] });
       const observer = vi.fn();
       model.addObserver(observer);
@@ -287,6 +296,7 @@ describe("createModel", () => {
       model.state.items = [1, 2, 3];
 
       // Observer should be notified exactly once
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalledTimes(1);
 
       // Array should be updated in place (same reference)
@@ -296,12 +306,13 @@ describe("createModel", () => {
   });
 
   describe("object merging", () => {
-    it("merges objects in place", () => {
+    it("merges objects in place", async () => {
       const model = createModel({ user: { name: "John", age: 30 } });
       const observer = vi.fn();
       model.addObserver(observer);
 
       model.state.user = { name: "Jane", age: 25 };
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
       expect(model.state.user.name).toBe("Jane");
     });

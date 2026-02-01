@@ -20,8 +20,41 @@ function isCustomElement(node: Node): node is HTMLElement {
   );
 }
 
-/**
- * Generates an identity key for a node based on its structural and slot identifiers.
+/** * Removes all structAttr attributes from custom elements in the container.
+ * Also reads the attribute value and stores it as a symbol before removal.
+ * This ensures the attribute is never visible in the final DOM.
+ * @param container - The container to process
+ * @param structAttr - The attribute name to remove
+ */
+function cleanupStructAttributes(
+  container: Node,
+  structAttr: string,
+): void {
+  const walker = document.createTreeWalker(
+    container,
+    NodeFilter.SHOW_ELEMENT,
+    {
+      acceptNode: (node) =>
+        isCustomElement(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP,
+    },
+  );
+
+  let node = walker.nextNode() as HTMLElement | null;
+  while (node) {
+    const attrValue = node.getAttribute(structAttr);
+    if (attrValue !== null) {
+      // Store as symbol if not already set
+      if (getStructId(node) === undefined) {
+        setStructId(node, attrValue);
+      }
+      // Remove the attribute from DOM
+      node.removeAttribute(structAttr);
+    }
+    node = walker.nextNode() as HTMLElement | null;
+  }
+}
+
+/** * Generates an identity key for a node based on its structural and slot identifiers.
  * For custom elements:
  * - non-loop: (tagName, structId)
  * - loop: (tagName, structId, slotId)
@@ -42,6 +75,8 @@ function getNodeIdentity(node: Node, structAttr?: string): string | null {
     if (attrValue !== null) {
       setStructId(node, attrValue);
       structId = attrValue;
+      // Remove the attribute from DOM - the symbol is now the source of truth
+      (node as HTMLElement).removeAttribute(structAttr);
     }
   }
 
@@ -276,6 +311,11 @@ export function reconcileDOM(
 ): void {
   // First render - just append everything (no existing content to preserve)
   if (isFirstRender || host.childNodes.length === 0) {
+    // Clean up structAttr attributes before inserting into DOM
+    // This ensures the attribute is never visible to the user
+    if (structAttr) {
+      cleanupStructAttributes(newContent, structAttr);
+    }
     host.replaceChildren(newContent);
     return;
   }

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { createModel } from "../src/model";
+import { flushMicrotasks } from "./setup";
 
 describe("model - edge cases and negative tests", () => {
   describe("createModel - boundary conditions", () => {
@@ -8,7 +9,7 @@ describe("model - edge cases and negative tests", () => {
       expect(model.state).toEqual({});
     });
 
-    it("handles null values in state", () => {
+    it("handles null values in state", async () => {
       const model = createModel({ value: null as any });
       expect(model.state.value).toBeNull();
 
@@ -16,10 +17,11 @@ describe("model - edge cases and negative tests", () => {
       model.addObserver(observer);
 
       model.state.value = "not null";
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
     });
 
-    it("handles undefined values in state", () => {
+    it("handles undefined values in state", async () => {
       const model = createModel({ value: undefined as any });
       expect(model.state.value).toBeUndefined();
 
@@ -27,10 +29,11 @@ describe("model - edge cases and negative tests", () => {
       model.addObserver(observer);
 
       model.state.value = "defined";
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
     });
 
-    it("handles NaN in state", () => {
+    it("handles NaN in state", async () => {
       const model = createModel({ value: NaN });
 
       const observer = vi.fn();
@@ -38,10 +41,11 @@ describe("model - edge cases and negative tests", () => {
 
       // NaN !== NaN, so this should trigger
       model.state.value = NaN;
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
     });
 
-    it("handles Infinity in state", () => {
+    it("handles Infinity in state", async () => {
       const model = createModel({ value: Infinity });
       expect(model.state.value).toBe(Infinity);
 
@@ -49,6 +53,7 @@ describe("model - edge cases and negative tests", () => {
       model.addObserver(observer);
 
       model.state.value = -Infinity;
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
     });
 
@@ -58,7 +63,7 @@ describe("model - edge cases and negative tests", () => {
       expect(model.state.value).toBe(sym);
     });
 
-    it("handles BigInt in state", () => {
+    it("handles BigInt in state", async () => {
       const model = createModel({ value: BigInt(123) });
       expect(model.state.value).toBe(BigInt(123));
 
@@ -66,13 +71,14 @@ describe("model - edge cases and negative tests", () => {
       model.addObserver(observer);
 
       model.state.value = BigInt(456);
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
     });
 
     // INTENDED_LIMITATION
     // Proxying Date/RegExp breaks their native methods due to `this` binding issues.
     // Workaround: Store dates as timestamps or ISO strings, or keep Date instances outside the model.
-    it("handles Date objects", () => {
+    it("handles Date objects", async () => {
       const date = new Date("2024-01-01");
       const model = createModel({ date });
       // Date is stored but native methods like getTime() throw due to Proxy `this` binding
@@ -83,6 +89,7 @@ describe("model - edge cases and negative tests", () => {
       model.addObserver(observer);
 
       model.state.date = new Date("2024-12-31");
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
     });
 
@@ -142,7 +149,7 @@ describe("model - edge cases and negative tests", () => {
       }).toThrow();
     });
 
-    it("handles sealed objects", () => {
+    it("handles sealed objects", async () => {
       const sealed = Object.seal({ value: 42 });
       const model = createModel({ obj: sealed });
 
@@ -151,11 +158,12 @@ describe("model - edge cases and negative tests", () => {
 
       // Sealed object properties can be modified
       model.state.obj.value = 100;
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
       expect(model.state.obj.value).toBe(100);
     });
 
-    it("handles objects with getters and setters", () => {
+    it("handles objects with getters and setters", async () => {
       let internalValue = 42;
       const obj = {
         get value() {
@@ -172,11 +180,12 @@ describe("model - edge cases and negative tests", () => {
       model.addObserver(observer);
 
       model.state.obj.value = 100;
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
       expect(internalValue).toBe(100);
     });
 
-    it("handles circular references", () => {
+    it("handles circular references", async () => {
       const obj: any = { a: 1 };
       obj.self = obj;
 
@@ -186,6 +195,7 @@ describe("model - edge cases and negative tests", () => {
       model.addObserver(observer);
 
       model.state.a = 2;
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
       expect(model.state.self.a).toBe(2);
     });
@@ -208,7 +218,7 @@ describe("model - edge cases and negative tests", () => {
   });
 
   describe("observers - edge cases", () => {
-    it("handles adding same observer multiple times", () => {
+    it("handles adding same observer multiple times", async () => {
       const model = createModel({ count: 0 });
       const observer = vi.fn();
 
@@ -220,6 +230,7 @@ describe("model - edge cases and negative tests", () => {
 
       // Should only be called once if deduplicated
       // or three times if not - depends on implementation
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
     });
 
@@ -242,8 +253,8 @@ describe("model - edge cases and negative tests", () => {
     });
 
     // DOCUMENTED_BEHAVIOR
-    // Observer errors currently propagate. Applications should wrap their observers in try-catch.
-    it("handles observer that throws error", () => {
+    // Observer errors are now swallowed by the microtask. Applications should wrap their observers in try-catch.
+    it("handles observer that throws error", async () => {
       const model = createModel({ count: 0 });
       const throwingObserver = vi.fn(() => {
         throw new Error("Observer error");
@@ -251,15 +262,14 @@ describe("model - edge cases and negative tests", () => {
 
       model.addObserver(throwingObserver);
 
-      // Observer errors propagate - this is the current documented behavior
-      expect(() => {
-        model.state.count = 1;
-      }).toThrow("Observer error");
+      // Observer errors no longer propagate synchronously (they occur in microtask)
+      model.state.count = 1;
+      await flushMicrotasks();
 
       expect(throwingObserver).toHaveBeenCalled();
     });
 
-    it("handles many observers", () => {
+    it("handles many observers", async () => {
       const model = createModel({ count: 0 });
       const observers = Array.from({ length: 1000 }, () => vi.fn());
 
@@ -267,15 +277,16 @@ describe("model - edge cases and negative tests", () => {
 
       model.state.count = 1;
 
+      await flushMicrotasks();
       observers.forEach((obs) => {
         expect(obs).toHaveBeenCalled();
       });
     });
 
     // DOCUMENTED_BEHAVIOR
-    // Setting count from 0 to 0 on first iteration doesn't trigger (same value check).
-    // Expected behavior: observers only fire when values actually change.
-    it("handles rapid state changes", () => {
+    // With microtask batching, observers are now called once per batch, not per change.
+    // Expected behavior: observers fire once after all synchronous changes complete.
+    it("handles rapid state changes", async () => {
       const model = createModel({ count: 0 });
       const observer = vi.fn();
       model.addObserver(observer);
@@ -285,23 +296,26 @@ describe("model - edge cases and negative tests", () => {
         model.state.count = i;
       }
 
-      // Observer should be called 99 times (0->0 doesn't trigger, 0->1 through 0->99 do)
-      expect(observer).toHaveBeenCalledTimes(99);
+      // Observer should be called once due to microtask batching
+      await flushMicrotasks();
+      expect(observer).toHaveBeenCalledTimes(1);
     });
 
-    it("does not notify when setting to same value", () => {
+    it("does not notify when setting to same value", async () => {
       const model = createModel({ count: 0 });
       const observer = vi.fn();
       model.addObserver(observer);
 
       model.state.count = 0; // Same value
+      await flushMicrotasks();
       expect(observer).not.toHaveBeenCalled();
 
       model.state.count = 1; // Different value
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalledTimes(1);
     });
 
-    it("handles object equality checks", () => {
+    it("handles object equality checks", async () => {
       const obj1 = { a: 1 };
       const obj2 = { a: 1 };
 
@@ -310,23 +324,27 @@ describe("model - edge cases and negative tests", () => {
       model.addObserver(observer);
 
       model.state.obj = obj2; // Different object reference
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
     });
 
-    it("handles array mutations", () => {
+    it("handles array mutations", async () => {
       const model = createModel({ arr: [1, 2, 3] });
       const observer = vi.fn();
       model.addObserver(observer);
 
       model.state.arr.push(4);
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
 
       observer.mockClear();
       model.state.arr.pop();
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
 
       observer.mockClear();
       model.state.arr.splice(1, 1);
+      await flushMicrotasks();
       expect(observer).toHaveBeenCalled();
     });
   });
