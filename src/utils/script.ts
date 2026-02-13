@@ -1,33 +1,88 @@
-// 📁 `src/utils/script.ts`
+import type {
+  CompiledScript,
+  ComponentContext,
+  ComponentController,
+} from "../types";
+import { logger } from "./logger";
 
 /**
- * Converts a string representation of code into an executable function within a given context and module scope.
- *
- * @param {string} strg - The string containing the code to be executed.
- * @param {Context} context - An object representing the execution context, providing scoped variables.
- * @param {Record<string, Function | Object>} modules - A record of additional modules (functions or objects) available within the execution scope.
- *
- * @returns {Promise<Module>} - A promise resolving to the executed module output.
+ * Resolved dependencies object passed to the compiled script.
+ * Keys are the local identifiers, values are the resolved import values.
  */
-export async function stringToCode(
-  strg: string,
-  context: Context,
-  modules: Record<string, Function | Object>,
-): Promise<Module> {
-  /**
-   * Dynamically creates a function from the provided string, injecting the given context and modules.
-   *
-   * - `context` is destructured to provide local scope variables.
-   * - `modules` is destructured to allow access to external dependencies.
-   * - The provided string is processed to replace specific syntax (`$-{}` -> `${}`) to ensure valid execution.
-   */
-  const func = new Function(
-    '_____, ______', // Placeholder parameter names to receive context and module objects.
-    `const { ${Object.keys(context).join(', ')} } = _____;
-        const { ${Object.keys(modules).join(', ')} } = ______;
-        return ${strg.replace(/\$-\{/g, '\${')};`, // Replace placeholders in the code string for correct interpolation.
-  );
+export type ResolvedDeps = Record<string, unknown>;
 
-  // Execute the dynamically created function with the provided context and modules, returning the result.
-  return func(context, modules);
+/**
+ * Generates var declarations for injected dependencies.
+ * Creates `var <IDENT> = __deps.<IDENT>;` for each dependency.
+ *
+ * @param depKeys - Array of dependency identifier names
+ * @returns Injection header string to prepend to function body
+ */
+function generateDepsInjectionHeader(depKeys: string[]): string {
+  if (depKeys.length === 0) return "";
+
+  // Generate var declarations for each dependency
+  // No collision handling - redeclarations will throw SyntaxError naturally
+  return depKeys.map((key) => `var ${key} = __deps.${key};`).join("\n") + "\n";
+}
+
+/**
+ * Compiles component script string into an executable function.
+ * Exposes context variables ($refs, $parent, etc.) and dynamic module properties.
+ * Optionally injects resolved dependencies as local variables.
+ *
+ * @param strg - Component script string
+ * @param resolvedDeps - Optional resolved dependencies to inject as local variables
+ * @returns Compiled script function
+ * @throws Error if compilation fails
+ * @throws SyntaxError if user script redeclares an injected dependency name
+ */
+export function compileCode(
+  strg: string,
+  resolvedDeps?: ResolvedDeps,
+): CompiledScript {
+  const sanitizedCode = strg.replace(/\$-\{/g, "${");
+
+  // Generate injection header for dependencies
+  const depKeys = resolvedDeps ? Object.keys(resolvedDeps) : [];
+  const depsInjection = generateDepsInjectionHeader(depKeys);
+
+  const functionBody = `
+    const { $refs, $parent, $emit, $take, $handleEventFromChild, ...rest } = context;
+
+    // Expose all $*-prefixed context entries (e.g. $router, $store) as local variables
+    for (const [key, value] of Object.entries(rest)) {
+      if (key.startsWith('$')) {
+        // NOTE: this runs inside a dynamically generated function anyway
+        // so using eval here does not make the environment less safe than it already is.
+        eval('var ' + key + ' = value');
+      }
+    }
+
+    // Inject resolved dependencies as local variables
+    ${depsInjection}
+
+    return (${sanitizedCode});
+  `;
+
+  try {
+    // Include __deps parameter if we have dependencies
+    const rawFn = resolvedDeps
+      ? new Function("context", "__deps", functionBody)
+      : new Function("context", functionBody);
+
+    const compiled = ((context: ComponentContext) =>
+      resolvedDeps ? rawFn(context, resolvedDeps) : rawFn(context)) satisfies (
+      context: ComponentContext,
+    ) => ComponentController;
+
+    return compiled;
+  } catch (error) {
+    logger.errorWithContext(
+      "Failed to compile dynamic code",
+      { functionBody },
+      error,
+    );
+    throw error;
+  }
 }

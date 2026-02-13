@@ -1,57 +1,57 @@
-/// <reference types="vitest" />
-import path from "path";
-import { fileURLToPath } from "url";
-import { defineConfig, type UserConfig } from "vite";
-import packageJson from "../package.json" assert { type: "json" };
-import { nodeResolve } from "@rollup/plugin-node-resolve";
-import commonJS from "@rollup/plugin-commonjs";
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { defineConfig } from 'vite'
+import pkg from '../package.json' with { type: 'json' }
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 /**
- * Converts the package name to PascalCase.
- * @returns {string} The library name formatted in PascalCase.
+ * Minimal package.json shape required by this build config.
+ * Optional fields allow adding runtime deps later without refactoring.
  */
-const getLibraryName = () => {
-  if (!packageJson.name) {
-    throw new Error("The 'name' property is missing in package.json.");
-  }
+type PkgJson = {
+  name: string
+  dependencies?: Record<string, string>
+  peerDependencies?: Record<string, string>
+}
 
-  return packageJson.name
-    .replace(/^@.*\//, "") // Remove the namespace (e.g., "@namespace/")
-    .replace(/[-_/](\w)/g, (_, char) => char.toUpperCase()) // Convert characters following '-' or '_' to uppercase
-    .replace(/^\w/, (char) => char.toUpperCase()); // Capitalize the first letter
-};
+const pkgJson = pkg as unknown as PkgJson
 
-const libName = getLibraryName();
+/**
+ * Derives a stable global library name from the package name.
+ * Mainly relevant for non-ESM consumers.
+ */
+const getLibraryName = () =>
+  pkgJson.name
+    .replace(/^@.*\//, '')
+    .replace(/[-_/](\w)/g, (_, c) => c.toUpperCase())
+    .replace(/^\w/, (c) => c.toUpperCase())
 
-export default defineConfig(<UserConfig>{
-  plugins: [nodeResolve(), commonJS()],
+/**
+ * Runtime dependencies are expected to be provided by the consumer
+ * and should therefore not be bundled into the core library.
+ */
+const externals = [
+  ...Object.keys(pkgJson.dependencies ?? {}),
+  ...Object.keys(pkgJson.peerDependencies ?? {}),
+]
+
+export default defineConfig({
   build: {
-    minify: "terser", // Use Terser for code minification
-    sourcemap: true,  // Enable generation of source maps
-    reportCompressedSize: true, // Report the compressed sizes of the output files
+    // Hidden sourcemaps keep memory usage low while preserving debug ability
+    sourcemap: 'hidden',
+    minify: true,
+
     lib: {
-      entry: path.resolve(__dirname, "../src/index.ts"), // Library entry point
-      name: libName, // Library name in PascalCase
-      formats: ["es", "cjs"], // Output formats: ES module and CommonJS
+      entry: path.resolve(__dirname, '../src/index.ts'),
+      name: getLibraryName(),
+      formats: ['es', 'cjs'],
+      fileName: (format) => `index.${format}.js`,
     },
+
     rollupOptions: {
-      input: path.resolve(__dirname, "../src/index.ts"), // Rollup input file
-      external: [], // Specify external dependencies here if needed
-      output: {
-        dir: path.resolve(__dirname, "../dist"), // Output directory for build artifacts
-        entryFileNames: "index.[format].js", // Dynamic file naming based on the module format
-        plugins: [],
-      },
+      external: externals,
     },
   },
-  resolve: {
-    preserveSymlinks: true,
-    alias: [
-      { find: "@", replacement: path.resolve(__dirname, "../src") },
-      { find: "~", replacement: path.resolve(__dirname, "../src") },
-    ],
-  },
-});
+})

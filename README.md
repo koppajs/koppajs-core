@@ -1,252 +1,127 @@
-<div>
-    <br><br>
-    <img src="./src/assets/images/logo-long.png" width="600">
-    <br><br><br><br>
+<a id="readme-top"></a>
+
+<!-- PROJECT LOGO -->
+<div align="center">
+  <img src="https://public-assets-1b57ca06-687a-4142-a525-0635f7649a5c.s3.eu-central-1.amazonaws.com/koppajs/koppajs-logo-text-900x226.png" width="500" alt="KoppaJS Logo">
 </div>
 
-# ⚡ koppajs – The UI framework for pragmatic developers – lightweight, fast & modular.
+<br>
 
-I know what you're thinking: *"Not another single-page frontend framework!"*  
-But **koppajs** is different. It's built for **speed, simplicity, and control** – without unnecessary complexity.
+<!-- PROJECT SHIELDS -->
+<div align="center">
+  <a href="https://www.npmjs.com/package/@koppajs/koppajs-core"><img src="https://img.shields.io/npm/v/@koppajs/koppajs-core?style=flat-square" alt="npm version"></a> <a href="https://github.com/koppajs/koppajs-core/actions"><img src="https://img.shields.io/github/actions/workflow/status/koppajs/koppajs-core/ci.yml?branch=main&style=flat-square" alt="CI Status"></a> <a href="https://bundlephobia.com/package/@koppajs/koppajs-core"><img src="https://img.shields.io/bundlephobia/minzip/@koppajs/koppajs-core?style=flat-square" alt="Bundle size"></a> <a href="./LICENSE"><img src="https://img.shields.io/github/license/koppajs/koppajs-core?style=flat-square" alt="License"></a>
+</div>
 
-## 🚀 No virtual DOM, no overhead – just pure performance.
+<br>
 
-Direct DOM manipulation, proxy-based reactivity, and only the features you actually need. No abstractions that slow you down, just a **lean, efficient** way to build modern web apps.
+<!-- ELEVATOR PITCH -->
+<div align="center">
+	<h1 align="center">KoppaJS – Pragmatic frontend made modular</h1>
+	<h3 align="center">Build fast, simple, and growable – without the noise of modern frameworks.</h3>
+	<p align="center">
+		<i align="center">A quiet rebellion against complexity – and a wish that building can still feel good.</i>
+	</p>
+</div>
 
-## 📌 1. What is koppajs?
+<br>
 
-⚡ **koppajs** is a **lightweight, modular, and high-performance UI framework**, designed for **SMEs, freelancers, and indie developers** who value speed and simplicity.
+<!-- IMPORTANT LINKS -->
+<div align="center">
+	<p align="center">
+		<a href="https://github.com/koppajs/koppajs-documentation">Documentation</a>
+		&middot;
+		<a href="https://github.com/koppajs/koppajs-example">Example Project</a>
+		&middot;
+		<a href="https://github.com/koppajs/koppajs-core/issues">Issues</a>
+	</p>
+</div>
 
-🔥 **Why koppajs?**  
-Because it delivers the **essence** of modern web development—nothing more, nothing less. A **lightweight core** that stays out of your way but **scales when you need it**.  
-**As much as necessary, as little as possible.**
+<br>
 
----
-
-### Key aspects of koppajs:
-
-- **No Virtual DOM** → Direct DOM rendering with **ultra-fast proxy reactivity**  
-- **Modular Architecture** → **Flexible & extensible** through modules, components & plugins  
-- **Single-File Components** → `.kpa` files for **maximum simplicity & clarity**  
-- **Simple Syntax & API** → **Reduced to the essentials**, no unnecessary complexity  
-- **Optimized for Speed** → **Minimal overhead**, maximum performance **through direct DOM & efficient re-rendering**  
-- **Seamless Data Handling** → **Extremely simple state & data flow** between components  
-- **Pragmatic & Elegant** → **Completely rethought**: **Simplicity as a core principle**, no unnecessary abstractions  
-- **Developer-Friendly** → **Seamless Vite integration** for **blazing-fast Hot Module Replacement (HMR) & instant feedback**
-- **Built for Real-World Use** → Especially designed for **quick development cycles & fast delivery**  
-
-🌟 **Vision:** koppajs is built as a lightweight, high-performance alternative to traditional UI frameworks, emphasizing simplicity and speed.
-
-## 🛠 Architecture & Concept
-
-### Modularity & Core Components
-
-koppajs relies on a small core that can be expanded with modules & plugins anytime:
-
-| Module                        | Status            | Description                          |
-| ----------------------------- | ----------------- | ------------------------------------ |
-| **koppajs-core**              | ✅ Stable         | Core engine of koppajs               |
-| **koppajs-vite-plugin**       | 🚧 In development | Vite support for `.kpa` files        |
-| **koppajs-cli**               | 🚧 In development | CLI for quick project initialization |
-| **koppajs-router**            | 🔄 Under revision | Client-side routing for SPAs         |
-| **koppajs-store**             | 🔄 Under revision | State management                     |
-| **koppajs-component-library** | 📌 Planned        | UI library similar to Vuetify        |
-
-### Reactive Concept
-
-- **No Virtual DOM** → No unnecessary performance costs
-- **Proxy-based reactivity** → Direct DOM manipulation on changes
-- **Components have their own instances** → Data context remains isolated
-- **Direct access to DOM** → Immediate rendering
-
-## 📦 Installation & Quick Start
-
-### Creating a new koppajs project
-
-With npm:
-
-```sh
-npm create koppa@latest my-project
-cd my-project
-npm install
-npm run dev
-```
-
-With pnpm:
-
-```sh
-pnpm create koppa@latest my-project
-cd my-project
-pnpm install
-pnpm run dev
-```
-
-With Yarn:
-
-```sh
-yarn create koppa@latest my-project
-cd my-project
-yarn install
-yarn dev
-```
-
-This sets up a pre-configured **project**.
-
-## 📂 Project Structure
-
-A typical koppajs project follows this structure:
-
-```
-my-project/
-│── src/
-│   ├── components/
-│   │   ├── my-component.kpa
-│   ├── main.ts
-│   ├── modules/
-│   │   ├── router.ts
-│   ├── assets/
-│   │   ├── css/
-│   │   │   ├── base.css
-│── public/
-│── index.html
-│── vite.config.ts
-│── package.json
-```
-
-## 📌 Basics – Components with .kpa Files
-
-koppajs uses **Single File Components (SFC)** similar to Vue, but in a lightweight and optimized way.
-
-Supported: HTML, JavaScript, TypeScript, CSS & SCSS
-
-**Example of a Koppa component (components/my-component.kpa)**:
-
-```html
-    [template]
-        <div>
-            <h1>{{ title }}</h1>
-            <button onClick="changeTitle">Change Title</button>
-        </div>
-    [/template]
-
-    [ts]
-        return {
-            data: {
-            title: "Hello koppajs!"
-            },
-            methods: {
-            changeTitle() {
-                this.title = "koppajs is awesome!";
-            }
-            }
-        };
-    [/ts]
-
-    [css]
-        div {
-            text-align: center;
-        }
-        button {
-            background-color: blue;
-            color: white;
-        }
-    [/css]
-```
-
-This `.kpa` file contains **template, logic, and styles** in a single file.
-
-
-## 🔄 Lifecycle Hooks
-
-Components in **KoppaJS** follow a well-defined lifecycle, allowing developers to hook into critical phases — for setup, DOM manipulation, optimization, or cleanup. Lifecycle hooks can be declared as functions in any component and will be invoked automatically at the appropriate stage.
-
-### 📘 Lifecycle Hook Overview
-
-| Hook              | When it is called                                      | Typical Use Cases                                                                       |
-|-------------------|--------------------------------------------------------|------------------------------------------------------------------------------------------|
-| `created()`       | Immediately after instantiation, **before** any DOM processing | Initialize state, logging, access `this.$parent`, dynamic API calls                     |
-| `processed()`     | **After template processing**, **before event binding** | Enrich DOM structure, add classes/attributes, define anchor points for event delegation |
-| `beforeMount()`   | Just **before the component is inserted into the DOM** | Layout preparation, final props transformation, DOM scans                               |
-| `mounted()`       | After the component is added to the DOM                | DOM measurements, third-party integrations (charts, maps), focus control, animations    |
-| `beforeUpdate()`  | Before a re-render caused by reactive data change      | Save scroll positions, compare DOM states, snapshot internal state                      |
-| `updated()`       | After a re-render completes due to data change         | Restart animations, reset state, run post-update logic                                  |
-| `beforeDestroy()` | Just before the component is removed from the DOM      | Cleanup intervals, unsubscribe listeners, persist data                                  |
-| `destroyed()`     | After complete removal from the DOM                    | Final logging, global deregistration, memory cleanup                                    |
+<!-- TABLE OF CONTENTS -->
+<details>
+<summary>Table of Contents</summary>
+	<ol>
+		<li><a href="#what-is-koppajs">What is KoppaJS?</a></li>
+		<li><a href="#features">Features</a></li>
+		<li><a href="#getting-started">Getting Started</a></li>
+		<li><a href="#roadmap">Roadmap</a></li>
+		<li><a href="#support">Support</a></li>
+		<li><a href="#community--contribution">Community & Contribution</a></li>
+	</ol>
+</details>
 
 ---
 
-### 🔍 Notable Detail
+## What is KoppaJS?
 
-#### 🧬 `processed()` – A Strategic Extension Point
+KoppaJS is a lightweight, modular frontend framework designed to simplify development without sacrificing flexibility. It provides a pragmatic approach to building modern web applications, focusing on:
 
-The `processed()` hook is a unique feature of KoppaJS. It is invoked **after the full template has been parsed and interpolated**, but **before any events are bound or the final DOM is inserted**.
-
-This makes it ideal for:
-
-- Enriching the DOM before event listeners are attached
-- Dynamically setting classes or attributes required by event handlers
-- Structuring `ref` anchors for later interactions
-
-> **Example**: You assign an `.active` class to a button in `processed()`, and the click listener is then bound after. This ensures your event handler targets the **final, correct DOM structure**.
+- **Simplicity:** Minimal boilerplate and intuitive APIs.
+- **Performance:** Optimized for speed and scalability.
+- **Modularity:** Build only what you need, when you need it.
 
 ---
 
-### 🛠 Example Usage in a Component
+## Features
 
-```ts
-export default {
-  data: () => ({ count: 0 }),
+- **Declarative Components:** Define components with `.kpa` files.
+- **Reactive State Management:** Built-in reactivity for seamless updates.
+- **Lifecycle Hooks:** Control component behavior with hooks like `mounted`, `updated`, and `beforeUpdate`.
+- **Integration-Friendly:** Works with existing tools and libraries.
+- **TypeScript Support:** First-class TypeScript support for safer, more maintainable code.
 
-  created() {
-    console.log('🔧 Component is being created...');
-  },
+---
 
-  processed() {
-    this.$refs.counter?.classList.add('ready');
-  },
+## Getting Started
 
-  beforeMount() {
-    console.log('⚙️ About to mount');
-  },
+To get started with KoppaJS, follow these steps:
 
-  mounted() {
-    console.log('🎉 Mounted to DOM');
-  },
+1. **Install the Core Library:**
 
-  beforeUpdate() {
-    console.log('🔄 Before update');
-  },
+   ```bash
+   pnpm add @koppajs/koppajs-core
+   ```
 
-  updated() {
-    console.log('✅ Update finished');
-  },
+2. **Create Your First Component:**
 
-  beforeDestroy() {
-    console.log('🧹 Cleaning up');
-  },
+   ```typescript
+   import { Core } from '@koppajs/koppajs-core'
 
-  destroyed() {
-    console.log('☠️ Fully destroyed');
-  }
-}
-```
+   Core.take(
+     {
+       state: { count: 0 },
+       methods: {
+         increment() {
+           this.state.count++
+         },
+       },
+     },
+     'counter',
+   )
 
+   Core()
+   ```
 
-## ⚡ koppajs vs. Other Frameworks
+3. **Run Your Application:**
+   Use your favorite bundler or the KoppaJS Vite plugin to build and serve your app.
 
-| Feature                | koppajs                | Vue.js   | React.js         | Angular        | Svelte   |
-| ---------------------- | ---------------------- | -------- | ---------------- | -------------- | -------- |
-| Virtual DOM            | ❌ No                  | ✅ Yes   | ✅ Yes           | ✅ Yes         | ❌ No    |
-| Single File Components | ✅ Yes                 | ✅ Yes   | ❌ No            | ❌ No          | ✅ Yes   |
-| Reactivity             | ✅ Proxy-based         | ✅ Proxy | ❌ useState()    | ❌ Zone.js     | ✅ Proxy |
-| Modularity             | ✅ Yes (CLI & Modules) | ✅ Yes   | ❌ Hooks & Redux | ❌ Monolithic  | ✅ Yes   |
-| SSR support            | 🔄 Planned             | ✅ Yes   | ✅ Yes           | ✅ Yes         | ✅ Yes   |
-| Performance            | 🚀 Extremely fast      | ⚡ Fast  | 🏎️ Medium        | 🏢 Heavyweight | 🚀 Fast  |
+---
 
-👉 **Conclusion**: koppajs is a **lightweight and high-performance alternative**, perfect for **fast and scalable web projects**.
+## Roadmap
 
-## 📜 License
+- **Q1 2026:** Enhanced debugging tools and improved documentation.
+- **Q2 2026:** Experimental support for server-side rendering (SSR).
+- **Q3 2026:** Advanced state management features.
 
-This project is licensed under the **Apache License Version 2.0** – it is free to use, modify, and extend.
+---
 
-© 2025 | **Bensch Web Services**
+## Support
+
+For support, visit our [GitHub Issues](https://github.com/koppajs/koppajs-core/issues) or join our community on [Discord](https://discord.gg/koppajs).
+
+---
+
+## Community & Contribution
+
+We welcome contributions! Check out our [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.

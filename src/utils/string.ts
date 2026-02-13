@@ -1,63 +1,91 @@
-// 📁 `src/utils/string.ts`
-
-import { getValueByPath } from './helper';
+import { getValueByPath, isSimplePathExpression } from "./helper";
+import { logger } from "./logger";
 
 /**
  * Converts a kebab-case string to camelCase.
- * @param {string} s - The kebab-case string to convert.
- * @returns {string} - The converted camelCase string.
+ * @param s - The kebab-case string to convert
+ * @returns The converted camelCase string
  */
 export function kebabToCamel(s: string): string {
   return s.replace(/-./g, (x) => x[1]!.toUpperCase());
 }
 
-/**
- * Evaluates a JavaScript expression in a controlled and restricted manner.
- *
- * - The function prevents access to potentially dangerous global objects like `window`, `document`, etc.
- * - If the expression is a simple variable path (e.g., `someVar.prop`), it is safely resolved from the provided data object.
- * - Otherwise, the expression is evaluated inside a restricted function scope with only the provided `data` as context.
- *
- * @param {string} expression - The JavaScript expression to evaluate.
- * @param {Record<string, any>} [data={}] - An optional data object containing variables accessible in the expression.
- * @returns {any} - The evaluated result or `false` if evaluation is not allowed or an error occurs.
- */
-export function evaluateExpression(expression: string, data: Record<string, any> = {}): any {
-  try {
-    // Define a regular expression to detect forbidden keywords that could allow unsafe execution.
-    const forbiddenKeywords =
-      /(?:window|document|globalThis|Function|eval|setTimeout|setInterval|fetch|XMLHttpRequest|import|require|this)/;
+// Hard block: forbid common dangerous identifiers / capabilities.
+// (This is a heuristic, not a formal proof.)
+const FORBIDDEN_KEYWORDS_REGEX =
+  /(?:\bwindow\b|\bdocument\b|\bglobalThis\b|\bFunction\b|\beval\b|\bsetTimeout\b|\bsetInterval\b|\bfetch\b|\bXMLHttpRequest\b|\bimport\b|\brequire\b|\bthis\b)/;
 
-    // If the expression contains any forbidden keywords, return false to prevent execution.
-    if (forbiddenKeywords.test(expression)) {
-      return false;
+/**
+ * Cache for compiled expression functions.
+ * Key format: "expression|var1,var2,var3" (expression + sorted allowed vars)
+ * This avoids recreating Functions on every render.
+ */
+const expressionCache = new Map<string, Function>();
+
+/**
+ * Maximum cache size to prevent memory leaks in long-running apps.
+ */
+const MAX_CACHE_SIZE = 1000;
+
+/**
+ * Evaluates a JavaScript expression in a controlled, restricted scope.
+ * Blocks access to dangerous globals (window, document, eval, etc.).
+ * Treats simple property paths as "safe" and resolves them via getValueByPath.
+ * Evaluates complex expressions using Function, but only with variables from state.
+ * Functions are called with state as this context.
+ * Note: This is not a full sandbox. It's "restricted and pragmatic".
+ * @param expression - Expression string to evaluate
+ * @param state - State object to use as context
+ * @returns Evaluated result or undefined on error/forbidden keywords
+ */
+export function evaluateExpression(
+  expression: string,
+  state: Record<string, unknown> = {},
+): unknown {
+  const exp = (expression ?? "").trim();
+  if (!exp) return undefined;
+
+  try {
+    if (FORBIDDEN_KEYWORDS_REGEX.test(exp)) {
+      return undefined;
     }
 
-    // If the expression follows a simple property path pattern (e.g., `object.prop.subProp`), resolve it safely.
-    if (/^[a-zA-Z_$][0-9a-zA-Z_$]*(\.[a-zA-Z_$][0-9a-zA-Z_$]*)*$/.test(expression)) {
-      const value = getValueByPath(data, expression);
-
-      // If the resolved value is a function, call it with `data` as its context.
-      if (typeof value === 'function') {
-        return value.call(data);
-      }
-
+    // Simple paths: resolve safely (supports brackets via isSimplePathExpression)
+    if (isSimplePathExpression(exp)) {
+      const value = getValueByPath(state, exp);
+      if (typeof value === "function") return value.call(state);
       return value;
     }
 
-    // Extract variable names from the provided data object.
-    const allowedVars = Object.keys(data);
+    // Complex expression:
+    // Only expose top-level keys from state as function parameters.
+    // Everything else is not directly reachable unless referenced through those vars.
+    const allowedVars = Object.keys(state).sort();
 
-    // Create a function body that strictly evaluates the expression.
-    const functionBody = `"use strict"; return (${expression});`;
+    // Build cache key from expression and variable names
+    const cacheKey = `${exp}|${allowedVars.join(",")}`;
 
-    // Construct a new function with the allowed variables as parameters.
-    const evalFunction = new Function(...allowedVars, functionBody);
+    // Check cache for compiled function
+    let evalFunction = expressionCache.get(cacheKey);
 
-    // Execute the function with values from the data object and return the result.
-    return evalFunction(...allowedVars.map((key) => data[key]));
+    if (!evalFunction) {
+      // Use strict mode; expression is evaluated as a return value.
+      const functionBody = `"use strict"; return (${exp});`;
+      evalFunction = new Function(...allowedVars, functionBody);
+
+      // Prevent unbounded cache growth
+      if (expressionCache.size >= MAX_CACHE_SIZE) {
+        // Remove oldest entry (first inserted)
+        const firstKey = expressionCache.keys().next().value;
+        if (firstKey) expressionCache.delete(firstKey);
+      }
+
+      expressionCache.set(cacheKey, evalFunction);
+    }
+
+    return evalFunction(...allowedVars.map((key) => state[key]));
   } catch (error) {
-    // Return false if an error occurs during evaluation.
-    return false;
+    logger.debug(`Expression evaluation failed: ${exp}`, error);
+    return undefined;
   }
 }

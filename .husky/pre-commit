@@ -1,42 +1,21 @@
 #!/usr/bin/env bash
+# Run lint-staged for staged files only
 
-echo "🚀 Running pre-commit checks..."
+echo "🚀 Running pre-commit checks (lint-staged)..."
 
-# Ensure that pnpm is installed
-if ! command -v pnpm &> /dev/null; then
+# pnpm must be installed
+if ! command -v pnpm >/dev/null 2>&1; then
   echo "❌ Error: pnpm is not installed!" >&2
   exit 1
 fi
 
-# Get staged files that match relevant extensions
-STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(js|ts|tsx|vue|json|scss|css|md)$' || true)
+pnpm lint-staged
+STATUS=$?
 
-if [ -z "$STAGED_FILES" ]; then
-  echo "✅ No relevant staged files. Skipping checks."
-  exit 0
-fi
-
-# Run Prettier for formatting only staged files
-echo "🖌 Running Prettier on staged files..."
-echo "$STAGED_FILES" | xargs pnpm format
-echo "$STAGED_FILES" | xargs git add  # Re-stage formatted files
-
-# Run ESLint for linting only staged files
-echo "🔍 Running ESLint on staged files..."
-echo "$STAGED_FILES" | xargs pnpm lint
-if [ $? -ne 0 ]; then
-  echo "❌ ESLint failed! Commit aborted."
-  exit 1
-fi
-echo "$STAGED_FILES" | xargs git add  # Re-stage linted files
-
-# Run tests
-echo "🧪 Running tests..."
-pnpm test
-if [ $? -ne 0 ]; then
-  echo "❌ Tests failed! Commit aborted."
+if [ $STATUS -ne 0 ]; then
+  echo "❌ lint-staged checks failed. Commit aborted."
   exit 1
 fi
 
-echo "✅ All checks passed! Proceeding with commit."
+echo "✅ All lint-staged checks passed!"
 exit 0

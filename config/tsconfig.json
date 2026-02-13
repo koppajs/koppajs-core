@@ -1,64 +1,29 @@
 {
   "compilerOptions": {
-    /* Basic Options */
-    "target": "ESNext", // Use the latest ECMAScript version
-    "module": "ESNext", // Enable ES module support
-    "moduleResolution": "Node", // Use Node.js-style module resolution
-    "lib": ["ES2022", "DOM"], // Include modern ECMAScript and DOM APIs
-    "allowJs": false, // Disable JS support (enforce TypeScript-only)
-    "jsx": "preserve", // Keep JSX as-is
-    "declaration": true, // Generate `.d.ts` files for type definitions
-    "emitDeclarationOnly": true, // Only generate `.d.ts` files
-    "sourceMap": false, // Generate source maps for debugging
-    "outDir": "../dist", // Output directory
-    "rootDir": "../src", // Source directory
-    "removeComments": true, // Remove comments in the output
-    "resolveJsonModule": true, // Enable importing JSON files
-    "isolatedModules": true, // Ensure modules are compiled independently
-
-    /* Strict Type-Checking */
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
     "noEmit": true,
-    "strict": true, // Enable all strict type-checking options
-    "noImplicitAny": true, // Disallow implicit `any`
-    "strictNullChecks": true, // Enforce null safety
-    "strictFunctionTypes": true, // Enforce function type safety
-    "strictBindCallApply": true, // Ensure correct usage of `bind`, `call`, `apply`
-    "strictPropertyInitialization": true, // Ensure properties are initialized
-    "noImplicitThis": true, // Disallow implicit `this`
-    "alwaysStrict": true, // Enable strict mode for all files
-
-    /* Additional Checks */
-    "noUnusedLocals": true, // Report unused local variables
-    "noUnusedParameters": true, // Report unused function parameters
-    "noImplicitReturns": true, // Ensure functions return explicitly
-    "noFallthroughCasesInSwitch": true, // Prevent switch fallthrough errors
-    "noUncheckedIndexedAccess": true, // Treat missing object properties as `undefined`
-
-    /* Module & Interop Options */
-    "esModuleInterop": true, // Enable CommonJS/ES module interop
-    "skipLibCheck": true, // Skip `.d.ts` type checking for performance
-    "forceConsistentCasingInFileNames": true, // Enforce consistent casing in file names
-    "baseUrl": "../", // Base directory for module resolution
-    "paths": {
-      "@/*": ["src/*"],
-      "~/*": ["src/*"]
-    }, // Define module aliases
-
-    /* Global Type Declarations */
-    "types": ["vite/client", "node"] // Include global type definitions
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
   },
   "include": ["../src/**/*.ts", "../src/**/*.d.ts"],
   "exclude": [
-    "../.git",
-    "../.husky",
-    "../config",
     "../node_modules",
-    "../script",
     "../dist",
     "../test/**",
+    "../**/*.test.ts",
+    "../.git",
     "../.idea",
     "../.vscode",
     "../.history/**",
     "../**/*_del"
-  ] // Files and directories to exclude
+  ]
 }

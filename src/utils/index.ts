@@ -1,8 +1,16 @@
-// 📁 `src/utils/index.ts`
+export * from "./helper";
+export * from "./dom";
+export { domExtensions } from "./dom";
+export * from "./object";
+export { objectExtensions } from "./object";
+export * from "./string";
+export * from "./script";
+export * from "./template-watch";
+export * from "./hook-registry";
+export * from "./logger";
+export { ExtensionRegistry } from "./extension-registry";
+export * from "./type-guards";
+export { extend } from "./extend";
+export { reconcileDOM } from "./reconcile";
 
-export * from './helper';
-export * from './dom';
-export * from './object';
-export * from './string';
-export * from './script';
-export { default as extendPrototypes } from './extend';
+export * from "./identity";

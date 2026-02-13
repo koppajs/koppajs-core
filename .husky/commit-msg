@@ -1,108 +1,30 @@
 #!/usr/bin/env bash
+# Simple commit message validation using commitlint
 
 echo "🚀 Running commit message validation..."
 
-# Check if `pnpm` is installed
-if ! command -v pnpm &> /dev/null; then
+# pnpm must be installed
+if ! command -v pnpm >/dev/null 2>&1; then
   echo "❌ Error: pnpm is not installed!" >&2
   exit 1
 fi
 
-# Read the commit message from the file passed as the first argument
-COMMIT_MSG=$(cat "$1")
+COMMIT_MSG_FILE="$1"
+COMMIT_MSG_CONTENT=$(cat "$COMMIT_MSG_FILE")
 
-# 1️⃣ Auto-fix: Capitalize the first letter after the type (sentence-case)
-CORRECTED_MSG=$(echo "$COMMIT_MSG" | awk -F': ' '{
-    if (NF > 1) {
-        type=$1;
-        sub("^.", toupper(substr($2,1,1)), $2);
-        print type": "$2
-    } else {
-        print $0
-    }
-}')
-
-echo "$CORRECTED_MSG" > "$1"
-COMMIT_MSG="$CORRECTED_MSG"
-
-# 2️⃣ Separate header, body, and footer
-HEADER=$(echo "$COMMIT_MSG" | head -n1)
-BODY_AND_FOOTER=$(echo "$COMMIT_MSG" | tail -n +2)
-
-# Prüfe, ob eine Leerzeile existiert, die Body von Footer trennt
-if echo "$BODY_AND_FOOTER" | grep -qE "^[A-Za-z0-9-]+: .*$"; then
-  BODY=$(echo "$BODY_AND_FOOTER" | sed -E '/^[A-Za-z0-9-]+: .*$/,$d')
-  FOOTER=$(echo "$BODY_AND_FOOTER" | grep -E "^[A-Za-z0-9-]+: .*")
-else
-  BODY="$BODY_AND_FOOTER"
-  FOOTER=""
+# Optional: Skip system commits (Merge, Revert, fixup, squash)
+if echo "$COMMIT_MSG_CONTENT" | grep -qE "^(Merge|Revert|fixup!|squash!)"; then
+  echo "ℹ️ Detected system commit. Skipping commitlint."
+  exit 0
 fi
 
-# 3️⃣ Auto-fix: Ensure each sentence in the body starts with an uppercase letter
-if [ -n "$BODY" ]; then
-  FIXED_BODY=$(echo "$BODY" | awk '{
-    gsub(/([.!?])\s*\n\s*([a-z])/, "\\1\n\n\\U\\2", $0);
-    gsub(/([.!?]) ([a-z])/, "\\1 \\U\\2", $0);
-    print;
-  }')
-else
-  FIXED_BODY=""
-fi
-
-# 4️⃣ Validate header length (max 72 characters)
-HEADER_TEXT=$(echo "$HEADER" | cut -d " " -f2-)
-HEADER_LENGTH=${#HEADER_TEXT}
-
-if [ "$HEADER_LENGTH" -gt 72 ]; then
-  echo "❌ Commit header is too long! Max 72 characters allowed."
-  exit 1
-fi
-
-# 5️⃣ Validate body length (max 72 characters per line)
-if [ -n "$FIXED_BODY" ]; then
-  while IFS= read -r line; do
-    if [ "${#line}" -gt 72 ]; then
-      echo "❌ Commit body contains lines longer than 72 characters."
-      exit 1
-    fi
-  done <<< "$FIXED_BODY"
-fi
-
-# 6️⃣ Validate footer length (each line max 72 characters)
-if [ -n "$FOOTER" ]; then
-  while IFS= read -r line; do
-    if [ "${#line}" -gt 72 ]; then
-      echo "❌ Commit footer contains lines longer than 72 characters."
-      exit 1
-    fi
-  done <<< "$FOOTER"
-fi
-
-# 7️⃣ Run commitlint to validate the commit message against our config
-pnpm commitlint --config ./config/commitlint.config.js --edit "$1"
+# Run commitlint via pnpm exec
+pnpm exec commitlint --config config/commitlint.config.mjs --edit "$COMMIT_MSG_FILE"
 STATUS=$?
 
 if [ $STATUS -ne 0 ]; then
-  echo "❌ Commit message validation failed! Please follow the commit conventions."
+  echo "❌ Commit message validation failed (commitlint)."
   exit 1
-fi
-
-# 8️⃣ Prepend the correct Gitmoji based on the commit type
-case "$HEADER" in
-  feat:*)      PREFIX="✨" ;;
-  fix:*)       PREFIX="🐛" ;;
-  docs:*)      PREFIX="📝" ;;
-  refactor:*)  PREFIX="♻️" ;;
-  test:*)      PREFIX="✅" ;;
-  chore:*)     PREFIX="🧹" ;;
-  *)           PREFIX=""   ;;
-esac
-
-# If a Gitmoji prefix was found, insert it after the type
-if [ -n "$PREFIX" ]; then
-  NEW_MSG=$(echo "$HEADER" | sed -E "s/^([^:]+):(.*)/\1: $PREFIX\2/")
-  echo -e "$NEW_MSG\n\n$FIXED_BODY\n\n$FOOTER" > "$1"
-  echo "✨ Auto-added Gitmoji: $PREFIX"
 fi
 
 echo "✅ Commit message is valid!"

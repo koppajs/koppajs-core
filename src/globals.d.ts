@@ -1,141 +1,82 @@
-/// <reference types="vite/client" />
-
-import type ComponentClass from './Component';
-import type InstanceClass from './Instance';
+export {};
 
 declare global {
-  type Component = ComponentClass;
-  type Instance = InstanceClass;
-
   interface HTMLElement {
-    // Selects the first matching child element.
+    /**
+     * Query and return the first matching descendant element.
+     * If called on an <input> or <textarea>, selects its text instead.
+     * @param selector - CSS selector string
+     * @returns the first matching HTMLElement or null/void if none
+     */
     select(selector: string): HTMLElement | null | void;
-    // Selects all matching child elements.
+
+    /**
+     * Query and return all matching descendant nodes.
+     * @param selector - CSS selector string
+     * @returns a NodeList of matching elements
+     */
     selectAll(selector: string): NodeList;
-    // Adds one or more CSS classes.
+
+    /**
+     * Add one or more CSS classes to the element.
+     * @param classes - space-delimited list of class names
+     * @returns the element, for chaining
+     */
     addClass(classes: string): HTMLElement;
-    // Removes one or more CSS classes.
+
+    /**
+     * Remove one or more CSS classes from the element.
+     * @param classes - space-delimited list of class names
+     * @returns the element, for chaining
+     */
     removeClass(classes: string): HTMLElement;
-    // Toggles one or more CSS classes.
+
+    /**
+     * Toggle one or more CSS classes on the element.
+     * @param classes - space-delimited list of class names
+     * @returns the element, for chaining
+     */
     toggleClass(classes: string): HTMLElement;
-    // Checks if the element has a specific CSS class.
+
+    /**
+     * Check if the element has the given CSS class.
+     * @param className - name of the class to test
+     * @returns true if present, false otherwise
+     */
     hasClass(className: string): boolean;
-    // Replaces the element with a new element or HTML string.
+
+    /**
+     * Replace this element in the DOM with another element or raw HTML/text.
+     * @param newNode - HTMLElement or HTML string to insert
+     */
     replaceWith(newNode: HTMLElement | string): void;
-    // Retrieves all sibling elements; optionally executes a callback.
+
+    /**
+     * Get all sibling elements of this node.
+     * Optionally, invoke a callback for each sibling.
+     * @param callback - optional function to receive each sibling
+     * @returns an array of sibling HTMLElements
+     */
     siblings(callback?: (sibling: HTMLElement) => void): HTMLElement[];
-    // Inserts a new element before the current element.
+
+    /**
+     * Insert a new node or HTML string immediately before this element.
+     * @param newNode - HTMLElement or HTML string to insert
+     */
     before(newNode: HTMLElement | string): void;
-    // Inserts a new element after the current element.
+
+    /**
+     * Insert a new node or HTML string immediately after this element.
+     * @param newNode - HTMLElement or HTML string to insert
+     */
     after(newNode: HTMLElement | string): void;
-    // Gets or sets an attribute; returns undefined if not set.
+
+    /**
+     * Get or set an attribute on the element.
+     * @param attrName - attribute name
+     * @param attrValue - if provided, sets the attribute to this value
+     * @returns the current value, or null/undefined if not set
+     */
     attr(attrName: string, attrValue?: string): string | undefined;
-    // Optional property for instance-specific data.
-    instance?: string;
-  }
-
-  interface Window {
-    koppa: {
-      modules: Record<string, Function | Object>;
-      plugins: Record<string, IPlugin>;
-      components: Record<string, Component>;
-      instances: Record<string, Instance>;
-    };
-  }
-
-  interface InstanceInitBundle {
-    element: HTMLElement;
-    template: HTMLTemplateElement;
-    script: string;
-    parentInstance?: Instance;
-  }
-
-  interface ICore {
-    modules: Record<string, Function | Object>;
-    plugins: Record<string, IPlugin>;
-    components: Record<string, Component>;
-    instances: Record<string, Instance>;
-    // Registers a component, module, or plugin.
-    take(item: any, name?: string): void;
-  }
-
-  // Combines the constructor signature and instance properties of ICore.
-  type CoreProxyType = (new (...args: any[]) => ICore) & ICore;
-
-  interface IPlugin {
-    name: string;
-    version?: string;
-    description?: string;
-    // Installs the plugin with the core context.
-    install(core: Record<string, Function>): void;
-    // Optional setup method for component integration.
-    setup?(): Record<string, Function>;
-  }
-
-  type Methods = Record<string, Function>;
-  type Data = Record<string, any>;
-  type Props = Record<string, PropsDefinition>;
-  type Events = Array<EventDefinition>;
-
-  type EventDefinition = [
-    string,
-    string | Element | Window | { ref: string; selector?: string },
-    Function,
-  ];
-
-  interface ComponentSource {
-    path: string;
-    template: string;
-    script: string;
-    style: string;
-  }
-
-  interface PropsDefinition {
-    type?: string;
-    required?: boolean;
-    default?: any;
-    regex?: string;
-  }
-
-  type Refs = Record<string, HTMLElement>;
-  type WatchList = string[];
-
-  interface Context {
-    $refs: Refs;
-    $parent?: Instance;
-    $emit?: (eventName: string, ...args: any[]) => void;
-    // Retrieves a plugin's setup API by name.
-    $take: (pluginName: string) => Record<string, Function> | undefined;
-  }
-
-  type LifecycleHook =
-    | 'created'
-    | 'beforeMount'
-    | 'mounted'
-    | 'beforeUpdate'
-    | 'updated'
-    | 'beforeDestroy'
-    | 'destroyed'
-    | 'processed';
-
-  interface Module extends LifecycleHooks {
-    data: Data;
-    methods?: Methods;
-    props?: Props;
-    events?: Events;
-    watchList?: WatchList;
-  }
-
-  interface LifecycleHooks {
-    created?: Function;
-    beforeMount?: Function;
-    mounted?: Function;
-    beforeUpdate?: Function;
-    updated?: Function;
-    beforeDestroy?: Function;
-    destroyed?: Function;
-    processed?: Function;
   }
 }
-
-export {};
