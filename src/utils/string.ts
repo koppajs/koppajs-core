@@ -28,6 +28,34 @@ const expressionCache = new Map<string, Function>();
 const MAX_CACHE_SIZE = 1000;
 
 /**
+ * Cache for sorted state keys per state object.
+ * Avoids recomputing Object.keys(state).sort() for every complex expression.
+ * Uses WeakMap so entries are GC'd when state objects are collected.
+ * Invalidation uses a fingerprint of the actual key names (not just count),
+ * so key swaps (delete + add with same count) are detected correctly.
+ */
+const sortedKeysCache = new WeakMap<
+  Record<string, unknown>,
+  { keys: string[]; fingerprint: string }
+>();
+
+/**
+ * Gets sorted keys for a state object, using cache when possible.
+ * Invalidates cache when the actual set of key names changes.
+ */
+function getCachedSortedKeys(state: Record<string, unknown>): string[] {
+  const currentKeys = Object.keys(state);
+  const fingerprint = currentKeys.join('\0');
+  const cached = sortedKeysCache.get(state);
+  if (cached && cached.fingerprint === fingerprint) {
+    return cached.keys;
+  }
+  const sorted = currentKeys.sort();
+  sortedKeysCache.set(state, { keys: sorted, fingerprint });
+  return sorted;
+}
+
+/**
  * Evaluates a JavaScript expression in a controlled, restricted scope.
  * Blocks access to dangerous globals (window, document, eval, etc.).
  * Treats simple property paths as "safe" and resolves them via getValueByPath.
@@ -60,7 +88,7 @@ export function evaluateExpression(
     // Complex expression:
     // Only expose top-level keys from state as function parameters.
     // Everything else is not directly reachable unless referenced through those vars.
-    const allowedVars = Object.keys(state).sort();
+    const allowedVars = getCachedSortedKeys(state);
 
     // Build cache key from expression and variable names
     const cacheKey = `${exp}|${allowedVars.join(",")}`;

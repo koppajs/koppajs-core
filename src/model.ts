@@ -164,6 +164,7 @@ export function createModel<T extends Record<string, unknown>>(
   addObserver: (observer: () => void) => void;
   removeObserver: (observer: () => void) => void;
   getStateVersion: () => number;
+  hasPendingChangesFor: (prefixes: string[]) => boolean;
   flushChanges: () => Set<string>;
 } {
   // Private state
@@ -224,45 +225,10 @@ export function createModel<T extends Record<string, unknown>>(
   };
 
   // Diff functions for arrays - now accept a path for notifying observers
-  const findLCSByRef = (
-    oldArr: unknown[],
-    newArr: unknown[],
-  ): [number, number][] => {
-    const lenA = oldArr.length;
-    const lenB = newArr.length;
-    const dp: number[][] = Array.from({ length: lenA + 1 }, () =>
-      new Array(lenB + 1).fill(0),
-    );
-
-    for (let i = 1; i <= lenA; i++) {
-      for (let j = 1; j <= lenB; j++) {
-        if (oldArr[i - 1] === newArr[j - 1]) {
-          dp[i]![j]! = dp[i - 1]![j - 1]! + 1;
-        } else {
-          dp[i]![j]! = Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
-        }
-      }
-    }
-
-    const result: [number, number][] = [];
-    let i = lenA;
-    let j = lenB;
-
-    while (i > 0 && j > 0) {
-      if (oldArr[i - 1] === newArr[j - 1]) {
-        result.unshift([i - 1, j - 1]);
-        i--;
-        j--;
-      } else if (dp[i - 1]![j]! > dp[i]![j - 1]!) {
-        i--;
-      } else {
-        j--;
-      }
-    }
-
-    return result;
-  };
-
+  /**
+   * Compares two arrays element-by-element by reference in O(n) time.
+   * Determines if there are any differences and mutates oldArr to match newArr.
+   */
   const diffArraysByReferenceNoDeepMerge = (
     oldArr: unknown[],
     newArr: unknown[],
@@ -270,36 +236,13 @@ export function createModel<T extends Record<string, unknown>>(
   ): void => {
     if (oldArr === newArr) return;
 
-    const lcsPairs = findLCSByRef(oldArr, newArr);
-    let hasChanges = false;
-    let i = 0;
-    let j = 0;
-    let pairIndex = 0;
-
-    while (
-      pairIndex < lcsPairs.length ||
-      i < oldArr.length ||
-      j < newArr.length
-    ) {
-      const [lcsI, lcsJ] =
-        pairIndex < lcsPairs.length
-          ? lcsPairs[pairIndex]!
-          : [oldArr.length, newArr.length];
-
-      while (i < lcsI) {
-        hasChanges = true;
-        i++;
-      }
-
-      while (j < lcsJ) {
-        hasChanges = true;
-        j++;
-      }
-
-      if (pairIndex < lcsPairs.length) {
-        i = lcsI + 1;
-        j = lcsJ + 1;
-        pairIndex++;
+    let hasChanges = oldArr.length !== newArr.length;
+    if (!hasChanges) {
+      for (let i = 0; i < oldArr.length; i++) {
+        if (oldArr[i] !== newArr[i]) {
+          hasChanges = true;
+          break;
+        }
       }
     }
 
@@ -541,17 +484,24 @@ export function createModel<T extends Record<string, unknown>>(
                   // Execute the sort
                   const result = originalMethod.apply(this, args as never);
 
-                  // Reorder slotIds to match the sorted array
-                  const used = new Set<number>();
+                  // Reorder slotIds to match the sorted array using Map for O(n) lookup
+                  const elementToIndices = new Map<unknown, number[]>();
+                  for (let i = 0; i < snapshot.length; i++) {
+                    const el = snapshot[i]!.el;
+                    let indices = elementToIndices.get(el);
+                    if (!indices) {
+                      indices = [];
+                      elementToIndices.set(el, indices);
+                    }
+                    indices.push(i);
+                  }
+
                   for (let i = 0; i < target.length; i++) {
                     const element = target[i];
-                    // Find the first unused matching element in snapshot
-                    const matchIdx = snapshot.findIndex(
-                      (item, idx) => item.el === element && !used.has(idx),
-                    );
-                    if (matchIdx !== -1) {
+                    const indices = elementToIndices.get(element);
+                    if (indices && indices.length > 0) {
+                      const matchIdx = indices.shift()!;
                       slotIds[i] = snapshot[matchIdx]!.slotId;
-                      used.add(matchIdx);
                     } else {
                       slotIds[i] = generateSlotId();
                     }
@@ -747,6 +697,21 @@ export function createModel<T extends Record<string, unknown>>(
 
     getStateVersion(): number {
       return stateVersion;
+    },
+
+    /**
+     * Checks if any pending changed path matches one of the given prefixes.
+     * Useful for components with a watchList to skip irrelevant renders.
+     * @param prefixes - Array of path prefixes to check against
+     * @returns True if at least one pending change matches a prefix
+     */
+    hasPendingChangesFor(prefixes: string[]): boolean {
+      for (const path of changedPaths) {
+        for (const prefix of prefixes) {
+          if (path === prefix || path.startsWith(prefix + ".")) return true;
+        }
+      }
+      return false;
     },
 
     /**

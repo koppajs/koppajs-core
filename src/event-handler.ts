@@ -2,20 +2,33 @@ import { bindOnce, logger } from "./utils";
 import type { AnyFn, State, Events, Refs, Methods } from "./types";
 
 /**
+ * Cleanup entry for a registered event listener.
+ */
+type EventCleanupEntry = {
+  target: EventTarget;
+  type: string;
+  handler: EventListenerOrEventListenerObject;
+};
+
+/**
  * Sets up custom event listeners for component events.
  * Handles window events, selector-based events, and ref-based events.
+ * Returns a cleanup function that removes all listeners added by this call.
  * @param userContext - User context to bind handlers to
  * @param events - Array of event definitions
  * @param container - Document fragment to query selectors from
  * @param refs - Component element references
+ * @returns Cleanup function that removes all listeners added by this call
  */
 export function setupEvents(
   userContext: State,
   events: Events,
   container: DocumentFragment,
   refs: Refs,
-): void {
-  if (!Array.isArray(events)) return;
+): () => void {
+  if (!Array.isArray(events)) return () => {};
+
+  const cleanupEntries: EventCleanupEntry[] = [];
 
   events.forEach(([type, target, handler]) => {
     if (typeof type !== "string" || typeof handler !== "function") {
@@ -56,12 +69,26 @@ export function setupEvents(
       // For composite type, userContext === state and handler should be bound to state
       const boundHandler = bindOnce(handler, userContext);
       el.addEventListener(type, boundHandler);
+      cleanupEntries.push({ target: el, type, handler: boundHandler });
     }
   });
+
+  return () => {
+    for (const { target, type, handler } of cleanupEntries) {
+      target.removeEventListener(type, handler);
+    }
+    cleanupEntries.length = 0;
+  };
 }
 
 /**
+ * Regex to match event handler attributes: onClick, onclick, onMouseDown, onmousedown, etc.
+ */
+const EVENT_ATTR_REGEX = /^on([a-z]+)$/i;
+
+/**
  * Binds native DOM event handlers from element attributes (e.g., onclick, oninput).
+ * Walks all elements once instead of querying per event type for better performance.
  * Handlers are retrieved from userContext and assumed to be already bound (for options type).
  * @param userContext - User context containing event handlers
  * @param fragment - Document fragment to process
@@ -70,77 +97,32 @@ export function bindNativeEvents(
   userContext: State,
   fragment: DocumentFragment,
 ): void {
-  const events = [
-    "click",
-    "input",
-    "change",
-    "focus",
-    "blur",
-    "mousedown",
-    "mouseup",
-    "mousemove",
-    "mouseover",
-    "mouseout",
-    "mouseenter",
-    "mouseleave",
-    "dblclick",
-    "contextmenu",
-    "keydown",
-    "keyup",
-    "keypress",
-    "submit",
-    "reset",
-    "invalid",
-    "resize",
-    "scroll",
-    "touchstart",
-    "touchend",
-    "touchmove",
-    "touchcancel",
-    "drag",
-    "dragstart",
-    "dragend",
-    "dragover",
-    "dragenter",
-    "dragleave",
-    "drop",
-    "play",
-    "pause",
-    "ended",
-    "timeupdate",
-    "volumechange",
-    "focusin",
-    "focusout",
-    "wheel",
-    "animationstart",
-    "animationend",
-    "transitionstart",
-    "transitionend",
-  ];
+  const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT);
+  let node = walker.nextNode() as HTMLElement | null;
 
-  for (const type of events) {
-    // Support both lowercase (onclick) and camelCase (onClick) attribute names
-    const camelCase = `on${type.charAt(0).toUpperCase()}${type.slice(1)}`;
-    const lowerCase = `on${type}`;
-
-    for (const attrName of [camelCase, lowerCase]) {
-      for (const el of fragment.querySelectorAll(`[${attrName}]`)) {
-        const handlerName = el.getAttribute(attrName);
+  while (node) {
+    for (const attr of Array.from(node.attributes)) {
+      const match = attr.name.match(EVENT_ATTR_REGEX);
+      if (match) {
+        const type = match[1]!.toLowerCase();
+        const handlerName = attr.value;
         if (handlerName) {
           const handler = userContext[handlerName];
           if (typeof handler === "function") {
             // Handler is already bound via bindMethods, use directly
-            el.removeAttribute(attrName);
-            el.addEventListener(type, handler as AnyFn);
+            node.removeAttribute(attr.name);
+            node.addEventListener(type, handler as AnyFn);
           }
         }
       }
     }
+    node = walker.nextNode() as HTMLElement | null;
   }
 }
 
 /**
  * Binds native DOM event handlers for composite component type.
+ * Walks all elements once instead of querying per event type for better performance.
  * Handlers are retrieved directly from methods object without binding.
  * @param methods - Methods object containing event handlers
  * @param fragment - Document fragment to process
@@ -149,83 +131,39 @@ export function bindNativeEventsForComposite(
   methods: Methods,
   fragment: DocumentFragment,
 ): void {
-  const events = [
-    "click",
-    "input",
-    "change",
-    "focus",
-    "blur",
-    "mousedown",
-    "mouseup",
-    "mousemove",
-    "mouseover",
-    "mouseout",
-    "mouseenter",
-    "mouseleave",
-    "dblclick",
-    "contextmenu",
-    "keydown",
-    "keyup",
-    "keypress",
-    "submit",
-    "reset",
-    "invalid",
-    "resize",
-    "scroll",
-    "touchstart",
-    "touchend",
-    "touchmove",
-    "touchcancel",
-    "drag",
-    "dragstart",
-    "dragend",
-    "dragover",
-    "dragenter",
-    "dragleave",
-    "drop",
-    "play",
-    "pause",
-    "ended",
-    "timeupdate",
-    "volumechange",
-    "focusin",
-    "focusout",
-    "wheel",
-    "animationstart",
-    "animationend",
-    "transitionstart",
-    "transitionend",
-  ];
+  const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT);
+  let node = walker.nextNode() as HTMLElement | null;
 
-  for (const type of events) {
-    // Support both lowercase (onclick) and camelCase (onClick) attribute names
-    const camelCase = `on${type.charAt(0).toUpperCase()}${type.slice(1)}`;
-    const lowerCase = `on${type}`;
-
-    for (const attrName of [camelCase, lowerCase]) {
-      for (const el of fragment.querySelectorAll(`[${attrName}]`)) {
-        const handlerName = el.getAttribute(attrName);
+  while (node) {
+    for (const attr of Array.from(node.attributes)) {
+      const match = attr.name.match(EVENT_ATTR_REGEX);
+      if (match) {
+        const type = match[1]!.toLowerCase();
+        const handlerName = attr.value;
         if (handlerName) {
           const handler = methods[handlerName];
           if (typeof handler === "function") {
             // For composite type, use handler directly without binding
-            el.removeAttribute(attrName);
-            el.addEventListener(type, handler);
+            node.removeAttribute(attr.name);
+            node.addEventListener(type, handler);
           }
         }
       }
     }
+    node = walker.nextNode() as HTMLElement | null;
   }
 }
 
 /**
  * Sets up custom event listeners for composite component type.
  * Handlers are bound to state using bindOnce.
+ * Returns a cleanup function that removes all listeners added by this call.
  * @param methods - Methods object (unused, kept for signature consistency)
  * @param state - Component state to bind handlers to
  * @param events - Array of event definitions
  * @param container - Document fragment to query selectors from
  * @param refs - Component element references
+ * @returns Cleanup function that removes all listeners added by this call
  */
 export function setupEventsForComposite(
   methods: Methods,
@@ -233,8 +171,10 @@ export function setupEventsForComposite(
   events: Events,
   container: DocumentFragment,
   refs: Refs,
-): void {
-  if (!Array.isArray(events)) return;
+): () => void {
+  if (!Array.isArray(events)) return () => {};
+
+  const cleanupEntries: EventCleanupEntry[] = [];
 
   events.forEach(([type, target, handler]) => {
     if (typeof type !== "string" || typeof handler !== "function") {
@@ -274,6 +214,14 @@ export function setupEventsForComposite(
       // For composite type, bind handler to state (not userContext)
       const boundHandler = bindOnce(handler, state);
       el.addEventListener(type, boundHandler);
+      cleanupEntries.push({ target: el, type, handler: boundHandler });
     }
   });
+
+  return () => {
+    for (const { target, type, handler } of cleanupEntries) {
+      target.removeEventListener(type, handler);
+    }
+    cleanupEntries.length = 0;
+  };
 }

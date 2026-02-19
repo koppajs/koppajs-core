@@ -195,19 +195,22 @@ export async function applyLoop(
   const totalCount = entries.length;
   const fragment = document.createDocumentFragment();
 
+  // Pre-compute slotIds once before the loop (avoid repeated lookups)
+  const slotIds = isArray ? getSlotIdsForArray(raw as unknown[]) : undefined;
+
+  // Create a single local state object and reuse it across iterations
+  // (avoids N full state copies for large state or large loops)
+  const localState: State = { ...state };
+
   let index = 0;
   for (const [key, value] of entries) {
-    // Build local state with binding variables and implicit loop variables
-    const localState: State = {
-      ...state,
-      // Implicit loop variables (always available for backwards compatibility)
-      index,
-      key,
-      isFirst: index === 0,
-      isLast: index === totalCount - 1,
-      isEven: index % 2 === 0,
-      isOdd: index % 2 !== 0,
-    };
+    // Overwrite loop-specific properties each iteration (cheap)
+    localState.index = index;
+    localState.key = key;
+    localState.isFirst = index === 0;
+    localState.isLast = index === totalCount - 1;
+    localState.isEven = index % 2 === 0;
+    localState.isOdd = index % 2 !== 0;
 
     // Apply binding
     if (binding.type === "single") {
@@ -226,13 +229,14 @@ export async function applyLoop(
     const cloned = element.cloneNode(true);
     // Attach slotId from model sidecar for array iteration
     if (isArray && cloned instanceof HTMLElement) {
-      const slotIds = getSlotIdsForArray(raw as unknown[]);
       if (slotIds && slotIds[index] !== undefined) {
         setSlotId(cloned, slotIds[index]);
       }
       // If slotIds is missing or slotIds[index] is missing, gracefully skip (no slotId attached)
     }
     if (cloned instanceof HTMLElement) {
+      // Safe to pass localState directly: await makes iterations sequential,
+      // so localState values are stable for the entire processTemplate call.
       await processTemplate(cloned, localState, refs);
       fragment.appendChild(cloned);
     }

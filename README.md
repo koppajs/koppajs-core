@@ -75,15 +75,36 @@ KoppaJS is a lightweight, modular frontend framework designed to simplify develo
 
 ## Getting Started
 
-To get started with KoppaJS, follow these steps:
+The fastest way to start a new KoppaJS project:
 
-1. **Install the Core Library:**
+```bash
+pnpm create koppajs my-app
+cd my-app
+pnpm install
+pnpm dev
+```
+
+This scaffolds a ready-to-run project with Vite, TypeScript, and two sample components.
+
+You can also use npm or npx:
+
+```bash
+npm create koppajs my-app
+npx create-koppajs my-app
+```
+
+### Manual Setup
+
+If you prefer to add KoppaJS to an existing project:
+
+1. **Install the core library and Vite plugin:**
 
    ```bash
    pnpm add @koppajs/koppajs-core
+   pnpm add -D @koppajs/koppajs-vite-plugin
    ```
 
-2. **Create Your First Component:**
+2. **Create your first component:**
 
    ```typescript
    import { Core } from '@koppajs/koppajs-core'
@@ -103,8 +124,8 @@ To get started with KoppaJS, follow these steps:
    Core()
    ```
 
-3. **Run Your Application:**
-   Use your favorite bundler or the KoppaJS Vite plugin to build and serve your app.
+3. **Run your application:**
+   Use the KoppaJS Vite plugin to build and serve your app.
 
 ---
 

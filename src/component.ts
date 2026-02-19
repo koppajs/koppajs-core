@@ -327,6 +327,7 @@ export function registerComponent(
       private _observerFn?: () => void;
       private _renderAborted = false;
       private _pendingRender: (() => Promise<void>) | null = null;
+      private _eventCleanup: (() => void) | null = null; // Cleanup for setupEvents listeners (including window)
 
       constructor() {
         super();
@@ -353,6 +354,12 @@ export function registerComponent(
           this._isDisconnected = false;
           this._renderAborted = false;
           this._pendingRender = null;
+
+          // Re-add observer in case disconnectedCallback already removed it
+          this._model.addObserver(this._observerFn);
+
+          // Restore mounted state (disconnectedCallback may have reset it)
+          this._isMounted = true;
 
           // Props neu verarbeiten (können sich geändert haben)
           if (existingInstance.props && existingInstance.state) {
@@ -634,11 +641,14 @@ export function registerComponent(
 
             if (useUserContext && userContext) {
               bindNativeEvents(userContext, container);
-              setupEvents(userContext, events, container, refs);
+              // Clean up previous event listeners (including window) before adding new ones
+              if (this._eventCleanup) this._eventCleanup();
+              this._eventCleanup = setupEvents(userContext, events, container, refs);
             } else {
               // For composite type, use methods directly without binding
               bindNativeEventsForComposite(methods, container);
-              setupEventsForComposite(methods, state, events, container, refs);
+              if (this._eventCleanup) this._eventCleanup();
+              this._eventCleanup = setupEventsForComposite(methods, state, events, container, refs);
             }
 
             // Flush changes and get changed paths for lifecycle hooks
@@ -764,6 +774,11 @@ export function registerComponent(
           // Exit early if component has been disconnected
           if (this._isDisconnected) return;
 
+          // If watchList is defined, skip renders for irrelevant state changes
+          if (watchList && watchList.length > 0) {
+            if (!model.hasPendingChangesFor(watchList)) return;
+          }
+
           // Prevent child self-rendering if any ancestor is currently rendering
           // Ancestor render will update child props automatically through processTemplate
           // Check entire parent chain to see if any ancestor is rendering
@@ -838,8 +853,17 @@ export function registerComponent(
         await hookEmit("global", "beforeDestroy", destroyContext);
         await hookEmit(instance.lifecycleRegistry, "beforeDestroy");
 
+        // Race guard: if reconnected during async hooks, abort teardown
+        if (!this._isDisconnected) return;
+
         // 5. Cleanup DOM event listeners for this component subtree
         cleanupSubtree(this);
+
+        // 5b. Cleanup setupEvents listeners (including window listeners)
+        if (this._eventCleanup) {
+          this._eventCleanup();
+          this._eventCleanup = null;
+        }
 
         // 6. Remove component style if no other instances exist
         if (!document.body.querySelector(this.tagName.toLowerCase())) {
@@ -852,9 +876,13 @@ export function registerComponent(
         await hookEmit("global", "destroyed", destroyContext);
         await hookEmit(instance.lifecycleRegistry, "destroyed");
 
+        // Race guard: if reconnected during async hooks, abort teardown
+        if (!this._isDisconnected) return;
+
         // 8. Release strong references for GC
         this._model = undefined;
         this._observerFn = undefined;
+        this._eventCleanup = null;
         host.instance = undefined;
       }
     },

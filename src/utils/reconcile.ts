@@ -222,25 +222,26 @@ function reconcileChildren(
     if (isCustomElement(updatedChild) && updatedIdentity !== null) {
       // This is a custom element with identity but no match found
       // We need to replace whatever is at this position
+      // Use the actual node (not a clone) to preserve attached event listeners
       if (existingChild) {
-        existing.replaceChild(updatedChild.cloneNode(true), existingChild);
+        existing.replaceChild(updatedChild, existingChild);
       } else {
-        existing.appendChild(updatedChild.cloneNode(true));
+        existing.appendChild(updatedChild);
       }
       continue;
     }
 
     // Non-identity nodes - fall back to positional matching
-    // New node to add
+    // New node to add - use actual node to preserve attached event listeners
     if (!existingChild) {
-      existing.appendChild(updatedChild.cloneNode(true));
+      existing.appendChild(updatedChild);
       continue;
     }
 
     // Check if they're the same type (positional match)
     if (!isSameNodeType(existingChild, updatedChild)) {
-      // Different types - replace entirely
-      existing.replaceChild(updatedChild.cloneNode(true), existingChild);
+      // Different types - replace entirely, use actual node to preserve event listeners
+      existing.replaceChild(updatedChild, existingChild);
       continue;
     }
 
