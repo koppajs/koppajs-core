@@ -35,7 +35,7 @@ jobs:
         run: pnpm lint
 
       - name: Prettier check
-        run: prettier --check . --config config/prettier.config.mjs --ignore-path config/.prettierignore
+        run: pnpm prettier --check . --config config/prettier.config.mjs --ignore-path config/.prettierignore
 
       - name: Test
         run: pnpm test:ci
