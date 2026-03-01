@@ -1,1 +1,1 @@
-export const objectExtensions: { [key: string]: PropertyDescriptor } = {};
+export const objectExtensions: { [key: string]: PropertyDescriptor } = {}

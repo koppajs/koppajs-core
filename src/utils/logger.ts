@@ -15,24 +15,24 @@ export enum LogLevel {
 }
 
 const EMOJIS = {
-  ERROR: "❌",
-  WARN: "⚠️",
-  INFO: "ℹ️",
-  DEBUG: "🔍",
-} as const;
+  ERROR: '❌',
+  WARN: '⚠️',
+  INFO: 'ℹ️',
+  DEBUG: '🔍',
+} as const
 
 type LogContext = {
-  component?: string;
-  method?: string;
-  [key: string]: unknown;
-};
+  component?: string
+  method?: string
+  [key: string]: unknown
+}
 
 /**
  * Logger class for consistent logging across the framework.
  */
 class Logger {
-  private level: LogLevel = LogLevel.ERROR;
-  private isDevelopment: boolean = false;
+  private level: LogLevel = LogLevel.ERROR
+  private isDevelopment: boolean = false
 
   /**
    * Initialize logger with environment detection.
@@ -43,13 +43,11 @@ class Logger {
   init(options?: { level?: LogLevel; isDevelopment?: boolean }): void {
     this.isDevelopment =
       options?.isDevelopment ??
-      (typeof process !== "undefined" &&
-        process.env?.NODE_ENV === "development") ??
-      false;
+      (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') ??
+      false
 
     // Default: ERROR in production, DEBUG in development
-    this.level =
-      options?.level ?? (this.isDevelopment ? LogLevel.DEBUG : LogLevel.ERROR);
+    this.level = options?.level ?? (this.isDevelopment ? LogLevel.DEBUG : LogLevel.ERROR)
   }
 
   /**
@@ -57,7 +55,7 @@ class Logger {
    * @param level - Minimum log level to display
    */
   setLevel(level: LogLevel): void {
-    this.level = level;
+    this.level = level
   }
 
   /**
@@ -65,30 +63,26 @@ class Logger {
    * @returns Current minimum log level
    */
   getLevel(): LogLevel {
-    return this.level;
+    return this.level
   }
 
   private shouldLog(level: LogLevel): boolean {
-    return level >= this.level;
+    return level >= this.level
   }
 
-  private formatMessage(
-    emoji: string,
-    message: string,
-    context?: LogContext,
-  ): string {
-    const parts = [emoji, message];
+  private formatMessage(emoji: string, message: string, context?: LogContext): string {
+    const parts = [emoji, message]
 
     if (context) {
       const contextStr = Object.entries(context)
         .map(([key, value]) => `${key}: ${value}`)
-        .join(", ");
+        .join(', ')
       if (contextStr) {
-        parts.push(`[${contextStr}]`);
+        parts.push(`[${contextStr}]`)
       }
     }
 
-    return parts.join(" ");
+    return parts.join(' ')
   }
 
   /**
@@ -97,8 +91,8 @@ class Logger {
    * @param args - Additional arguments to log
    */
   error(message: string, ...args: any[]): void {
-    if (!this.shouldLog(LogLevel.ERROR)) return;
-    console.error(this.formatMessage(EMOJIS.ERROR, message), ...args);
+    if (!this.shouldLog(LogLevel.ERROR)) return
+    console.error(this.formatMessage(EMOJIS.ERROR, message), ...args)
   }
 
   /**
@@ -107,8 +101,8 @@ class Logger {
    * @param args - Additional arguments to log
    */
   warn(message: string, ...args: any[]): void {
-    if (!this.shouldLog(LogLevel.WARN)) return;
-    console.warn(this.formatMessage(EMOJIS.WARN, message), ...args);
+    if (!this.shouldLog(LogLevel.WARN)) return
+    console.warn(this.formatMessage(EMOJIS.WARN, message), ...args)
   }
 
   /**
@@ -117,8 +111,8 @@ class Logger {
    * @param args - Additional arguments to log
    */
   info(message: string, ...args: any[]): void {
-    if (!this.shouldLog(LogLevel.INFO)) return;
-    console.info(this.formatMessage(EMOJIS.INFO, message), ...args);
+    if (!this.shouldLog(LogLevel.INFO)) return
+    console.info(this.formatMessage(EMOJIS.INFO, message), ...args)
   }
 
   /**
@@ -127,8 +121,8 @@ class Logger {
    * @param args - Additional arguments to log
    */
   debug(message: string, ...args: any[]): void {
-    if (!this.shouldLog(LogLevel.DEBUG)) return;
-    console.debug(this.formatMessage(EMOJIS.DEBUG, message), ...args);
+    if (!this.shouldLog(LogLevel.DEBUG)) return
+    console.debug(this.formatMessage(EMOJIS.DEBUG, message), ...args)
   }
 
   /**
@@ -137,17 +131,13 @@ class Logger {
    * @param context - Context object with additional information
    * @param error - Optional error object
    */
-  errorWithContext(
-    message: string,
-    context: LogContext,
-    error?: Error | unknown,
-  ): void {
-    if (!this.shouldLog(LogLevel.ERROR)) return;
-    const formatted = this.formatMessage(EMOJIS.ERROR, message, context);
+  errorWithContext(message: string, context: LogContext, error?: Error | unknown): void {
+    if (!this.shouldLog(LogLevel.ERROR)) return
+    const formatted = this.formatMessage(EMOJIS.ERROR, message, context)
     if (error) {
-      console.error(formatted, error);
+      console.error(formatted, error)
     } else {
-      console.error(formatted);
+      console.error(formatted)
     }
   }
 
@@ -157,13 +147,13 @@ class Logger {
    * @param context - Context object with additional information
    */
   warnWithContext(message: string, context: LogContext): void {
-    if (!this.shouldLog(LogLevel.WARN)) return;
-    console.warn(this.formatMessage(EMOJIS.WARN, message, context));
+    if (!this.shouldLog(LogLevel.WARN)) return
+    console.warn(this.formatMessage(EMOJIS.WARN, message, context))
   }
 }
 
 // Singleton instance
-export const logger = new Logger();
+export const logger = new Logger()
 
 // Auto-initialize on import
-logger.init();
+logger.init()

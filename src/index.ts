@@ -1,8 +1,8 @@
 // --- KoppaJS Core Public API ---
 // Only exports intended for stable, public use are exposed here.
 
-import { logger } from "./utils/logger";
-import type { CoreCallable, CoreCtx, TakeArgs } from "./types";
+import { logger } from './utils/logger'
+import type { CoreCallable, CoreCtx, TakeArgs } from './types'
 
 // Public Types
 export type {
@@ -22,27 +22,27 @@ export type {
   Refs,
   Methods,
   LifecycleHook,
-} from "./types";
+} from './types'
 
 /**
  * KoppaJS logger singleton and log level enum.
  * @public
  */
-export { logger, LogLevel } from "./utils/logger";
+export { logger, LogLevel } from './utils/logger'
 
 // --- Internal implementation below ---
 // (not exported)
-import { extend, hookOn, isComponentSource, isModule, isPlugin } from "./utils";
-import { ExtensionRegistry } from "./utils/extension-registry";
-import { registerComponent } from "./component";
+import { extend, hookOn, isComponentSource, isModule, isPlugin } from './utils'
+import { ExtensionRegistry } from './utils/extension-registry'
+import { registerComponent } from './component'
 import {
   patchGlobalEventTracking,
   startGlobalDisconnectionObserver,
-} from "./global-event-cleaner";
+} from './global-event-cleaner'
 
-let initialized = false;
-let domInitialized = false;
-let queuedTakes: TakeArgs[] = [];
+let initialized = false
+let domInitialized = false
+let queuedTakes: TakeArgs[] = []
 
 /**
  * Initializes the DOM environment for KoppaJS.
@@ -56,16 +56,16 @@ let queuedTakes: TakeArgs[] = [];
  * @public
  */
 export function initDomEnvironment(): void {
-  if (domInitialized) return;
-  domInitialized = true;
+  if (domInitialized) return
+  domInitialized = true
 
-  if (typeof document === "undefined" || typeof HTMLElement === "undefined") {
-    return;
+  if (typeof document === 'undefined' || typeof HTMLElement === 'undefined') {
+    return
   }
 
-  patchGlobalEventTracking();
-  extend();
-  startGlobalDisconnectionObserver();
+  patchGlobalEventTracking()
+  extend()
+  startGlobalDisconnectionObserver()
 }
 
 /**
@@ -73,48 +73,46 @@ export function initDomEnvironment(): void {
  * @param args - Either [ComponentSource, name] or [IPlugin | IModule]
  */
 function performTake(...args: TakeArgs): void {
-  const ext = args[0];
-  const name = args[1];
+  const ext = args[0]
+  const name = args[1]
 
   if (isComponentSource(ext)) {
     if (!name) {
-      logger.error(
-        "ComponentSource requires a component name when calling take()",
-      );
-      return;
+      logger.error('ComponentSource requires a component name when calling take()')
+      return
     }
-    registerComponent(name, ext);
-    return;
+    registerComponent(name, ext)
+    return
   }
 
   if (isPlugin(ext) || isModule(ext)) {
     const ctx: CoreCtx = {
       registerHook: (hookName, callback) => {
-        hookOn("global", hookName, callback);
+        hookOn('global', hookName, callback)
       },
       take: Core.take,
-    };
+    }
 
     try {
-      ext.install(ctx);
+      ext.install(ctx)
 
       if (isPlugin(ext)) {
-        ExtensionRegistry.plugins[ext.name] = ext;
+        ExtensionRegistry.plugins[ext.name] = ext
       } else {
-        ExtensionRegistry.modules[ext.name] = ext;
+        ExtensionRegistry.modules[ext.name] = ext
       }
     } catch (error) {
       logger.errorWithContext(
-        "Failed to install extension",
-        { name: ext.name, type: isPlugin(ext) ? "plugin" : "module" },
+        'Failed to install extension',
+        { name: ext.name, type: isPlugin(ext) ? 'plugin' : 'module' },
         error,
-      );
+      )
     }
 
-    return;
+    return
   }
 
-  logger.error("Unknown extension type", ext);
+  logger.error('Unknown extension type', ext)
 }
 
 /**
@@ -123,13 +121,13 @@ function performTake(...args: TakeArgs): void {
  * Safe to call multiple times (idempotent).
  */
 function initialize(): void {
-  if (initialized) return;
-  initialized = true;
+  if (initialized) return
+  initialized = true
 
-  queuedTakes.forEach((args) => performTake(...args));
-  queuedTakes = [];
+  queuedTakes.forEach((args) => performTake(...args))
+  queuedTakes = []
 
-  logger.info("Core initialized");
+  logger.info('Core initialized')
 }
 
 /**
@@ -148,15 +146,15 @@ function initialize(): void {
 export const Core = (() => {
   const callable = Object.assign(
     () => {
-      initDomEnvironment();
-      initialize();
+      initDomEnvironment()
+      initialize()
     },
     {
       take: (...args: TakeArgs) => {
-        if (initialized) performTake(...args);
-        else queuedTakes.push(args);
+        if (initialized) performTake(...args)
+        else queuedTakes.push(args)
       },
     },
-  ) satisfies CoreCallable;
-  return callable;
-})();
+  ) satisfies CoreCallable
+  return callable
+})()
