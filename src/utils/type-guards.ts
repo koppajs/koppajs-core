@@ -4,7 +4,7 @@ import type {
   HTMLElementWithInstance,
   IModule,
   IPlugin,
-} from '../types'
+} from "../types";
 
 /* -------------------------------------------------------------------------- */
 /*  ComponentSource Contract Guard                                            */
@@ -52,17 +52,17 @@ import type {
  * ```
  */
 export function isComponentSource(ext: unknown): ext is ComponentSource {
-  if (ext == null || typeof ext !== 'object') return false
-  const obj = ext as Record<string, unknown>
+  if (ext == null || typeof ext !== "object") return false;
+  const obj = ext as Record<string, unknown>;
 
   // Validate REQUIRED fields only (must be strings)
   // Optional fields are not validated - absence is acceptable
   // Extra fields are ignored - forward compatibility
   return (
-    typeof obj.template === 'string' &&
-    typeof obj.script === 'string' &&
-    typeof obj.style === 'string'
-  )
+    typeof obj.template === "string" &&
+    typeof obj.script === "string" &&
+    typeof obj.style === "string"
+  );
 }
 
 /**
@@ -72,9 +72,9 @@ export function isComponentSource(ext: unknown): ext is ComponentSource {
  * @returns True if the object has a `setup` function and no `attach` method
  */
 export function isPlugin(ext: unknown): ext is IPlugin {
-  if (ext == null || typeof ext !== 'object') return false
-  const obj = ext as Record<string, unknown>
-  return typeof obj.setup === 'function' && obj.attach === undefined
+  if (ext == null || typeof ext !== "object") return false;
+  const obj = ext as Record<string, unknown>;
+  return typeof obj.setup === "function" && obj.attach === undefined;
 }
 
 /**
@@ -84,9 +84,9 @@ export function isPlugin(ext: unknown): ext is IPlugin {
  * @returns True if the object has an `attach` function and no `setup` method
  */
 export function isModule(ext: unknown): ext is IModule {
-  if (ext == null || typeof ext !== 'object') return false
-  const obj = ext as Record<string, unknown>
-  return typeof obj.attach === 'function' && obj.setup === undefined
+  if (ext == null || typeof ext !== "object") return false;
+  const obj = ext as Record<string, unknown>;
+  return typeof obj.attach === "function" && obj.setup === undefined;
 }
 
 /**
@@ -95,8 +95,10 @@ export function isModule(ext: unknown): ext is IModule {
  * @param el - The value to check
  * @returns True if el is an HTMLElement and carries an `instance` property
  */
-export function isHTMLElementWithInstance(el: unknown): el is HTMLElementWithInstance {
-  return el instanceof HTMLElement && 'instance' in el
+export function isHTMLElementWithInstance(
+  el: unknown,
+): el is HTMLElementWithInstance {
+  return el instanceof HTMLElement && "instance" in el;
 }
 
 /**
@@ -110,9 +112,9 @@ export function hasComponentInstance(
 ): el is HTMLElementWithInstance & { instance: ComponentInstance } {
   return (
     el instanceof HTMLElement &&
-    'instance' in el &&
+    "instance" in el &&
     (el as HTMLElementWithInstance).instance !== undefined
-  )
+  );
 }
 
 /**
@@ -126,5 +128,7 @@ export function hasComponentInstance(
 export function isValidLoopMatch(
   match: RegExpMatchArray | null,
 ): match is [string, string, string] {
-  return !!match && match.length === 3 && Boolean(match[1]) && Boolean(match[2])
+  return (
+    !!match && match.length === 3 && Boolean(match[1]) && Boolean(match[2])
+  );
 }
