@@ -24,7 +24,7 @@ Changes will only appear here when they:
 
 ## [3.0.0] — Baseline Runtime Release
 
-**2026-01-23**
+**2026-03-01**
 
 This release establishes the **stable runtime foundation of KoppaJS**.
 
