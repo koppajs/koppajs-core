@@ -3,9 +3,11 @@ export default {
   // Use filenames argument so ESLint only lints staged files, not the whole project
   '**/*.{ts,tsx,js,cjs,mjs}': (filenames) => [
     `pnpm eslint --config config/eslint.config.mjs --fix ${filenames.join(' ')}`,
-    `prettier --write ${filenames.join(' ')}`,
+    `prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --write ${filenames.join(' ')}`,
   ],
 
   // Pure text-based formats are formatted by Prettier only
-  '**/*.{json,md,yaml}': ['prettier --write'],
+  '**/*.{json,md,yaml}': [
+    'prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --write',
+  ],
 }
