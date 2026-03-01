@@ -77,6 +77,7 @@ pnpm build
 ```
 
 This may include:
+
 - Type checking
 - Bundling
 - Generation of public type definitions (where applicable)
@@ -180,13 +181,13 @@ If a change cannot be clearly explained, it likely does not belong.
 
 Each repository defines its own scripts, but commonly available commands include:
 
-| Command        | Description                                  |
-|---------------|----------------------------------------------|
-| `pnpm build`  | Build the project                             |
-| `pnpm test`   | Run tests                                    |
-| `pnpm lint`   | Run lint checks                              |
-| `pnpm format` | Format code                                  |
-| `pnpm clean`  | Remove build artifacts                       |
+| Command       | Description            |
+| ------------- | ---------------------- |
+| `pnpm build`  | Build the project      |
+| `pnpm test`   | Run tests              |
+| `pnpm lint`   | Run lint checks        |
+| `pnpm format` | Format code            |
+| `pnpm clean`  | Remove build artifacts |
 
 Refer to the repository’s `package.json` for project-specific commands.
 

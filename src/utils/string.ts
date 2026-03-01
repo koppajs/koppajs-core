@@ -1,5 +1,5 @@
-import { getValueByPath, isSimplePathExpression } from "./helper";
-import { logger } from "./logger";
+import { getValueByPath, isSimplePathExpression } from './helper'
+import { logger } from './logger'
 
 /**
  * Converts a kebab-case string to camelCase.
@@ -7,25 +7,25 @@ import { logger } from "./logger";
  * @returns The converted camelCase string
  */
 export function kebabToCamel(s: string): string {
-  return s.replace(/-./g, (x) => x[1]!.toUpperCase());
+  return s.replace(/-./g, (x) => x[1]!.toUpperCase())
 }
 
 // Hard block: forbid common dangerous identifiers / capabilities.
 // (This is a heuristic, not a formal proof.)
 const FORBIDDEN_KEYWORDS_REGEX =
-  /(?:\bwindow\b|\bdocument\b|\bglobalThis\b|\bFunction\b|\beval\b|\bsetTimeout\b|\bsetInterval\b|\bfetch\b|\bXMLHttpRequest\b|\bimport\b|\brequire\b|\bthis\b)/;
+  /(?:\bwindow\b|\bdocument\b|\bglobalThis\b|\bFunction\b|\beval\b|\bsetTimeout\b|\bsetInterval\b|\bfetch\b|\bXMLHttpRequest\b|\bimport\b|\brequire\b|\bthis\b)/
 
 /**
  * Cache for compiled expression functions.
  * Key format: "expression|var1,var2,var3" (expression + sorted allowed vars)
  * This avoids recreating Functions on every render.
  */
-const expressionCache = new Map<string, (...args: unknown[]) => unknown>();
+const expressionCache = new Map<string, (...args: unknown[]) => unknown>()
 
 /**
  * Maximum cache size to prevent memory leaks in long-running apps.
  */
-const MAX_CACHE_SIZE = 1000;
+const MAX_CACHE_SIZE = 1000
 
 /**
  * Cache for sorted state keys per state object.
@@ -37,22 +37,22 @@ const MAX_CACHE_SIZE = 1000;
 const sortedKeysCache = new WeakMap<
   Record<string, unknown>,
   { keys: string[]; fingerprint: string }
->();
+>()
 
 /**
  * Gets sorted keys for a state object, using cache when possible.
  * Invalidates cache when the actual set of key names changes.
  */
 function getCachedSortedKeys(state: Record<string, unknown>): string[] {
-  const currentKeys = Object.keys(state);
-  const fingerprint = currentKeys.join("\0");
-  const cached = sortedKeysCache.get(state);
+  const currentKeys = Object.keys(state)
+  const fingerprint = currentKeys.join('\0')
+  const cached = sortedKeysCache.get(state)
   if (cached && cached.fingerprint === fingerprint) {
-    return cached.keys;
+    return cached.keys
   }
-  const sorted = currentKeys.sort();
-  sortedKeysCache.set(state, { keys: sorted, fingerprint });
-  return sorted;
+  const sorted = currentKeys.sort()
+  sortedKeysCache.set(state, { keys: sorted, fingerprint })
+  return sorted
 }
 
 /**
@@ -70,52 +70,52 @@ export function evaluateExpression(
   expression: string,
   state: Record<string, unknown> = {},
 ): unknown {
-  const exp = (expression ?? "").trim();
-  if (!exp) return undefined;
+  const exp = (expression ?? '').trim()
+  if (!exp) return undefined
 
   try {
     if (FORBIDDEN_KEYWORDS_REGEX.test(exp)) {
-      return undefined;
+      return undefined
     }
 
     // Simple paths: resolve safely (supports brackets via isSimplePathExpression)
     if (isSimplePathExpression(exp)) {
-      const value = getValueByPath(state, exp);
-      if (typeof value === "function") return value.call(state);
-      return value;
+      const value = getValueByPath(state, exp)
+      if (typeof value === 'function') return value.call(state)
+      return value
     }
 
     // Complex expression:
     // Only expose top-level keys from state as function parameters.
     // Everything else is not directly reachable unless referenced through those vars.
-    const allowedVars = getCachedSortedKeys(state);
+    const allowedVars = getCachedSortedKeys(state)
 
     // Build cache key from expression and variable names
-    const cacheKey = `${exp}|${allowedVars.join(",")}`;
+    const cacheKey = `${exp}|${allowedVars.join(',')}`
 
     // Check cache for compiled function
-    let evalFunction = expressionCache.get(cacheKey);
+    let evalFunction = expressionCache.get(cacheKey)
 
     if (!evalFunction) {
       // Use strict mode; expression is evaluated as a return value.
-      const functionBody = `"use strict"; return (${exp});`;
+      const functionBody = `"use strict"; return (${exp});`
       evalFunction = new Function(...allowedVars, functionBody) as (
         ...args: unknown[]
-      ) => unknown;
+      ) => unknown
 
       // Prevent unbounded cache growth
       if (expressionCache.size >= MAX_CACHE_SIZE) {
         // Remove oldest entry (first inserted)
-        const firstKey = expressionCache.keys().next().value;
-        if (firstKey) expressionCache.delete(firstKey);
+        const firstKey = expressionCache.keys().next().value
+        if (firstKey) expressionCache.delete(firstKey)
       }
 
-      expressionCache.set(cacheKey, evalFunction);
+      expressionCache.set(cacheKey, evalFunction)
     }
 
-    return evalFunction(...allowedVars.map((key) => state[key]));
+    return evalFunction(...allowedVars.map((key) => state[key]))
   } catch (error) {
-    logger.debug(`Expression evaluation failed: ${exp}`, error);
-    return undefined;
+    logger.debug(`Expression evaluation failed: ${exp}`, error)
+    return undefined
   }
 }

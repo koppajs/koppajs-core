@@ -15,13 +15,15 @@ not every internal refactor.
 This section is intentionally empty.
 
 Changes will only appear here when they:
+
 - affect runtime behavior,
 - change documented guarantees,
 - or modify the public API surface.
 
 ---
 
-## [3.0.0] — Baseline Runtime Release  
+## [3.0.0] — Baseline Runtime Release
+
 **2026-01-23**
 
 This release establishes the **stable runtime foundation of KoppaJS**.
