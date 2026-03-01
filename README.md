@@ -143,7 +143,7 @@ If you prefer to add KoppaJS to an existing project:
 
 ## Support
 
-For support, visit our [GitHub Issues](https://github.com/koppajs/koppajs-core/issues) or join our community on [Discord](https://discord.gg/koppajs).
+For support, visit our [GitHub Issues](https://github.com/koppajs/koppajs-core/issues).
 
 ---
 
