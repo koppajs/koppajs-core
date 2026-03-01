@@ -1,0 +1,130 @@
+export const domExtensions: { [key: string]: PropertyDescriptor } = {
+  select: {
+    get(this: HTMLElement): (s: string) => HTMLElement | null {
+      return (s: string) =>
+        this instanceof HTMLInputElement || this instanceof HTMLTextAreaElement
+          ? (this.select(), null)
+          : this.querySelector(s)
+    },
+  },
+
+  selectAll: {
+    get(this: HTMLElement): (s: string) => NodeList {
+      return (s: string) => this.querySelectorAll(s)
+    },
+  },
+
+  addClass: {
+    get(this: HTMLElement): (classes: string) => HTMLElement {
+      return (classes: string) => {
+        classes
+          .split(/\s+/)
+          .map((c) => c.trim())
+          .filter((c) => c.length > 0)
+          .forEach((c) => this.classList.add(c))
+        return this
+      }
+    },
+  },
+
+  removeClass: {
+    get(this: HTMLElement): (classes: string) => HTMLElement {
+      return (classes: string) => {
+        classes
+          .split(/\s+/)
+          .map((c) => c.trim())
+          .filter((c) => c.length > 0)
+          .forEach((c) => this.classList.remove(c))
+        return this
+      }
+    },
+  },
+
+  toggleClass: {
+    get(this: HTMLElement): (classes: string) => HTMLElement {
+      return (classes: string) => {
+        classes
+          .split(/\s+/)
+          .map((c) => c.trim())
+          .filter((c) => c.length > 0)
+          .forEach((c) => this.classList.toggle(c))
+        return this
+      }
+    },
+  },
+
+  hasClass: {
+    get(this: HTMLElement): (c: string) => boolean {
+      return (c: string) => this.classList.contains(c.trim())
+    },
+  },
+
+  replaceWith: {
+    get(this: HTMLElement): (newNode: HTMLElement | string) => void {
+      return (newNode: HTMLElement | string) => {
+        if (!this.parentNode) return
+        if (newNode instanceof HTMLElement) {
+          this.parentNode.replaceChild(newNode, this)
+        } else if (typeof newNode === 'string') {
+          this.insertAdjacentText('beforebegin', newNode)
+          this.remove()
+        }
+      }
+    },
+  },
+
+  siblings: {
+    get(this: HTMLElement): (callback?: (sibling: HTMLElement) => void) => HTMLElement[] {
+      return (callback) => {
+        if (!this.parentNode) return []
+
+        const siblings: HTMLElement[] = []
+        let sibling: ChildNode | null = this.parentNode.firstChild
+
+        while (sibling) {
+          if (
+            sibling.nodeType === Node.ELEMENT_NODE &&
+            sibling !== this &&
+            sibling instanceof HTMLElement
+          ) {
+            callback?.(sibling)
+            siblings.push(sibling)
+          }
+          sibling = sibling.nextSibling
+        }
+
+        return siblings
+      }
+    },
+  },
+
+  before: {
+    get(this: HTMLElement): (newNode: HTMLElement | string) => void {
+      return (newNode: HTMLElement | string) => {
+        if (!this.parentNode) return
+        if (newNode instanceof HTMLElement) this.parentNode.insertBefore(newNode, this)
+        else this.insertAdjacentHTML('beforebegin', newNode.toString())
+      }
+    },
+  },
+
+  after: {
+    get(this: HTMLElement): (newNode: HTMLElement | string) => void {
+      return (newNode: HTMLElement | string) => {
+        if (!this.parentNode) return
+        if (newNode instanceof HTMLElement)
+          this.parentNode.insertBefore(newNode, this.nextSibling)
+        else this.insertAdjacentHTML('afterend', newNode.toString())
+      }
+    },
+  },
+
+  attr: {
+    get(this: HTMLElement): (attrName: string, attrValue?: string) => string | null {
+      return (attrName: string, attrValue?: string) => {
+        if (attrValue !== undefined) this.setAttribute(attrName, attrValue || 'true')
+        return this.getAttribute(attrName)
+      }
+    },
+  },
+}

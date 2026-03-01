@@ -1,0 +1,107 @@
+{
+  "name": "@koppajs/koppajs-core",
+  "version": "3.0.0",
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.cjs.js",
+  "module": "./dist/index.es.js",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "package.json"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.es.js",
+      "require": "./dist/index.cjs.js"
+    }
+  },
+  "sideEffects": false,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/koppajs/koppajs-core"
+  },
+  "description": "Koppa.js is a lightweight, high-performance frontend framework designed for building modern web applications without relying on a virtual DOM. It offers a modular architecture, reactivity, and seamless integration with TypeScript and Vite.",
+  "keywords": [
+    "koppa",
+    "koppajs",
+    "koppa.js",
+    "frontend",
+    "framework",
+    "ui-framework",
+    "typescript",
+    "vite",
+    "reactivity",
+    "single-file-components",
+    "modular",
+    "lightweight",
+    "high-performance",
+    "web-development",
+    "javascript"
+  ],
+  "author": "Bastian Bensch",
+  "license": "Apache-2.0",
+  "homepage": "https://koppajs.org",
+  "scripts": {
+    "generate:types": "tsc --project config/tsconfig.types.json",
+    "copy:dts": "node scripts/copy-dts.js",
+    "clean": "rimraf dist coverage",
+    "deepclean": "rimraf node_modules dist",
+    "nuke": "rimraf node_modules dist",
+    "nuke:all": "rimraf node_modules dist pnpm-lock.yaml",
+    "pretypecheck": "rimraf dist",
+    "typecheck": "tsc --project config/tsconfig.json",
+    "build": "pnpm run typecheck && vite build --config config/vite.config.ts && pnpm generate:types && pnpm run copy:dts",
+    "rebuild": "pnpm run clean && pnpm run build",
+    "test": "vitest --config config/vitest.config.ts --run",
+    "test:coverage": "vitest --config config/vitest.config.ts --coverage",
+    "test:watch": "vitest --config config/vitest.config.ts --watch",
+    "test:ci": "vitest --config config/vitest.config.ts --run --coverage",
+    "lint:scripts": "pnpm eslint . --config config/eslint.config.mjs --fix",
+    "lint": "pnpm run lint:scripts",
+    "format:scripts": "prettier --ignore-path config/.prettierignore --config config/prettier.config.mjs --write .",
+    "format": "pnpm run format:scripts",
+    "dump:ai": "node scripts/project-dump.mjs"
+  },
+  "packageManager": "pnpm@10.24.0",
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=10.24.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
+    "@eslint/js": "^9.39.1",
+    "@types/jsdom": "^27.0.0",
+    "@types/node": "^24.10.1",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
+    "@typescript-eslint/parser": "^8.48.1",
+    "@vitest/coverage-v8": "^4.0.15",
+    "commitlint": "^20.1.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "husky": "^9.1.7",
+    "jsdom": "^27.4.0",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.7.3",
+    "rimraf": "^6.1.2",
+    "terser": "^5.44.1",
+    "typescript": "^5.7.2",
+    "vite": "^7.2.6",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^4.0.15",
+    "fflate": "^0.8.2"
+  },
+  "overrides": {
+    "glob": "^11.0.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}

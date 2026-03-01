@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  },
+  "include": ["../src/**/*.ts", "../src/**/*.d.ts"],
+  "exclude": [
+    "../node_modules",
+    "../dist",
+    "../test/**",
+    "../**/*.test.ts",
+    "../.git",
+    "../.idea",
+    "../.vscode",
+    "../.history/**",
+    "../**/*_del"
+  ]
+}
