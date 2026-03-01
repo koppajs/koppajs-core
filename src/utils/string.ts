@@ -99,7 +99,9 @@ export function evaluateExpression(
     if (!evalFunction) {
       // Use strict mode; expression is evaluated as a return value.
       const functionBody = `"use strict"; return (${exp});`;
-      evalFunction = new Function(...allowedVars, functionBody);
+      evalFunction = new Function(...allowedVars, functionBody) as (
+        ...args: unknown[]
+      ) => unknown;
 
       // Prevent unbounded cache growth
       if (expressionCache.size >= MAX_CACHE_SIZE) {
