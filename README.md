@@ -9,7 +9,7 @@
 
 <!-- PROJECT SHIELDS -->
 <div align="center">
-  <a href="https://www.npmjs.com/package/@koppajs/koppajs-core"><img src="https://img.shields.io/npm/v/@koppajs/koppajs-core?style=flat-square" alt="npm version"></a> <a href="https://github.com/koppajs/koppajs-core/actions"><img src="https://img.shields.io/github/actions/workflow/status/koppajs/koppajs-core/ci.yml?branch=main&style=flat-square" alt="CI Status"></a> <a href="https://bundlephobia.com/package/@koppajs/koppajs-core"><img src="https://img.shields.io/bundlephobia/minzip/@koppajs/koppajs-core?style=flat-square" alt="Bundle size"></a> <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License"></a>
+  <a href="https://www.npmjs.com/package/@koppajs/koppajs-core"><img src="https://img.shields.io/npm/v/@koppajs/koppajs-core?style=flat-square" alt="npm version"></a> <a href="https://github.com/koppajs/koppajs-core/actions"><img src="https://img.shields.io/github/actions/workflow/status/koppajs/koppajs-core/ci.yml?branch=main&style=flat-square" alt="CI Status"></a> <a href="https://www.npmjs.com/package/@koppajs/koppajs-core"><img src="https://img.shields.io/badge/gzip-13.6%20kB-blue?style=flat-square" alt="Bundle size"></a> <a href="./LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue?style=flat-square" alt="License"></a>
 </div>
 
 <br>
