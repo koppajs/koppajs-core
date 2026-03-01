@@ -20,7 +20,7 @@ const FORBIDDEN_KEYWORDS_REGEX =
  * Key format: "expression|var1,var2,var3" (expression + sorted allowed vars)
  * This avoids recreating Functions on every render.
  */
-const expressionCache = new Map<string, Function>();
+const expressionCache = new Map<string, (...args: unknown[]) => unknown>();
 
 /**
  * Maximum cache size to prevent memory leaks in long-running apps.
@@ -45,7 +45,7 @@ const sortedKeysCache = new WeakMap<
  */
 function getCachedSortedKeys(state: Record<string, unknown>): string[] {
   const currentKeys = Object.keys(state);
-  const fingerprint = currentKeys.join('\0');
+  const fingerprint = currentKeys.join("\0");
   const cached = sortedKeysCache.get(state);
   if (cached && cached.fingerprint === fingerprint) {
     return cached.keys;
