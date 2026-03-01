@@ -22,6 +22,23 @@ Changes will only appear here when they:
 
 ---
 
+## [3.0.1] — Badge & CI Fixes
+
+**2026-03-01**
+
+Patch release to fix README badges and CI configuration.
+No runtime or API changes.
+
+### Fixed
+
+- License badge now uses static shield (avoids Shields.io cache issues)
+- Bundle size badge replaced with static gzip size (removes Bundlephobia dependency)
+- CI workflow now runs on push to `main` (enables build status badge)
+- ESLint Prettier rule now passes explicit options (prevents formatting drift in CI)
+- Added `.editorconfig` with `root = true`
+
+---
+
 ## [3.0.0] — Baseline Runtime Release
 
 **2026-03-01**
