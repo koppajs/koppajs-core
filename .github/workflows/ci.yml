@@ -28,6 +28,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Debug line endings
+        run: |
+          echo "=== git config autocrlf ==="
+          git config core.autocrlf || echo "not set"
+          echo "=== .gitattributes ==="
+          cat .gitattributes || echo "no .gitattributes"
+          echo "=== file type detection ==="
+          file src/utils/object.ts
+          echo "=== hex dump first 5 lines of src/utils/object.ts ==="
+          xxd src/utils/object.ts | head -5
+          echo "=== prettier --write diff on single small file ==="
+          cp src/utils/object.ts /tmp/object-before.ts
+          pnpm prettier --write src/utils/object.ts --config config/prettier.config.mjs --ignore-path config/.prettierignore
+          diff /tmp/object-before.ts src/utils/object.ts || true
+          echo "=== hex dump after prettier ==="
+          xxd src/utils/object.ts | head -5
+          git checkout -- src/utils/object.ts
+
       - name: Typecheck
         run: pnpm typecheck
 
