@@ -131,9 +131,13 @@ If you prefer to add KoppaJS to an existing project:
 
 ## Roadmap
 
-- **Q1 2026:** Enhanced debugging tools and improved documentation.
-- **Q2 2026:** Experimental support for server-side rendering (SSR).
-- **Q3 2026:** Advanced state management features.
+- 🌐 **Official Website** — koppajs.org with documentation, guides, and examples
+- 🔌 **Official Plugins**
+  - Router
+  - Script Loader
+  - DSGVO / Cookie Consent Banner
+- 🧩 **Ecosystem Growth** — Community plugins, starter templates, and integrations
+- 💻 **VS Code Extension** — Syntax highlighting, IntelliSense, and tooling for `.kpa` files
 
 ---
 
