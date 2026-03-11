@@ -22,6 +22,20 @@ Changes will only appear here when they:
 
 ---
 
+## [3.0.2] — Public API Cleanup
+
+**2026-03-11**
+
+Patch release to tighten the public root API surface.
+Runtime initialization behavior remains unchanged.
+
+### Changed
+
+- Removed the unintended root export `initDomEnvironment`
+- DOM environment initialization continues to happen through `Core()`
+
+---
+
 ## [3.0.1] — Badge & CI Fixes
 
 **2026-03-01**

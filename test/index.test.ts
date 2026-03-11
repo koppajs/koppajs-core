@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { Core, initDomEnvironment } from '../src/index'
+import * as CoreApi from '../src/index'
+import { Core } from '../src/index'
 import type { ComponentSource, IPlugin, IModule } from '../src/types'
 
 describe('index', () => {
@@ -9,6 +10,10 @@ describe('index', () => {
   })
 
   describe('Core', () => {
+    it('does not expose DOM initialization as public API', () => {
+      expect('initDomEnvironment' in CoreApi).toBe(false)
+    })
+
     it('is callable as a function', () => {
       expect(typeof Core).toBe('function')
       expect(() => Core()).not.toThrow()
@@ -84,26 +89,11 @@ describe('index', () => {
       // Module should be registered
       expect(() => Core.take(module)).not.toThrow()
     })
-  })
 
-  describe('initDomEnvironment', () => {
-    it('is a function', () => {
-      expect(typeof initDomEnvironment).toBe('function')
-    })
-
-    it('can be called multiple times safely', () => {
-      expect(() => {
-        initDomEnvironment()
-        initDomEnvironment()
-        initDomEnvironment()
-      }).not.toThrow()
-    })
-
-    it('initializes DOM extensions', () => {
-      initDomEnvironment()
+    it('initializes DOM extensions when Core() runs', () => {
+      Core()
 
       const element = document.createElement('div')
-      // Check if extensions are available
       expect(typeof (element as any).select).toBe('function')
       expect(typeof (element as any).addClass).toBe('function')
     })

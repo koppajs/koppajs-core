@@ -52,10 +52,8 @@ let queuedTakes: TakeArgs[] = []
  * - Starts disconnection observer
  *
  * Safe to call multiple times (idempotent).
- *
- * @public
  */
-export function initDomEnvironment(): void {
+function initDomEnvironment(): void {
   if (domInitialized) return
   domInitialized = true
 
