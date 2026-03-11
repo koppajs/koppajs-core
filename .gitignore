@@ -32,3 +32,10 @@ coverage
 **/*_del
 ---*
 .ai/
+
+# Ignore accidentally generated declarations inside src.
+# Only the intentional ambient declarations belong there.
+src/*.d.ts
+src/**/*.d.ts
+!src/globals.d.ts
+!src/kpa.d.ts

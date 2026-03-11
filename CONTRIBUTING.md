@@ -197,18 +197,17 @@ Refer to the repository’s `package.json` for project-specific commands.
 
 ## Releasing
 
-KoppaJS projects use a **manual, tag-driven release process**.
+`@koppajs/koppajs-core` uses a repository-specific release workflow.
 
-General flow:
+The short version is:
 
-1. Update version and changelog
-2. Commit the release preparation
-3. Tag the release (`vX.Y.Z`)
-4. Push the tag to `main`
+1. Finalize the release content on `develop`
+2. Create a `release/*` branch
+3. Merge that branch into `main`
+4. Tag the release commit on `main` as `vX.Y.Z`
+5. Push the tag to trigger the release workflow
 
-CI will validate the release and publish artifacts where applicable.
-
-Exact release behavior may vary by repository.
+The full process is documented in [RELEASE.md](./RELEASE.md).
 
 <p align="right">(<a href="#contributing-top">back to top</a>)</p>
 
