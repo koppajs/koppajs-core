@@ -61,7 +61,19 @@ export default [
       '@typescript-eslint/no-explicit-any': 'off',
 
       // Prettier as the final formatting authority
-      'prettier/prettier': 'error',
+      'prettier/prettier': [
+        'error',
+        {
+          semi: false,
+          singleQuote: true,
+          trailingComma: 'all',
+          printWidth: 90,
+          tabWidth: 2,
+          endOfLine: 'lf',
+          arrowParens: 'always',
+          bracketSpacing: true,
+        },
+      ],
     },
   },
 ]
