@@ -14,6 +14,7 @@ The effective flow is:
 4. Tag the release commit on `main` as `vX.Y.Z`
 5. Push the tag
 6. Let GitHub Actions validate and publish the release
+7. Merge the updated `main` back into `develop`
 
 ---
 
@@ -36,6 +37,8 @@ Important consequences:
 - A tag alone triggers the release workflow
 - The tag version must exactly match `package.json`
 - The tag must point to the release commit on `main`
+- After a successful release, `main` should be merged back into `develop`
+  so release-state metadata and any `main`-side adjustments are not lost
 
 Do not tag `develop`.
 Do not tag the `release/*` branch.
@@ -81,6 +84,8 @@ In other words:
 - `release/*` is the transport branch for that already prepared state
 - `main` is the branch that receives the final release commit
 - the tag on `main` is the technical release trigger
+- after the release, `main` becomes the source for the final synchronization
+  back into `develop`
 
 ---
 
@@ -154,7 +159,7 @@ Create a release branch from the validated `develop` state.
 Example:
 
 ```bash
-git checkout -b release/3.0.1
+git checkout -b release/X.Y.Z
 ```
 
 The exact branch name can follow the team convention.
@@ -178,7 +183,7 @@ Conceptually:
 
 ```bash
 git checkout main
-git merge --no-ff release/3.0.1
+git merge --no-ff release/X.Y.Z
 ```
 
 If your repository policy requires a pull request, use a pull request.
@@ -194,13 +199,13 @@ Example:
 ```bash
 git checkout main
 git pull
-git tag v3.0.1
+git tag vX.Y.Z
 ```
 
 The tag format is mandatory:
 
-- `v3.0.1` is valid
-- `3.0.1` is not valid for this workflow
+- `vX.Y.Z` is valid
+- `X.Y.Z` is not valid for this workflow
 
 ### 5. Push `main` and the tag
 
@@ -210,11 +215,47 @@ Example:
 
 ```bash
 git push origin main
-git push origin v3.0.1
+git push origin vX.Y.Z
 ```
 
 The release workflow is triggered by the tag push.
 Without the tag push, no npm release happens.
+
+### 6. Wait for the release workflow to finish
+
+Do not merge `main` back into `develop` before the release result is clear.
+
+First verify that:
+
+- the GitHub Actions release workflow passed
+- the GitHub Release was created
+- the npm publish step completed successfully
+
+Only after that should the branch synchronization be finalized.
+
+### 7. Merge `main` back into `develop`
+
+After the release has been successfully published, merge the updated `main`
+back into `develop`.
+
+This is the preferred final cleanup step for this repository.
+
+Why it matters:
+
+- it keeps `develop` aligned with the exact released state on `main`
+- it preserves release-only metadata updates
+- it brings back any `main`-side adjustments made during the release path
+- it prevents the next release from starting from an incomplete branch state
+
+Conceptually:
+
+```bash
+git checkout develop
+git merge --no-ff main
+```
+
+If your repository policy requires a pull request, merge `main` back into
+`develop` through a pull request instead.
 
 ---
 
@@ -255,8 +296,8 @@ If any step fails, the release job stops immediately.
 
 The release workflow contains an explicit guard:
 
-- tag `v3.0.1` requires `package.json` version `3.0.1`
-- tag `v3.0.1` with `package.json` version `3.0.0` fails the release
+- tag `vX.Y.Z` requires `package.json` version `X.Y.Z`
+- a mismatched tag and `package.json` version fails the release
 
 This is one of the most important failure points in the process.
 
@@ -302,6 +343,7 @@ Use this as the maintainer checklist for every release:
 11. Watch the GitHub Actions release workflow
 12. Verify the GitHub Release exists
 13. Verify the package version is available on npm
+14. Merge `main` back into `develop`
 
 ---
 
@@ -314,14 +356,15 @@ Use this as the maintainer checklist for every release:
 - Forgetting to update `CHANGELOG.md`
 - Assuming a merge to `main` automatically publishes to npm
 - Forgetting that the release workflow uses the pushed tag as its trigger
+- Forgetting to merge the released `main` state back into `develop`
 
 ---
 
 ## Summary
 
 For `@koppajs/koppajs-core`, the release is prepared on `develop`, moved through
-a `release/*` branch, merged into `main`, and only then triggered by a version
-tag on `main`.
+a `release/*` branch, merged into `main`, triggered by a version tag on `main`,
+and finally synchronized back from `main` into `develop`.
 
 The tag is not a formality.
 It is the event that starts validation, GitHub release creation, and npm
