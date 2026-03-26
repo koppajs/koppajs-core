@@ -29,10 +29,13 @@ describe('identity helpers', () => {
     setSlotId(node, 'slot-def')
     expect(Object.keys(node)).not.toContain(STRUCT_ID as any)
     expect(Object.keys(node)).not.toContain(SLOT_ID as any)
-    let found = false
+    const enumeratedKeys: string[] = []
     for (const key in node) {
-      if (key === STRUCT_ID || key === SLOT_ID) found = true
+      enumeratedKeys.push(key)
     }
-    expect(found).toBe(false)
+    expect(enumeratedKeys).toEqual([])
+    expect(Object.getOwnPropertySymbols(node)).toEqual(
+      expect.arrayContaining([STRUCT_ID, SLOT_ID]),
+    )
   })
 })

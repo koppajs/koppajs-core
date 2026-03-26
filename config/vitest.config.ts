@@ -1,8 +1,6 @@
 import { defineConfig } from 'vitest/config'
-import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
-  plugins: [tsconfigPaths({ projects: ['./config/tsconfig.test.json'] })],
   resolve: {
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
   },
@@ -11,10 +9,17 @@ export default defineConfig({
     include: ['test/**/*.test.ts'],
     setupFiles: ['test/setup.ts'],
     coverage: {
+      all: true,
       provider: 'v8',
       reporter: ['text', 'html'],
       include: ['src/**/*.ts'],
-      exclude: ['**/*.d.ts', 'src/types.ts', 'src/types/**'],
+      exclude: ['**/*.d.ts', 'src/types.ts', 'src/types/**', 'src/utils/index.ts'],
+      thresholds: {
+        statements: 84,
+        branches: 75,
+        functions: 90,
+        lines: 85,
+      },
     },
   },
 })

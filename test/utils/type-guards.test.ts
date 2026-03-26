@@ -6,7 +6,7 @@ import {
   isHTMLElementWithInstance,
   hasComponentInstance,
   isValidLoopMatch,
-} from '../../src/utils/index.ts'
+} from '../../src/utils/index'
 import type { ComponentSource, IPlugin, IModule } from '../../src/types'
 
 describe('type-guards', () => {

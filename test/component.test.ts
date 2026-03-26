@@ -1047,8 +1047,8 @@ describe('component', () => {
     })
 
     // NOTE: Tests for child local state and closure variable preservation
-    // are verified at the integration level (koppajs-example) since the
-    // Vite plugin handles script wrapping differently than compileCode().
+    // belong to scaffolded-starter integration coverage because the Vite
+    // plugin handles script wrapping differently than compileCode().
     // The key behavior tested here is that nested custom elements are NOT
     // disconnected/reconnected on parent re-render, which means:
     // - connectedCallback is NOT called again

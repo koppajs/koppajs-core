@@ -36,20 +36,8 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Prettier check
-        run: |
-          echo "=== Check for .editorconfig in parent dirs ==="
-          ls -la ~/.editorconfig 2>/dev/null || echo "No ~/.editorconfig"
-          ls -la /home/runner/.editorconfig 2>/dev/null || echo "No /home/runner/.editorconfig"
-          ls -la .editorconfig 2>/dev/null || echo "No ./.editorconfig"
-          echo "=== Prettier format + diff ==="
-          pnpm prettier --write . --config config/prettier.config.mjs --ignore-path config/.prettierignore
-          git diff --stat
-          echo "=== Detailed diff (first 100 lines) ==="
-          git diff | head -100
-          echo "=== Check ==="
-          git checkout -- .
-          pnpm prettier --check . --config config/prettier.config.mjs --ignore-path config/.prettierignore
+      - name: Format check
+        run: pnpm format:check
 
       - name: Test
         run: pnpm test:ci

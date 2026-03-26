@@ -288,7 +288,7 @@ describe('createModel', () => {
     })
 
     it('handles replacement of empty array with items', async () => {
-      const model = createModel({ items: [] })
+      const model = createModel<{ items: number[] }>({ items: [] })
       const observer = vi.fn()
       model.addObserver(observer)
 

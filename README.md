@@ -28,9 +28,11 @@
   <p align="center">
     <a href="https://github.com/koppajs/koppajs-documentation">Documentation</a>
     &middot;
+    <a href="https://github.com/koppajs/create-koppajs">create-koppajs</a>
+    &middot;
     <a href="https://github.com/koppajs/koppajs-vite-plugin">Vite Plugin</a>
     &middot;
-    <a href="https://github.com/koppajs/koppajs-example">Example Project</a>
+    <a href="https://github.com/koppajs/koppajs-router">Router</a>
     &middot;
     <a href="https://github.com/koppajs/koppajs-core/issues">Issues</a>
   </p>

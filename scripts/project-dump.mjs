@@ -3,7 +3,7 @@
 /**
  * High-End Project Dump & Analysis (Node >= 18) - v6
  *
- * Outputs to .local/ (max 10 files):
+ * Outputs to .ai/ (max 10 files):
  * - project-structure.txt   (git ls-files if possible, else fs walk)
  * - project-dump.txt        (text file contents; binary/huge files noted)
  * - project-report.json     (machine report)
@@ -63,7 +63,7 @@ const options = {
   projectRoot: PROJECT_ROOT,
 
   /** Output directory name (relative to projectRoot) */
-  outputDirName: '.local',
+  outputDirName: '.ai',
 
   /**
    * Explicit project name override.
@@ -108,7 +108,7 @@ const options = {
   /**
    * Output directory for ZIP artifacts (absolute path or relative to projectRoot).
    * Env override: DUMP_ZIP_OUTPUT_DIR
-   * Defaults to the same directory as other outputs (.local/)
+   * Defaults to the same directory as other outputs (.ai/)
    */
   zipOutputDir: process.env.DUMP_ZIP_OUTPUT_DIR || undefined,
 

@@ -117,11 +117,7 @@ export function isSimplePathExpression(expression: string): boolean {
  * @param value - Value to set
  * @throws Error if path is invalid or property is read-only
  */
-export function setValueByPath(
-  obj: Record<string, unknown>,
-  path: string,
-  value: unknown,
-): void {
+export function setValueByPath(obj: unknown, path: string, value: unknown): void {
   if (obj == null || (typeof obj !== 'object' && typeof obj !== 'function')) {
     throw new Error('❌ setValueByPath: target must be an object.')
   }
@@ -142,7 +138,7 @@ export function setValueByPath(
   const hasOwn = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k)
 
   const last = tokens.pop()!
-  let target: Record<string, unknown> = obj
+  let target = obj as Record<string, unknown>
 
   for (const key of tokens) {
     if (target == null || (typeof target !== 'object' && typeof target !== 'function')) {

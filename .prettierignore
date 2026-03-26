@@ -4,6 +4,10 @@
 .idea
 .vscode
 
+# Ignore generated and local analysis artefacts
+.ai
+.local
+
 # Ignore build artefacts and generated output
 dist
 coverage
@@ -15,6 +19,3 @@ package-lock.json
 
 # Ignore auto-generated / temporary files starting with '---'
 ---*
-
-# Ignore test coverage output (if generated later)
-coverage

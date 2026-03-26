@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { kebabToCamel, evaluateExpression } from '../../src/utils/index.ts'
+import { kebabToCamel, evaluateExpression } from '../../src/utils/index'
 
 describe('kebabToCamel', () => {
   it('converts kebab-case to camelCase', () => {

@@ -1,12 +1,14 @@
 import js from '@eslint/js'
 import tsPlugin from '@typescript-eslint/eslint-plugin'
 import tsParser from '@typescript-eslint/parser'
-import prettierPlugin from 'eslint-plugin-prettier'
+import eslintConfigPrettier from 'eslint-config-prettier'
 
 /** Global ignore list (replaces .eslintignore) */
 const ignores = [
   '.git',
   '.history/**',
+  '.ai/**',
+  '.local/**',
   '.vscode/**',
   '.idea/**',
   'node_modules/**',
@@ -40,7 +42,6 @@ export default [
     languageOptions,
     plugins: {
       '@typescript-eslint': tsPlugin,
-      prettier: prettierPlugin,
     },
     rules: {
       // Base ESLint recommended rules
@@ -59,21 +60,7 @@ export default [
 
       // Optional: disable if you refactor frequently
       '@typescript-eslint/no-explicit-any': 'off',
-
-      // Prettier as the final formatting authority
-      'prettier/prettier': [
-        'error',
-        {
-          semi: false,
-          singleQuote: true,
-          trailingComma: 'all',
-          printWidth: 90,
-          tabWidth: 2,
-          endOfLine: 'lf',
-          arrowParens: 'always',
-          bracketSpacing: true,
-        },
-      ],
     },
   },
+  eslintConfigPrettier,
 ]

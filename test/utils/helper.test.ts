@@ -7,7 +7,7 @@ import {
   setValueByPath,
   isSimplePathExpression,
   bindOnce,
-} from '../../src/utils/index.ts'
+} from '../../src/utils/index'
 
 describe('bindMethods', () => {
   it('binds method correctly to data context', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { domExtensions } from '../../src/utils/index.ts'
+import { domExtensions } from '../../src/utils/index'
 
 describe('domExtensions', () => {
   let container: HTMLElement

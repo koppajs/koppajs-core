@@ -1,13 +1,16 @@
+const quoteFiles = (filenames) =>
+  filenames.map((filename) => JSON.stringify(filename)).join(' ')
+
 export default {
   // Only staged code files are processed by ESLint + Prettier
   // Use filenames argument so ESLint only lints staged files, not the whole project
   '**/*.{ts,tsx,js,cjs,mjs}': (filenames) => [
-    `pnpm eslint --config config/eslint.config.mjs --fix ${filenames.join(' ')}`,
-    `prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --write ${filenames.join(' ')}`,
+    `pnpm exec eslint --fix ${quoteFiles(filenames)}`,
+    `pnpm exec prettier --write ${quoteFiles(filenames)}`,
   ],
 
   // Pure text-based formats are formatted by Prettier only
-  '**/*.{json,md,yaml}': [
-    'prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --write',
+  '**/*.{json,md,yaml,yml}': (filenames) => [
+    `pnpm exec prettier --write ${quoteFiles(filenames)}`,
   ],
 }
