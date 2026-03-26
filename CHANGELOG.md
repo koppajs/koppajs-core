@@ -22,6 +22,30 @@ Changes will only appear here when they:
 
 ---
 
+## [3.0.3] — Tooling Baseline And Ecosystem Cleanup
+
+**2026-03-26**
+
+Patch release to tighten repository quality workflow, align ecosystem-facing
+docs, and harden a small helper type contract. No intentional breaking runtime
+changes.
+
+### Added
+
+- Added repository meta-layer documents, ADR/spec directories, and explicit
+  contributor workflow guidance
+
+### Changed
+
+- Tightened `setValueByPath(...)` typing without widening runtime behavior
+- Split source and test TypeScript checks and hardened coverage thresholds
+- Simplified lint, format, hook, and CI workflow configuration around the
+  current repository baseline
+- Updated README ecosystem links to point at the released starter/tooling
+  surface
+
+---
+
 ## [3.0.2] — Public API Cleanup
 
 **2026-03-11**

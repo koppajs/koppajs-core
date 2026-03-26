@@ -47,6 +47,26 @@ KoppaJS follows **Intentional Architecture**:
 
 ---
 
+## Repository Governance
+
+This repository now maintains an explicit meta layer for architecture, quality, and AI-assisted work.
+
+Before changing runtime behavior or repository workflow, read:
+
+- `DECISION_HIERARCHY.md`
+- `AI_CONSTITUTION.md`
+- `ARCHITECTURE.md`
+- `DEVELOPMENT_RULES.md`
+- `TESTING_STRATEGY.md`
+- relevant documents under `docs/adr/`, `docs/specs/`, `docs/architecture/`, and `docs/meta/`
+
+If your change alters architecture, public behavior, testing expectations, or workflow, update the
+relevant meta documents in the same change. Major architectural decisions require a new ADR.
+
+<p align="right">(<a href="#contributing-top">back to top</a>)</p>
+
+---
+
 ## Requirements
 
 Before contributing, ensure you have:
@@ -156,6 +176,12 @@ General expectations:
 - Each exported utility or behavior should be covered
 - No global mocks unless unavoidable
 - Test data should be explicit and minimal
+
+For this repository specifically:
+
+- prefer `spec -> tests -> implementation` when behavior changes
+- add regression tests for bug fixes
+- treat lifecycle, reactive identity, reconciliation, and teardown behavior as architecture-critical
 
 <p align="right">(<a href="#contributing-top">back to top</a>)</p>
 

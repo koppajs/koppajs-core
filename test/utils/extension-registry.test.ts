@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { ExtensionRegistry } from '../../src/utils/index.ts'
+import { ExtensionRegistry } from '../../src/utils/index'
 import type { IPlugin, IModule } from '../../src/types'
 
 describe('ExtensionRegistry', () => {

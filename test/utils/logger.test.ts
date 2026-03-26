@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { logger, LogLevel } from '../../src/utils/index.ts'
+import { logger, LogLevel } from '../../src/utils/index'
 
 describe('Logger', () => {
   beforeEach(() => {

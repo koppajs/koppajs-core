@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { compileCode } from '../../src/utils/index.ts'
+import { compileCode } from '../../src/utils/index'
 import type { ComponentContext } from '../../src/types'
 
 describe('script', () => {

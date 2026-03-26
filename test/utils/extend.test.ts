@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extend } from '../../src/utils/index.ts'
+import { extend } from '../../src/utils/index'
 
 describe('extend', () => {
   it('extends Object.prototype with objectExtensions', () => {

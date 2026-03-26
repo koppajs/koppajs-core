@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { extractWatchListFromTemplate } from '../../src/utils/index.ts'
+import { extractWatchListFromTemplate } from '../../src/utils/index'
 
 describe('template-watch', () => {
   describe('extractWatchListFromTemplate', () => {

@@ -5,7 +5,7 @@ import {
   hookOff,
   hookEmit,
   hookClear,
-} from '../../src/utils/index.ts'
+} from '../../src/utils/index'
 import type { LifecycleHook } from '../../src/types'
 
 describe('hook-registry', () => {
