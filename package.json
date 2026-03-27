@@ -1,6 +1,6 @@
 {
   "name": "@koppajs/koppajs-core",
-  "version": "3.0.6",
+  "version": "3.0.7",
   "type": "module",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.cjs.js",
@@ -22,7 +22,7 @@
   "sideEffects": false,
   "repository": {
     "type": "git",
-    "url": "https://github.com/koppajs/koppajs-core"
+    "url": "git+https://github.com/koppajs/koppajs-core.git"
   },
   "description": "Koppa.js is a lightweight, high-performance frontend framework designed for building modern web applications without relying on a virtual DOM. It offers a modular architecture, reactivity, and seamless integration with TypeScript and Vite.",
   "keywords": [

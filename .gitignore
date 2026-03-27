@@ -17,9 +17,6 @@ coverage
 
 # VSCode
 .vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-!.vscode/workspace.code-snippets
 
 # Editor directories and files
 .history/*
