@@ -50,8 +50,8 @@
     <li><a href="#getting-started">Getting Started</a></li>
     <li><a href="#runtime-model">Runtime Model</a></li>
     <li><a href="#roadmap">Roadmap</a></li>
-    <li><a href="#architecture--governance">Architecture & Governance</a></li>
-    <li><a href="#community--contribution">Community & Contribution</a></li>
+    <li><a href="#architecture-governance">Architecture & Governance</a></li>
+    <li><a href="#community-contribution">Community & Contribution</a></li>
     <li><a href="#license">License</a></li>
   </ol>
 </details>
@@ -178,8 +178,7 @@ core consumes at runtime.
 
 ## Architecture & Governance
 
-Project intent, runtime constraints, and contributor rules live in the repo
-meta layer:
+Project intent, contributor rules, and documentation contracts live in the local repo meta layer:
 
 - [AI_CONSTITUTION.md](./AI_CONSTITUTION.md)
 - [ARCHITECTURE.md](./ARCHITECTURE.md)
@@ -188,10 +187,20 @@ meta layer:
 - [TESTING_STRATEGY.md](./TESTING_STRATEGY.md)
 - [RELEASE.md](./RELEASE.md)
 - [ROADMAP.md](./ROADMAP.md)
-- [docs/specs/component-runtime-contract.md](./docs/specs/component-runtime-contract.md)
-- [docs/architecture/runtime-flow.md](./docs/architecture/runtime-flow.md)
+- [CHANGELOG.md](./CHANGELOG.md)
+- [CONTRIBUTING.md](./CONTRIBUTING.md)
+- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
+- [docs/specs/README.md](./docs/specs/README.md)
+- [docs/specs/repository-documentation-contract.md](./docs/specs/repository-documentation-contract.md)
+- [docs/meta/README.md](./docs/meta/README.md)
 
-Tagged releases are documented in `CHANGELOG.md`.
+The file-shape contract for `README.md`, `CHANGELOG.md`, `CODE_OF_CONDUCT.md`, and `CONTRIBUTING.md` is defined in [docs/specs/repository-documentation-contract.md](./docs/specs/repository-documentation-contract.md).
+
+Run the local document guard before committing:
+
+```bash
+pnpm run check:docs
+```
 
 ---
 
@@ -202,6 +211,8 @@ Issues and pull requests are welcome:
 https://github.com/koppajs/koppajs-core/issues
 
 Contributor workflow details live in [CONTRIBUTING.md](./CONTRIBUTING.md).
+
+Community expectations live in [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).
 
 ---
 
