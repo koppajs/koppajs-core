@@ -69,7 +69,7 @@ The local pre-commit hook runs the same guard and blocks the commit when the con
 
 ## Requirements
 
-- Node.js >= 20
+- Node.js >= 22
 - pnpm >= 10.24.0
 
 Install dependencies:

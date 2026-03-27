@@ -34,7 +34,7 @@ GitHub Actions currently enforces the following:
 - `ci.yml`
   - runs on push to `main`
   - runs on pull requests targeting `develop` or `main`
-  - tests Node 22
+  - tests Node 22 and Node 24
   - runs typecheck, lint, format check, tests with coverage, and build
 
 ## Release Gates

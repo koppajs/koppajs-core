@@ -12,13 +12,11 @@ not every internal refactor.
 
 ## [Unreleased]
 
-This section is intentionally empty.
+### Changed
 
-Changes will only appear here when they:
-
-- affect runtime behavior,
-- change documented guarantees,
-- or modify the public API surface.
+- Relaxed the published package Node.js engine to `>=22`
+- Expanded CI coverage from only Node 22 to Node 22 and Node 24
+- Relaxed repository-local Node.js guidance to a repo-wide minimum of Node.js 22
 
 ---
 
