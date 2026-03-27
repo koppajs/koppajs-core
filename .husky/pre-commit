@@ -7,4 +7,4 @@ if ! command -v pnpm >/dev/null 2>&1; then
 fi
 
 pnpm run check:docs
-pnpm exec lint-staged
+pnpm exec lint-staged --config lint-staged.config.js

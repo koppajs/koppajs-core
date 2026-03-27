@@ -142,7 +142,7 @@ Any breaking change to this contract requires coordinated documentation and an A
 ## Repository Boundaries
 
 - `src/` is the runtime package. It must not depend on `test/`, `scripts/`, or generated output.
-- `config/` owns TypeScript, Vite, ESLint, Prettier, lint-staged, and commitlint configuration.
+- Root config files own TypeScript, Vite, Vitest, ESLint, Prettier, lint-staged, and commitlint configuration.
 - `test/` mirrors runtime concerns and validates behavior under JSDOM using Vitest.
 - `scripts/` contains maintenance tooling, including the `.ai/` dump generator.
 - `.github/workflows/` owns CI and release automation.

@@ -59,7 +59,7 @@ Before cutting a release, ensure all of the following are true:
 
 Tooling expectations for local verification:
 
-- Node.js 20 or newer
+- Node.js 22
 - pnpm 10.24.0 or newer
 
 This repository also enforces `engine-strict=true` in `.npmrc`, so incompatible
@@ -99,7 +99,7 @@ Recommended commands:
 pnpm install
 pnpm typecheck
 pnpm lint
-pnpm prettier --check . --config config/prettier.config.mjs --ignore-path config/.prettierignore
+pnpm format:check
 pnpm test:ci
 pnpm build
 ```
