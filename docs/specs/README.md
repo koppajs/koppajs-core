@@ -1,43 +1,27 @@
 # Specifications
 
-## Purpose
-
 Specs define intended behavior before or alongside implementation work.
-They are the top-level behavioral documents in this repository once approved.
+They are the highest-precedence behavioral documents in this repository once approved.
 
-## When A Spec Is Required
+## When To Add Or Update A Spec
 
-Create or update a spec when changing:
+- A public behavior changes
+- A contributor-facing workflow changes
+- A governed root document changes shape
+- A new subsystem takes on externally visible behavior
 
-- public API behavior
-- lifecycle timing or ordering
-- directive semantics
-- extension interfaces
-- the core/plugin contract
-- release or quality behavior that contributors depend on
+## Required Sections
 
-## Required Spec Contents
-
-Every spec should cover:
-
+- scope
 - behavior
-- inputs
-- outputs
 - constraints
 - edge cases
-- acceptance criteria
+- validation or acceptance criteria
 
-Use `docs/specs/template.md` as the starting point.
-
-## Status Guidance
-
-Suggested statuses:
-
-- Draft
-- Approved
-- Implemented
-- Superseded
+Use the local spec template when one exists.
 
 ## Current Specs
 
 - `component-runtime-contract.md`
+- `repository-documentation-contract.md`
+- `template.md`

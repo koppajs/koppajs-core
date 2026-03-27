@@ -1,13 +1,11 @@
 <a id="coc-top"></a>
 
-<!-- PROJECT LOGO -->
 <div align="center">
   <img src="https://public-assets-1b57ca06-687a-4142-a525-0635f7649a5c.s3.eu-central-1.amazonaws.com/koppajs/koppajs-logo-text-900x226.png" width="500" alt="KoppaJS Logo">
 </div>
 
 <br>
 
-<!-- TITLE -->
 <div align="center">
   <h1 align="center">KoppaJS – Code of Conduct</h1>
   <h3 align="center">A respectful and intentional space for building things that feel good to build.</h3>

@@ -22,6 +22,28 @@ Changes will only appear here when they:
 
 ---
 
+## [3.0.4] — Documentation Contract And Release Guardrails
+
+**2026-03-27**
+
+Patch release to formalize governed repository-document contracts, strengthen
+local release validation, and tighten contributor workflow guidance. No
+intentional runtime or public API changes.
+
+### Added
+
+- Added an explicit repository documentation contract spec and a local validator
+  for governed root documents
+
+### Changed
+
+- Added `check:docs` to the main quality gate and local pre-commit flow
+- Tightened README and contributor governance docs around documentation shape
+  and release expectations
+- Updated GitHub Actions workflow action runtimes for CI and release automation
+
+---
+
 ## [3.0.3] — Tooling Baseline And Ecosystem Cleanup
 
 **2026-03-26**

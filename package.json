@@ -1,6 +1,6 @@
 {
   "name": "@koppajs/koppajs-core",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "type": "module",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.cjs.js",
@@ -67,9 +67,10 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run test:ci",
-    "validate": "pnpm run check && pnpm run build",
-    "dump:ai": "node scripts/project-dump.mjs"
+    "check": "pnpm run check:docs && pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run test:ci",
+    "validate": "pnpm run check:docs && pnpm run check && pnpm run build",
+    "dump:ai": "node scripts/project-dump.mjs",
+    "check:docs": "node scripts/check-doc-contract.mjs"
   },
   "packageManager": "pnpm@10.24.0",
   "engines": {
@@ -105,5 +106,6 @@
     "onlyBuiltDependencies": [
       "esbuild"
     ]
-  }
+  },
+  "private": false
 }
