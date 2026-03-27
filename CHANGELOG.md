@@ -22,6 +22,22 @@ Changes will only appear here when they:
 
 ---
 
+## [3.0.6] — Node Baseline Relaxation
+
+**2026-03-27**
+
+Patch release to relax the declared Node.js baseline for package consumers,
+expand CI coverage to newer supported majors, and align repository workflow
+docs with the updated minimum. No intentional runtime or public API changes.
+
+### Changed
+
+- Relaxed the published package Node.js engine to `>=22`
+- Expanded CI coverage from only Node 22 to Node 22 and Node 24
+- Relaxed repository-local Node.js guidance to a repo-wide minimum of Node.js 22
+
+---
+
 ## [3.0.5] — Root Tooling Consolidation And Node 22 Baseline
 
 **2026-03-27**

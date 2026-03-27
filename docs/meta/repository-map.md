@@ -71,7 +71,7 @@ Automation for CI and release.
 
 - `ci.yml`
   - runs on push to `main` and PRs to `develop` or `main`
-  - validates typecheck, lint, format check, tests, and build on Node 22
+  - validates typecheck, lint, format check, tests, and build on Node 22 and Node 24
 - `release.yml`
   - runs on `v*.*.*` tag pushes
   - validates quality gates, checks version alignment, creates a GitHub release, and publishes to npm

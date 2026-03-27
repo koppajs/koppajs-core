@@ -115,10 +115,11 @@ For package consumers:
 - a browser-based application environment
 - a build pipeline that can consume KoppaJS components, typically Vite plus
   `@koppajs/koppajs-vite-plugin`
+- package installation supports Node.js >= 22
 
 For local repository work:
 
-- Node.js 22
+- Node.js >= 22
 - pnpm >= 10.24.0
 
 ---

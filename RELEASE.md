@@ -59,7 +59,7 @@ Before cutting a release, ensure all of the following are true:
 
 Tooling expectations for local verification:
 
-- Node.js 22
+- Node.js >= 22
 - pnpm 10.24.0 or newer
 
 This repository also enforces `engine-strict=true` in `.npmrc`, so incompatible
