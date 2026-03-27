@@ -49,28 +49,21 @@ Vitest suite for runtime behavior.
 - Includes helper utilities under `test/helpers/`
 - Uses JSDOM through `test/setup.ts`
 
-### `config/`
+### Root config files
 
-Repository configuration for:
+Repository configuration lives at the root:
 
-- TypeScript
-- Vite library build
-- Vitest
-- ESLint
-- Prettier
-- lint-staged
-- commitlint
-
-Nothing in `config/` should be imported by runtime source.
-
-### Root config entry points
-
+- `tsconfig.json`
+- `tsconfig.test.json`
+- `tsconfig.types.json`
+- `vite.config.ts`
+- `vitest.config.ts`
 - `eslint.config.mjs`
 - `prettier.config.mjs`
 - `lint-staged.config.js`
 - `commitlint.config.mjs`
 
-These files are thin wrappers that delegate to `config/` so editor integrations and CLI defaults work without duplicating the real configuration.
+Nothing in these files should be imported by runtime source.
 
 ### `.github/workflows/`
 
@@ -78,7 +71,7 @@ Automation for CI and release.
 
 - `ci.yml`
   - runs on push to `main` and PRs to `develop` or `main`
-  - validates typecheck, lint, format check, tests, and build on Node 20 and 22
+  - validates typecheck, lint, format check, tests, and build on Node 22
 - `release.yml`
   - runs on `v*.*.*` tag pushes
   - validates quality gates, checks version alignment, creates a GitHub release, and publishes to npm

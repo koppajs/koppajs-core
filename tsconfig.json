@@ -14,16 +14,16 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": ["../src/**/*.ts", "../src/**/*.d.ts"],
+  "include": ["src/**/*.ts", "src/**/*.d.ts"],
   "exclude": [
-    "../node_modules",
-    "../dist",
-    "../test/**",
-    "../**/*.test.ts",
-    "../.git",
-    "../.idea",
-    "../.vscode",
-    "../.history/**",
-    "../**/*_del"
+    "node_modules",
+    "dist",
+    "test/**",
+    "**/*.test.ts",
+    ".git",
+    ".idea",
+    ".vscode",
+    ".history/**",
+    "**/*_del"
   ]
 }

@@ -118,7 +118,7 @@ For package consumers:
 
 For local repository work:
 
-- Node.js >= 20
+- Node.js 22
 - pnpm >= 10.24.0
 
 ---

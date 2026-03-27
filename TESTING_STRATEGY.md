@@ -102,7 +102,7 @@ The repository quality gates currently include:
 
 - `pnpm typecheck`
 - `pnpm lint`
-- `pnpm prettier --check . --config config/prettier.config.mjs --ignore-path config/.prettierignore`
+- `pnpm format:check`
 - `pnpm test:ci`
 - `pnpm build`
 

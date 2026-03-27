@@ -34,7 +34,7 @@ GitHub Actions currently enforces the following:
 - `ci.yml`
   - runs on push to `main`
   - runs on pull requests targeting `develop` or `main`
-  - tests Node 20 and Node 22
+  - tests Node 22
   - runs typecheck, lint, format check, tests with coverage, and build
 
 ## Release Gates
@@ -56,7 +56,7 @@ After those pass, the workflow creates a GitHub release and publishes to npm.
 Local Git hooks currently provide:
 
 - `pre-commit`
-  - runs `lint-staged` through the root wrapper config
+  - runs `lint-staged` through the root config
 - `commit-msg`
   - runs `commitlint`
 
