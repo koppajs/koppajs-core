@@ -22,6 +22,24 @@ Changes will only appear here when they:
 
 ---
 
+## [3.0.7] — Release Workflow and Repository Baseline Cleanup
+
+**2026-03-27**
+
+Patch release to finish the repository-side cleanup around the Node.js baseline
+update and align release automation with the maintainer default runtime. No
+intentional runtime or public API changes.
+
+### Changed
+
+- Removed obsolete tracked `.vscode` defaults from the repository baseline and
+  simplified `.gitignore` to ignore editor-local settings consistently
+- Normalized `package.json.repository.url` to the npm-compatible
+  `git+https://...git` form
+- Switched the release workflow to read its Node.js version from `.nvmrc`
+
+---
+
 ## [3.0.6] — Node Baseline Relaxation
 
 **2026-03-27**
