@@ -12,6 +12,24 @@ not every internal refactor.
 
 ## [Unreleased]
 
+This section is intentionally empty.
+
+Changes will only appear here when they:
+
+- affect runtime behavior,
+- change documented guarantees,
+- or modify the public API surface.
+
+---
+
+## [3.0.6] — Node Baseline Relaxation
+
+**2026-03-27**
+
+Patch release to relax the declared Node.js baseline for package consumers,
+expand CI coverage to newer supported majors, and align repository workflow
+docs with the updated minimum. No intentional runtime or public API changes.
+
 ### Changed
 
 - Relaxed the published package Node.js engine to `>=22`
