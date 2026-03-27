@@ -22,6 +22,27 @@ Changes will only appear here when they:
 
 ---
 
+## [3.0.5] — Root Tooling Consolidation And Node 22 Baseline
+
+**2026-03-27**
+
+Patch release to consolidate repository tooling at the root, simplify local
+tool invocation, and standardize maintainer workflows on Node.js 22. No
+intentional runtime or public API changes.
+
+### Changed
+
+- Moved TypeScript, Vite, Vitest, ESLint, Prettier, lint-staged, and
+  commitlint configuration to root-level entry points
+- Simplified package scripts and Husky hooks to use the root configuration
+  directly
+- Pinned repository validation and contributor workflow documentation to
+  Node.js 22
+- Removed obsolete repository-only maintenance artifacts that no longer match
+  the current workflow
+
+---
+
 ## [3.0.4] — Documentation Contract And Release Guardrails
 
 **2026-03-27**
