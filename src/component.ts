@@ -124,6 +124,84 @@ export function processSlots({
   })
 }
 
+/** Stage slot processing off-DOM; move the original nodes only at commit time. */
+function prepareSlots(container: DocumentFragment, host: HTMLElement, refs: Refs) {
+  const originals = new Map<Node, Node>()
+  const snapshots = new Map<
+    Node,
+    { attributes: Map<string, string>; children: Node[]; value: string | null }
+  >()
+  const remapRefs = () => {
+    for (const key of Object.keys(refs)) {
+      const original = originals.get(refs[key])
+      if (original instanceof HTMLElement) refs[key] = original
+    }
+  }
+  if (!container.querySelector('slot')) return { commit: () => {}, remapRefs }
+  const stagedHost = document.createElement('div')
+  const stage = (node: Node): Node => {
+    const clone = node.cloneNode(false)
+    originals.set(clone, node)
+    if (!(node instanceof HTMLElement && node.tagName.includes('-'))) {
+      for (const child of node.childNodes) clone.appendChild(stage(child))
+    }
+    snapshots.set(clone, {
+      attributes: new Map(
+        node instanceof HTMLElement
+          ? Array.from(node.attributes, (attr) => [attr.name, attr.value])
+          : [],
+      ),
+      children: Array.from(clone.childNodes),
+      value: clone.nodeValue,
+    })
+    return clone
+  }
+  for (const node of host.childNodes) stagedHost.appendChild(stage(node))
+  processSlots({ container, host: stagedHost })
+
+  const commit = () => {
+    const restore = (node: Node): Node => {
+      const original = originals.get(node)
+      const snapshot = snapshots.get(node)
+      const children = Array.from(node.childNodes)
+      const restoredChildren = children.map(restore)
+      if (!original || !snapshot) {
+        children.forEach((child, i) => {
+          if (restoredChildren[i] !== child) child.replaceWith(restoredChildren[i])
+        })
+        return node
+      }
+      if (original instanceof HTMLElement && node instanceof HTMLElement) {
+        // Apply processing changes only; keep modifications made through live refs in hooks.
+        for (const name of snapshot.attributes.keys()) {
+          if (!node.hasAttribute(name)) original.removeAttribute(name)
+        }
+        for (const attr of Array.from(node.attributes)) {
+          if (snapshot.attributes.get(attr.name) !== attr.value) {
+            original.setAttribute(attr.name, attr.value)
+          }
+        }
+        if (
+          !original.tagName.includes('-') &&
+          (children.length !== snapshot.children.length ||
+            children.some((child, i) => child !== snapshot.children[i]))
+        ) {
+          original.replaceChildren(...restoredChildren)
+        }
+      } else if (node.nodeValue !== snapshot.value) {
+        original.nodeValue = node.nodeValue
+      }
+      return original
+    }
+    for (const child of Array.from(container.childNodes)) {
+      const restored = restore(child)
+      if (restored !== child) child.replaceWith(restored)
+    }
+    remapRefs()
+  }
+  return { commit, remapRefs }
+}
+
 /**
  * Validates a prop value against its definition.
  * @param propName - Name of the prop
@@ -294,6 +372,8 @@ function processProps({
  * @param source - Component source with template, script, and style
  */
 export function registerComponent(componentName: string, source: ComponentSource): void {
+  const connectedHosts = new Set<HTMLElement>()
+
   customElements.define(
     componentName,
     class extends HTMLElement {
@@ -305,6 +385,7 @@ export function registerComponent(componentName: string, source: ComponentSource
       public instance?: ComponentInstance
 
       // Cleanup state for deterministic teardown
+      private _connectionVersion = 0
       private _isDisconnected = false
       private _isMounted = false // Track if component has been mounted (persists across connectedCallback calls)
       private _model?: ReturnType<typeof createModel>
@@ -321,6 +402,17 @@ export function registerComponent(componentName: string, source: ComponentSource
 
       async connectedCallback() {
         const host = this as HTMLElementWithInstance
+        const connectionVersion = ++this._connectionVersion
+        this._isDisconnected = false
+        this._renderAborted = false
+        this._pendingRender = null
+        connectedHosts.add(this)
+        if (!document.head.querySelector(`style#style-${componentName}`)) {
+          const style = document.createElement('style')
+          style.id = `style-${componentName}`
+          style.textContent = source.style
+          document.head.appendChild(style)
+        }
 
         // ============================================================
         // SCENARIO 1: RERENDER/RECONNECT - Reuse existing instance
@@ -341,9 +433,6 @@ export function registerComponent(componentName: string, source: ComponentSource
 
           // Re-add observer in case disconnectedCallback already removed it
           this._model.addObserver(this._observerFn)
-
-          // Restore mounted state (disconnectedCallback may have reset it)
-          this._isMounted = true
 
           // Props neu verarbeiten (können sich geändert haben)
           if (existingInstance.props && existingInstance.state) {
@@ -389,6 +478,8 @@ export function registerComponent(componentName: string, source: ComponentSource
           }
         }
 
+        if (connectionVersion !== this._connectionVersion || this._isDisconnected) return
+
         const compiledScript = compileCode(source.script, resolvedDeps)
 
         const refs: Refs = {}
@@ -410,14 +501,6 @@ export function registerComponent(componentName: string, source: ComponentSource
           })
           return { promise, resolve }
         })()
-
-        // Style injection
-        if (!document.head.querySelector(`style#style-${componentName}`)) {
-          const style = document.createElement('style')
-          style.id = `style-${componentName}`
-          style.textContent = source.style
-          document.head.appendChild(style)
-        }
 
         let state!: State
         let userContext!: State
@@ -590,15 +673,16 @@ export function registerComponent(componentName: string, source: ComponentSource
           try {
             const container = clonedTemplate.content.cloneNode(true) as DocumentFragment
 
-            processSlots({ container, host })
+            const slots = prepareSlots(container, host, refs)
 
             // Use userContext (which includes methods) for template processing
             // This allows template expressions to call component methods
             const templateContext = useUserContext && userContext ? userContext : state
             await processTemplate(container, templateContext, refs)
+            slots.remapRefs()
 
             // Check if render was aborted during template processing
-            if (this._renderAborted) {
+            if (this._renderAborted || this._model !== model) {
               // Schedule new render with latest state
               this._pendingRender = render
               return
@@ -609,27 +693,9 @@ export function registerComponent(componentName: string, source: ComponentSource
             await hookEmit(lifecycleRegistry, 'processed')
 
             // Check again if render was aborted
-            if (this._renderAborted) {
+            if (this._renderAborted || this._model !== model) {
               this._pendingRender = render
               return
-            }
-
-            if (useUserContext && userContext) {
-              bindNativeEvents(userContext, container)
-              // Clean up previous event listeners (including window) before adding new ones
-              if (this._eventCleanup) this._eventCleanup()
-              this._eventCleanup = setupEvents(userContext, events, container, refs)
-            } else {
-              // For composite type, use methods directly without binding
-              bindNativeEventsForComposite(methods, container)
-              if (this._eventCleanup) this._eventCleanup()
-              this._eventCleanup = setupEventsForComposite(
-                methods,
-                state,
-                events,
-                container,
-                refs,
-              )
             }
 
             // Flush changes and get changed paths for lifecycle hooks
@@ -660,11 +726,31 @@ export function registerComponent(componentName: string, source: ComponentSource
             )
 
             // Final check before DOM update
-            if (this._renderAborted) {
+            if (this._renderAborted || this._model !== model) {
               // Clean up ephemeral metadata before aborting
               delete (hookContext as StateWithMetadata).changedPaths
               this._pendingRender = render
               return
+            }
+
+            slots.commit()
+
+            if (useUserContext && userContext) {
+              bindNativeEvents(userContext, container)
+              // Clean up previous event listeners (including window) before adding new ones
+              if (this._eventCleanup) this._eventCleanup()
+              this._eventCleanup = setupEvents(userContext, events, container, refs)
+            } else {
+              // For composite type, use methods directly without binding
+              bindNativeEventsForComposite(methods, container)
+              if (this._eventCleanup) this._eventCleanup()
+              this._eventCleanup = setupEventsForComposite(
+                methods,
+                state,
+                events,
+                container,
+                refs,
+              )
             }
 
             // Use DOM reconciliation instead of replaceChildren to preserve
@@ -789,14 +875,18 @@ export function registerComponent(componentName: string, source: ComponentSource
         await hookEmit(lifecycleRegistry, 'created')
 
         // initial render
+        if (this._isDisconnected || this._model !== model) return
         await render()
 
         // MOUNTED HOOK: Nur einmal beim ersten Render, nie beim Reconnect
         // _isMounted wird nur beim ersten Render auf true gesetzt
         // Beim Reconnect wird diese Stelle nie erreicht (Early Return oben)
+        if (this._isDisconnected || this._model !== model) return
         if (!this._isMounted) {
           await hookEmit('global', 'mounted', hookContext)
+          if (this._isDisconnected || this._model !== model) return
           await hookEmit(lifecycleRegistry, 'mounted')
+          if (this._isDisconnected || this._model !== model) return
           this._isMounted = true // Flag setzen - mounted() wird nie wieder feuern
         }
 
@@ -805,11 +895,15 @@ export function registerComponent(componentName: string, source: ComponentSource
 
       async disconnectedCallback() {
         const host = this as HTMLElementWithInstance
+        const connectionVersion = ++this._connectionVersion
+        this._isDisconnected = true
+        this._renderAborted = true
+        this._pendingRender = null
+        connectedHosts.delete(this)
+        if (connectedHosts.size === 0) {
+          document.head.querySelector(`style#style-${componentName}`)?.remove()
+        }
         if (!host.instance) return
-
-        // Reset mounted state when component is disconnected
-        // This allows the component to be properly mounted again if reconnected
-        this._isMounted = false
 
         const instance = host.instance
 
@@ -829,7 +923,7 @@ export function registerComponent(componentName: string, source: ComponentSource
         await hookEmit(instance.lifecycleRegistry, 'beforeDestroy')
 
         // Race guard: if reconnected during async hooks, abort teardown
-        if (!this._isDisconnected) return
+        if (!this._isDisconnected || connectionVersion !== this._connectionVersion) return
 
         // 5. Cleanup DOM event listeners for this component subtree
         cleanupSubtree(this)
@@ -840,21 +934,15 @@ export function registerComponent(componentName: string, source: ComponentSource
           this._eventCleanup = null
         }
 
-        // 6. Remove component style if no other instances exist
-        if (!document.body.querySelector(this.tagName.toLowerCase())) {
-          document.head
-            .querySelector(`style#style-${this.tagName.toLowerCase()}`)
-            ?.remove()
-        }
-
         // 7. Emit destroyed hooks
         await hookEmit('global', 'destroyed', destroyContext)
         await hookEmit(instance.lifecycleRegistry, 'destroyed')
 
         // Race guard: if reconnected during async hooks, abort teardown
-        if (!this._isDisconnected) return
+        if (!this._isDisconnected || connectionVersion !== this._connectionVersion) return
 
         // 8. Release strong references for GC
+        this._isMounted = false
         this._model = undefined
         this._observerFn = undefined
         this._eventCleanup = null

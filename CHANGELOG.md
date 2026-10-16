@@ -14,11 +14,23 @@ not every internal refactor.
 
 This section is intentionally empty.
 
-Changes will only appear here when they:
+---
 
-- affect runtime behavior,
-- change documented guarantees,
-- or modify the public API surface.
+## [3.0.8] — Connected Styles And Slot Preservation
+
+**2026-10-16**
+
+Patch release to prevent unstyled component content on connection and preserve
+live slot content during asynchronous rendering. No new public API is introduced.
+Atomic router transitions still require the separate Router ready/commit contract.
+
+### Fixed
+
+- Insert component CSS synchronously on connection before dependency imports, while still
+  removing it when the last connected host disappears.
+- Keep live slot content in place during asynchronous template processing and mount hooks;
+  preserve original nodes, refs, and listeners when committing the processed template.
+- Prevent disconnected or superseded initialization from committing stale DOM or mounting.
 
 ---
 

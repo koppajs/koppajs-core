@@ -20,15 +20,19 @@ The package is intentionally runtime-focused:
 2. `Core()` initializes the DOM environment once and processes queued registrations.
 3. Components are registered with `customElements.define()` in `src/component.ts`.
 4. When a component connects:
+   - shared per-tag CSS is inserted synchronously before asynchronous work
    - optional dependency imports are resolved from `ComponentSource.deps`
    - controller code is compiled and executed
    - a reactive model is created from controller state
    - props, lifecycle hooks, plugins, and modules are wired
    - the template is processed into a `DocumentFragment`
    - events are bound
+   - slot content is processed on detached staging nodes; original nodes are transferred only at commit
    - the fragment is reconciled into the host element
 5. State mutations schedule re-render work through the model observer pipeline.
-6. Disconnect teardown removes observers, event listeners, styles, and runtime references.
+6. Disconnect removes CSS synchronously when the last connected host disappears, including hosts
+   still initializing. Teardown removes observers, event listeners, and runtime references.
+   Connection versions prevent obsolete asynchronous initialization and renders from committing.
 
 Detailed sequence notes live in `docs/architecture/runtime-flow.md`.
 
