@@ -27,7 +27,9 @@ All of this is idempotent and browser-guarded.
 When a registered custom element connects for the first time:
 
 Before resolving dependencies, track the connected host and insert its shared per-tag CSS
-synchronously. Registration does not insert styles. Each connection has a version so obsolete
+synchronously. Protect original host content locally with temporary host opacity and transition
+overrides before the first await; retain layout and live slot connections. Registration does not
+insert styles. Each connection has a version so obsolete
 initialization cannot continue after a disconnect/reconnect.
 
 1. Resolve optional async dependencies from `ComponentSource.deps`.
@@ -64,6 +66,8 @@ Each render currently does the following:
    - `beforeUpdate` on later renders
 10. Transfer processed slot changes to the original nodes, remap refs, bind native and
     structured events, and reconcile the fragment into the host DOM without another await.
+    Restore temporary first-presentation declarations in that same turn. Only a successful
+    render emits first mounted hooks and resolves readiness; superseded attempts stay protected.
 11. Emit `updated` on non-initial renders.
 12. Clear transient metadata and record the last rendered state version.
 
@@ -91,7 +95,7 @@ When a component disconnects:
 
 1. Invalidate the connection, mark it disconnected, abort pending renders, and remove its
    host from style ownership. Remove CSS synchronously if this was the last connected host,
-   even if it has not created an instance yet.
+   even if it has not created an instance yet. Release local presentation protection.
 2. Remove the model observer.
 3. Emit `beforeDestroy`.
 4. Clean up tracked subtree listeners.
@@ -117,3 +121,7 @@ Reconnect during async teardown is guarded so the runtime can abort destructive 
 - Uses direct method access for native event wiring
 
 Any future change to these semantics requires an ADR because it affects user-facing component behavior.
+
+First-presentation errors release temporary declarations and log the error rather than keeping
+a failed host invisible. Original fallback content may then be exposed. External stylesheet
+loading is consumer-owned. See ADR 0006 for presentation constraints and alternatives.

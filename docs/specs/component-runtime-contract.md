@@ -80,7 +80,10 @@ must not resume initialization, commit DOM, or emit `mounted` after disconnect.
 Each render must:
 
 - clone the stored template
+- protect the host's first presentation synchronously before dependencies or hooks can yield, including hosts whose children arrive after connection
 - prepare host slot content without removing live nodes during asynchronous work
+- keep original slot nodes connected and measurable, but suppress host painting until the first successful local DOM commit; do not wait for descendants or route readiness
+- restore author presentation declarations at commit, disconnect, or terminal initialization/render failure; a failed render does not emit mounted or resolve readiness
 - process directives and interpolation
 - bind events
 - flush changed paths for lifecycle metadata
@@ -111,6 +114,7 @@ When a component disconnects, the runtime must:
 
 - Public behavior changes require a spec update and usually an ADR.
 - Browser-only APIs must be guarded.
+- The opacity-based first-presentation guard requires a host box (`display: contents` hosts are not covered); author initialization code must not override its temporary opacity.
 - Dynamic code execution is restricted to the script-compilation boundary.
 - DOM reconciliation must preserve custom element instances whenever identity rules allow it.
 
@@ -119,7 +123,11 @@ When a component disconnects, the runtime must:
 - `Core()` called multiple times
 - registrations performed before and after initialization
 - disconnect or reconnect while dependencies or render hooks are pending
-- slot content remains connected while asynchronous template processing or mount hooks run
+- slot content remains connected but locally paint-protected while asynchronous first-template processing or mount hooks run
+- superseded first renders retain protection until a successful commit; readiness and mounted must not report an aborted attempt as successful
+- first-render protection must preserve author display, visibility, opacity and transition declarations, including priorities; it must not change descendant display values
+- rendering failures release temporary presentation overrides and log the failure; failure recovery is not a successful first presentation
+- shared inline component CSS is available before publication; external stylesheets and asynchronous work started by user hooks remain consumer-owned
 - reconnect during async teardown
 - array mutations that reorder looped items
 - invalid or missing props

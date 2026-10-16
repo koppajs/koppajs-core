@@ -21,6 +21,7 @@ The package is intentionally runtime-focused:
 3. Components are registered with `customElements.define()` in `src/component.ts`.
 4. When a component connects:
    - shared per-tag CSS is inserted synchronously before asynchronous work
+   - original host content receives local first-presentation paint protection without detaching slots
    - optional dependency imports are resolved from `ComponentSource.deps`
    - controller code is compiled and executed
    - a reactive model is created from controller state
@@ -28,7 +29,7 @@ The package is intentionally runtime-focused:
    - the template is processed into a `DocumentFragment`
    - events are bound
    - slot content is processed on detached staging nodes; original nodes are transferred only at commit
-   - the fragment is reconciled into the host element
+   - the fragment is reconciled into the host element and local paint protection is released synchronously
 5. State mutations schedule re-render work through the model observer pipeline.
 6. Disconnect removes CSS synchronously when the last connected host disappears, including hosts
    still initializing. Teardown removes observers, event listeners, and runtime references.

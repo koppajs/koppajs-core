@@ -16,6 +16,26 @@ This section is intentionally empty.
 
 ---
 
+## [3.0.10] — Local First-Presentation Protection
+
+**2026-10-16**
+
+Patch release to prevent raw slot content from painting outside its unfinished
+first template. Navigation remains immediate; no router readiness barrier or new
+public API is introduced.
+
+### Fixed
+
+- Protect original slot content locally during asynchronous first rendering so it is
+  not painted outside the finished template. Preserve connected nodes and author
+  presentation declarations without delaying router replacement or waiting for children.
+- Emit first mount and resolve readiness only after a successful render, including
+  replacement renders after an aborted first attempt.
+- Preserve tracked listeners when synchronous slot transfers reconnect original nodes
+  before the global removal observer runs.
+
+---
+
 ## [3.0.9] — Native CommonJS Package Entrypoint
 
 **2026-10-16**

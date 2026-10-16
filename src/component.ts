@@ -202,6 +202,34 @@ function prepareSlots(container: DocumentFragment, host: HTMLElement, refs: Refs
   return { commit, remapRefs }
 }
 
+/** Keep live slots measurable without painting them outside their first template. */
+function protectFirstPresentation(host: HTMLElement): () => void {
+  const properties = ['opacity', 'transition-property'] as const
+  const saved = properties.map((name) => ({
+    name,
+    value: host.style.getPropertyValue(name),
+    priority: host.style.getPropertyPriority(name),
+  }))
+  // Transitions outrank !important opacity and could otherwise animate raw slots.
+  host.style.setProperty('transition-property', 'none', 'important')
+  host.style.setProperty('opacity', '0', 'important')
+  const protectedPriorities = properties.map((name) =>
+    host.style.getPropertyPriority(name),
+  )
+  return () => {
+    for (const [index, { name, value, priority }] of saved.entries()) {
+      const protectedValue = name === 'opacity' ? '0' : 'none'
+      if (
+        host.style.getPropertyValue(name) !== protectedValue ||
+        host.style.getPropertyPriority(name) !== protectedPriorities[index]
+      )
+        continue
+      if (value) host.style.setProperty(name, value, priority)
+      else host.style.removeProperty(name)
+    }
+  }
+}
+
 /**
  * Validates a prop value against its definition.
  * @param propName - Name of the prop
@@ -387,7 +415,8 @@ export function registerComponent(componentName: string, source: ComponentSource
       // Cleanup state for deterministic teardown
       private _connectionVersion = 0
       private _isDisconnected = false
-      private _isMounted = false // Track if component has been mounted (persists across connectedCallback calls)
+      private _hasRendered = false
+      private _releaseFirstPresentation?: () => void
       private _model?: ReturnType<typeof createModel>
       private _observerFn?: () => void
       private _renderAborted = false
@@ -406,6 +435,23 @@ export function registerComponent(componentName: string, source: ComponentSource
         this._isDisconnected = false
         this._renderAborted = false
         this._pendingRender = null
+        if (!this._hasRendered && !this._releaseFirstPresentation) {
+          this._releaseFirstPresentation = protectFirstPresentation(this)
+        }
+        try {
+          await this.initializeConnection(host, connectionVersion)
+        } catch (error) {
+          if (connectionVersion !== this._connectionVersion || this._isDisconnected)
+            return
+          this.releaseFirstPresentation()
+          logger.errorWithContext('Error during initialization', { componentName }, error)
+        }
+      }
+
+      private async initializeConnection(
+        host: HTMLElementWithInstance,
+        connectionVersion: number,
+      ) {
         connectedHosts.add(this)
         if (!document.head.querySelector(`style#style-${componentName}`)) {
           const style = document.createElement('style')
@@ -485,6 +531,7 @@ export function registerComponent(componentName: string, source: ComponentSource
         const refs: Refs = {}
         let isRendering = false
         let lastRenderedStateVersion = -1 // Track state version instead of serialized data
+        let mountPromise: Promise<void> | undefined
 
         // Reset disconnected state for new connection
         this._isDisconnected = false
@@ -663,6 +710,9 @@ export function registerComponent(componentName: string, source: ComponentSource
             return
           }
 
+          if (!this._hasRendered && !this._releaseFirstPresentation) {
+            this._releaseFirstPresentation = protectFirstPresentation(this)
+          }
           isRendering = true
           this._renderAborted = false
           // Set flag on instance so child components can check
@@ -710,9 +760,8 @@ export function registerComponent(componentName: string, source: ComponentSource
               enumerable: false,
             })
 
-            // MOUNTED GUARD: mounted() Hook darf nur einmal feuern beim ersten Render
-            // Wenn bereits gemountet (_isMounted = true), dann ist es ein Update, kein Mount
-            const isFirstRender = !this._isMounted
+            // A successful DOM commit distinguishes first render from updates.
+            const isFirstRender = !this._hasRendered
 
             await hookEmit(
               'global',
@@ -755,12 +804,14 @@ export function registerComponent(componentName: string, source: ComponentSource
 
             // Use DOM reconciliation instead of replaceChildren to preserve
             // custom element instances and prevent infinite mount loops
-            reconcileDOM(host, container, !this._isMounted, source.structAttr)
+            reconcileDOM(host, container, isFirstRender, source.structAttr)
+            this._hasRendered = true
+            this.releaseFirstPresentation()
 
             // changedPaths is already set via defineProperty, no need to set again
 
             // Update Hook: Nur wenn bereits gemountet (nicht beim ersten Render)
-            if (this._isMounted) {
+            if (!isFirstRender) {
               await hookEmit('global', 'updated', hookContext)
               await hookEmit(lifecycleRegistry, 'updated', hookContext)
             }
@@ -776,7 +827,9 @@ export function registerComponent(componentName: string, source: ComponentSource
                 lastRenderedStateVersion
             }
           } catch (error) {
+            if (this._model === model) this.releaseFirstPresentation()
             logger.errorWithContext('Error during render', { componentName }, error)
+            return
           } finally {
             // Ensure ephemeral metadata is cleaned up even on error
             const hookContext = useUserContext && userContext ? userContext : state
@@ -806,6 +859,20 @@ export function registerComponent(componentName: string, source: ComponentSource
               })
             }
           }
+
+          // Mount hooks may await reactive DOM updates, so never hold the render lock here.
+          if (this._isDisconnected || this._model !== model) return
+          if (!mountPromise) {
+            mountPromise = (async () => {
+              const hookContext = useUserContext && userContext ? userContext : state
+              await hookEmit('global', 'mounted', hookContext)
+              if (this._isDisconnected || this._model !== model) return
+              await hookEmit(lifecycleRegistry, 'mounted')
+            })()
+          }
+          await mountPromise
+          if (this._isDisconnected || this._model !== model) return
+          ready.resolve()
         }
 
         /**
@@ -877,20 +944,11 @@ export function registerComponent(componentName: string, source: ComponentSource
         // initial render
         if (this._isDisconnected || this._model !== model) return
         await render()
+      }
 
-        // MOUNTED HOOK: Nur einmal beim ersten Render, nie beim Reconnect
-        // _isMounted wird nur beim ersten Render auf true gesetzt
-        // Beim Reconnect wird diese Stelle nie erreicht (Early Return oben)
-        if (this._isDisconnected || this._model !== model) return
-        if (!this._isMounted) {
-          await hookEmit('global', 'mounted', hookContext)
-          if (this._isDisconnected || this._model !== model) return
-          await hookEmit(lifecycleRegistry, 'mounted')
-          if (this._isDisconnected || this._model !== model) return
-          this._isMounted = true // Flag setzen - mounted() wird nie wieder feuern
-        }
-
-        ready.resolve()
+      private releaseFirstPresentation() {
+        this._releaseFirstPresentation?.()
+        this._releaseFirstPresentation = undefined
       }
 
       async disconnectedCallback() {
@@ -899,6 +957,7 @@ export function registerComponent(componentName: string, source: ComponentSource
         this._isDisconnected = true
         this._renderAborted = true
         this._pendingRender = null
+        this.releaseFirstPresentation()
         connectedHosts.delete(this)
         if (connectedHosts.size === 0) {
           document.head.querySelector(`style#style-${componentName}`)?.remove()
@@ -942,7 +1001,7 @@ export function registerComponent(componentName: string, source: ComponentSource
         if (!this._isDisconnected || connectionVersion !== this._connectionVersion) return
 
         // 8. Release strong references for GC
-        this._isMounted = false
+        this._hasRendered = false
         this._model = undefined
         this._observerFn = undefined
         this._eventCleanup = null
