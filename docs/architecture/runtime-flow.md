@@ -26,6 +26,10 @@ All of this is idempotent and browser-guarded.
 
 When a registered custom element connects for the first time:
 
+Before resolving dependencies, track the connected host and insert its shared per-tag CSS
+synchronously. Registration does not insert styles. Each connection has a version so obsolete
+initialization cannot continue after a disconnect/reconnect.
+
 1. Resolve optional async dependencies from `ComponentSource.deps`.
 2. Compile and execute the controller code with:
    - `$refs`
@@ -50,15 +54,16 @@ Each render currently does the following:
 1. Skip if the component is disconnected.
 2. Skip if the reactive state version has not changed.
 3. Clone the stored template.
-4. Project slot content from the host into the fragment.
+4. Stage slot content on detached copies, leaving live host nodes connected.
 5. Process template directives and expressions.
 6. Emit `processed`.
-7. Bind native and structured events.
+7. Keep slot originals in place while asynchronous lifecycle hooks run.
 8. Flush model changes and attach `changedPaths` metadata for lifecycle hooks.
 9. Emit either:
    - `beforeMount` on the first render
    - `beforeUpdate` on later renders
-10. Reconcile the processed fragment into the host DOM.
+10. Transfer processed slot changes to the original nodes, remap refs, bind native and
+    structured events, and reconcile the fragment into the host DOM without another await.
 11. Emit `updated` on non-initial renders.
 12. Clear transient metadata and record the last rendered state version.
 
@@ -84,12 +89,14 @@ Together they allow `reconcileDOM()` to preserve custom element instances across
 
 When a component disconnects:
 
-1. Mark the instance disconnected and abort pending renders.
+1. Invalidate the connection, mark it disconnected, abort pending renders, and remove its
+   host from style ownership. Remove CSS synchronously if this was the last connected host,
+   even if it has not created an instance yet.
 2. Remove the model observer.
 3. Emit `beforeDestroy`.
 4. Clean up tracked subtree listeners.
 5. Clean up listeners added through structured event setup.
-6. Remove the component style if no more instances of that tag remain.
+6. Keep shared CSS while any connected host of that tag remains.
 7. Emit `destroyed`.
 8. Release strong references for garbage collection.
 

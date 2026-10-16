@@ -34,6 +34,7 @@ Optional sections such as status, date, or follow-up notes are encouraged when u
 - `0001-native-dom-custom-elements.md`
 - `0002-proxy-reactivity-with-array-identity.md`
 - `0003-controlled-runtime-code-generation.md`
+- `0004-connected-styles-and-staged-slots.md`
 
 ## Template
 

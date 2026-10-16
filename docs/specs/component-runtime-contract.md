@@ -47,6 +47,11 @@ It is the normative behavior contract for the component runtime as implemented t
 
 When a registered component connects for the first time, the runtime must:
 
+Before any asynchronous initialization, insert the shared per-tag stylesheet synchronously.
+Registration alone must not insert CSS. Track connected hosts, including those still resolving
+dependencies; remove CSS synchronously when the last host disconnects. An obsolete connection
+must not resume initialization, commit DOM, or emit `mounted` after disconnect.
+
 1. resolve `ComponentSource.deps` if present
 2. execute the controller code
 3. create reactive state from `controller.state`
@@ -75,11 +80,12 @@ When a registered component connects for the first time, the runtime must:
 Each render must:
 
 - clone the stored template
-- project host slot content
+- prepare host slot content without removing live nodes during asynchronous work
 - process directives and interpolation
 - bind events
 - flush changed paths for lifecycle metadata
 - emit `beforeMount` on first render or `beforeUpdate` on later renders
+- transfer processed slot content to the original nodes immediately before DOM reconciliation, preserving node identity and existing listeners
 - reconcile the processed DOM into the host without unnecessarily destroying preserved custom elements
 - emit `updated` only for non-initial renders
 
@@ -112,6 +118,8 @@ When a component disconnects, the runtime must:
 
 - `Core()` called multiple times
 - registrations performed before and after initialization
+- disconnect or reconnect while dependencies or render hooks are pending
+- slot content remains connected while asynchronous template processing or mount hooks run
 - reconnect during async teardown
 - array mutations that reorder looped items
 - invalid or missing props
