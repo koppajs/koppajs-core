@@ -55,6 +55,20 @@ Use integration tests for:
 
 Most of the value in this repository comes from integration tests because the runtime behavior is a coordinated system.
 
+### Packed-Package Consumer Tests
+
+`pnpm test:package` builds the library and runs `test/package-consumer.test.mjs`
+with Node's test runner. It packs the actual publish payload, installs the local
+tarball offline in a temporary consumer and launches native `.mjs` and `.cjs`
+processes by package name. A separate check loads the packed legacy `main` target.
+Each must expose callable `Core` and `Core.take` without DOM globals. No source
+imports, Vitest transforms or module mocks are allowed at this boundary.
+
+CI runs these checks on Node 22 and 24. After a build, additional local runtimes
+can run `node --test test/package-consumer.test.mjs` directly. Temporary consumer
+files and tarballs are removed after the tests. This gate validates runtime
+entrypoints, not TypeScript declaration compatibility or cross-format singleton identity.
+
 ### End-To-End Tests
 
 This repository does not currently host browser-level end-to-end tests. E2E coverage belongs in:
@@ -104,6 +118,6 @@ The repository quality gates currently include:
 - `pnpm lint`
 - `pnpm format:check`
 - `pnpm test:ci`
-- `pnpm build`
+- `pnpm test:package` (includes build and packed-package consumer checks)
 
 These gates are enforced in GitHub Actions and should pass locally before release work.

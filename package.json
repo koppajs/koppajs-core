@@ -1,9 +1,9 @@
 {
   "name": "@koppajs/koppajs-core",
-  "version": "3.0.8",
+  "version": "3.0.9",
   "type": "module",
   "types": "./dist/index.d.ts",
-  "main": "./dist/index.cjs.js",
+  "main": "./dist/index.cjs",
   "module": "./dist/index.es.js",
   "files": [
     "dist",
@@ -16,7 +16,7 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.es.js",
-      "require": "./dist/index.cjs.js"
+      "require": "./dist/index.cjs"
     }
   },
   "sideEffects": false,
@@ -58,6 +58,8 @@
     "typecheck": "pnpm run typecheck:src && pnpm run typecheck:test",
     "prebuild": "rimraf dist",
     "build": "pnpm run typecheck:src && vite build && pnpm generate:types && pnpm run copy:dts",
+    "prepack": "pnpm run build",
+    "test:package": "pnpm run build && node --test test/package-consumer.test.mjs",
     "rebuild": "pnpm run clean && pnpm run build",
     "test": "vitest --run",
     "test:coverage": "vitest --coverage",
@@ -68,7 +70,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm run check:docs && pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run test:ci",
-    "validate": "pnpm run check:docs && pnpm run check && pnpm run build",
+    "validate": "pnpm run check:docs && pnpm run check && pnpm run test:package",
     "check:docs": "node scripts/check-doc-contract.mjs"
   },
   "packageManager": "pnpm@10.24.0",

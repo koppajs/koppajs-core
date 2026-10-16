@@ -43,5 +43,5 @@ jobs:
       - name: Test
         run: pnpm test:ci
 
-      - name: Build
-        run: pnpm build
+      - name: Build and test packed package
+        run: pnpm test:package

@@ -23,5 +23,6 @@ Use the local spec template when one exists.
 ## Current Specs
 
 - `component-runtime-contract.md`
+- `package-entrypoints-contract.md`
 - `repository-documentation-contract.md`
 - `template.md`

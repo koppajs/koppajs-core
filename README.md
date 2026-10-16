@@ -100,6 +100,24 @@ npm install @koppajs/koppajs-core
 npm install -D @koppajs/koppajs-vite-plugin vite typescript
 ```
 
+The package supports Node.js >= 22 for loading its runtime exports without DOM
+shims. Browser APIs are still required for component rendering. Both module
+formats expose the named `Core` function:
+
+```js
+// ESM
+import { Core } from '@koppajs/koppajs-core'
+```
+
+```js
+// CommonJS
+const { Core } = require('@koppajs/koppajs-core')
+```
+
+ESM keeps `dist/index.es.js`; CommonJS uses `dist/index.cjs` via `exports.require`
+and legacy `main`. Import by package name; the old `dist/index.cjs.js` filename
+is not retained or exposed as a package subpath.
+
 The fastest path for most users is still the official starter:
 
 ```bash
