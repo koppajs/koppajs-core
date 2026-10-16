@@ -101,21 +101,33 @@ pnpm typecheck
 pnpm lint
 pnpm format:check
 pnpm test:ci
-pnpm build
+pnpm test:package
 ```
 
 Why this matters:
 
 - the release workflow will run the same quality gates again in CI
 - failing locally is cheaper than failing after tagging
-- `pnpm build` verifies the publishable package output
+- `pnpm test:package` builds and verifies the actual packed package in native Node consumers
 
 The build step is especially relevant because it produces the package artifacts
 that npm will publish:
 
-- Vite builds `dist/index.es.js` and `dist/index.cjs.js`
+- Vite builds `dist/index.es.js` and `dist/index.cjs`
 - TypeScript generates declarations into `dist`
 - `scripts/copy-dts.js` copies additional `src/**/*.d.ts` files into `dist`
+
+`pnpm test:package` uses `npm pack --ignore-scripts` after a fresh build, installs
+that tarball offline into a temporary consumer, and checks `Core` and `Core.take`
+with native ESM, CommonJS and the legacy `main` target. CI runs this gate on Node
+22 and 24; release automation runs it before any publication.
+
+Ordinary `npm pack` and `npm publish` run `prepack` to rebuild the output. Under
+`"type": "module"`, the CommonJS entry must end in `.cjs`, not `.cjs.js`.
+`main` and `exports.require` must both point to `./dist/index.cjs`; ESM metadata
+and declarations retain their existing paths. See
+`docs/specs/package-entrypoints-contract.md` for compatibility boundaries.
+These local checks do not bump versions, create tags or publish a release.
 
 The published package contents are controlled by the `files` field in
 `package.json`. At the moment, the publish payload is intentionally limited to:
@@ -282,7 +294,7 @@ The job currently performs these steps:
 6. Run `pnpm lint`
 7. Run the Prettier check
 8. Run `pnpm test:ci`
-9. Run `pnpm build`
+9. Run `pnpm test:package` (build, pack, offline install, ESM/CommonJS/main consumers)
 10. Verify that `GITHUB_REF_NAME` without the `v` prefix matches
     `package.json.version`
 11. Create a GitHub Release

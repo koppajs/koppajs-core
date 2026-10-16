@@ -6,7 +6,7 @@ Primary local validation commands for this repository:
 
 ```bash
 pnpm check
-pnpm build
+pnpm test:package
 ```
 
 For narrower local checks, use:
@@ -20,7 +20,12 @@ pnpm test
 pnpm test:coverage
 ```
 
-Use the full validation flow before release work.
+`pnpm test:package` uses the current Node executable for consumers and requires
+local npm and pnpm tooling. It does not use Vitest transforms or browser shims.
+`prepack` also rebuilds ordinary pack/publish output; the consumer test disables
+pack lifecycle scripts only because it has already built the package.
+
+Use `pnpm validate` for the full validation flow before release work.
 
 ## Intentional Scope
 
@@ -35,7 +40,7 @@ GitHub Actions currently enforces the following:
   - runs on push to `main`
   - runs on pull requests targeting `develop` or `main`
   - tests Node 22 and Node 24
-  - runs typecheck, lint, format check, tests with coverage, and build
+  - runs typecheck, lint, format check, tests with coverage, and `test:package`
 
 ## Release Gates
 
@@ -46,7 +51,7 @@ GitHub Actions currently enforces the following:
 - lint
 - format check
 - tests with coverage
-- build
+- `test:package`: fresh build, real tarball, offline install and native ESM/CommonJS/main checks
 - exact match between the tag version and `package.json`
 
 After those pass, the workflow creates a GitHub release and publishes to npm.

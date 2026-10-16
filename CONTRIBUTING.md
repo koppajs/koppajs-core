@@ -157,6 +157,7 @@ That means:
 | `pnpm run check`        | Run the main local quality gate                                                       |
 | `pnpm run validate`     | Run the repository validation flow                                                    |
 | `pnpm run build`        | Build the project output                                                              |
+| `pnpm run test:package` | Build and verify a real tarball with native ESM, CommonJS, and legacy-main consumers  |
 | `pnpm run test`         | Run the test suite                                                                    |
 | `pnpm run lint`         | Run lint checks                                                                       |
 | `pnpm run format`       | Format repository files                                                               |

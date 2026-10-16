@@ -16,6 +16,28 @@ This section is intentionally empty.
 
 ---
 
+## [3.0.9] — Native CommonJS Package Entrypoint
+
+**2026-10-16**
+
+Patch release to correct native CommonJS loading of the published package.
+ESM imports and the named runtime API remain unchanged.
+
+### Fixed
+
+- Correct the CommonJS bundle extension to `dist/index.cjs` and align `main` and
+  `exports.require` so native Node consumers receive the named `Core` function
+  under the existing `"type": "module"` package scope. Keep the ESM path unchanged.
+
+### Changed
+
+- Rebuild ordinary pack/publish output through `prepack` and validate actual
+  tarballs with native ESM, CommonJS and legacy-main consumers before release.
+- Add the packed-package consumer gate to CI on Node 22 and 24 and to local
+  `pnpm validate`.
+
+---
+
 ## [3.0.8] — Connected Styles And Slot Preservation
 
 **2026-10-16**
