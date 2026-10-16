@@ -118,7 +118,7 @@ export function startGlobalDisconnectionObserver(): void {
   observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       mutation.removedNodes.forEach((removedNode) => {
-        if (removedNode.nodeType !== Node.ELEMENT_NODE) return
+        if (removedNode.nodeType !== Node.ELEMENT_NODE || removedNode.isConnected) return
         cleanupSubtree(removedNode)
       })
     }
