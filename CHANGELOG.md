@@ -16,6 +16,15 @@ This section is intentionally empty.
 
 ---
 
+## [3.0.12]
+
+### Changed
+
+- Translate runtime comments into English without changing behavior; preserve
+  historical external website labels in validation evidence.
+
+---
+
 ## [3.0.11] — Canonical Slots And Reconnect Rendering
 
 **2026-10-31**
