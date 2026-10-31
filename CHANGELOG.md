@@ -12,6 +12,18 @@ not every internal refactor.
 
 ## [Unreleased]
 
+This section is intentionally empty.
+
+---
+
+## [3.0.11] — Canonical Slots And Reconnect Rendering
+
+**2026-10-31**
+
+Patch release to preserve caller slot identity and restore rendering and native
+event bindings across reconnects. Includes development-toolchain and security
+updates without changing the public API or published runtime engine requirement.
+
 ### Fixed
 
 - Preserve original caller slot nodes across reactive updates and completed teardown/
