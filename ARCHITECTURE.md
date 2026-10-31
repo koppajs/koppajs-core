@@ -28,9 +28,12 @@ The package is intentionally runtime-focused:
    - props, lifecycle hooks, plugins, and modules are wired
    - the template is processed into a `DocumentFragment`
    - events are bound
+   - caller slot nodes are captured at the first render attempt and retained across updates and reinitialization, never recaptured from generated wrappers
    - slot content is processed on detached staging nodes; original nodes are transferred only at commit
    - the fragment is reconciled into the host element and local paint protection is released synchronously
-5. State mutations schedule re-render work through the model observer pipeline.
+5. State mutations schedule re-render work through the model observer pipeline. Every render
+   waits for the same created-hook completion. A pending first render can resume on reconnect
+   through the existing render lock, while connection versions reject obsolete commits.
 6. Disconnect removes CSS synchronously when the last connected host disappears, including hosts
    still initializing. Teardown removes observers, event listeners, and runtime references.
    Connection versions prevent obsolete asynchronous initialization and renders from committing.
@@ -141,6 +144,9 @@ Any breaking change to this contract requires coordinated documentation and an A
 - Loop identity must remain stable across structural array mutations.
 - Reconciliation must preserve custom element instances whenever identity or position allows it.
 - `mounted` is a first-mount lifecycle event, not a reconnect event.
+- Canonical slot identity survives model teardown without retaining the destroyed controller.
+- Native declarative binding metadata follows node identity; reconnect binds the new context once.
+  Parent binding traversal stops below nested custom-element hosts to preserve child ownership.
 - Event listeners added during rendering must be removable during disconnect or subtree cleanup.
 - Style injection is per component tag and should disappear when the last instance disappears.
 

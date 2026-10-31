@@ -1,5 +1,5 @@
 import { bindOnce, logger } from './utils'
-import type { AnyFn, State, Events, Refs, Methods } from './types'
+import type { State, Events, Refs, Methods } from './types'
 
 /**
  * Cleanup entry for a registered event listener.
@@ -84,30 +84,59 @@ export function setupEvents(
  */
 const EVENT_ATTR_REGEX = /^on([a-z]+)$/i
 
-/**
- * Binds native DOM event handlers from element attributes (e.g., onclick, oninput).
- * Walks all elements once instead of querying per event type for better performance.
- * Handlers are retrieved from userContext and assumed to be already bound (for options type).
- * @param userContext - User context containing event handlers
- * @param fragment - Document fragment to process
- */
-export function bindNativeEvents(userContext: State, fragment: DocumentFragment): void {
-  const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT)
+type NativeEventBinding = {
+  handlerName: string
+  handler?: WeakRef<EventListener>
+}
+
+// Caller-owned slot nodes survive teardown, but their consumed attributes do not.
+const nativeEventBindings = new WeakMap<HTMLElement, Map<string, NativeEventBinding>>()
+
+function bindNativeEventHandlers(
+  context: State | Methods,
+  fragment: DocumentFragment,
+): void {
+  const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT, {
+    acceptNode(node) {
+      // Parent bindings may target a custom host, never its child-owned template.
+      let parent = node.parentElement
+      while (parent) {
+        if (parent.tagName.includes('-')) return NodeFilter.FILTER_REJECT
+        parent = parent.parentElement
+      }
+      return NodeFilter.FILTER_ACCEPT
+    },
+  })
   let node = walker.nextNode() as HTMLElement | null
 
   while (node) {
+    let bindings = nativeEventBindings.get(node)
     for (const attr of Array.from(node.attributes)) {
       const match = attr.name.match(EVENT_ATTR_REGEX)
-      if (match) {
-        const type = match[1]!.toLowerCase()
-        const handlerName = attr.value
-        if (handlerName) {
-          const handler = userContext[handlerName]
-          if (typeof handler === 'function') {
-            // Handler is already bound via bindMethods, use directly
-            node.removeAttribute(attr.name)
-            node.addEventListener(type, handler as AnyFn)
-          }
+      if (!match || !attr.value || typeof context[attr.value] !== 'function') continue
+
+      const type = match[1]!.toLowerCase()
+      if (!bindings) {
+        bindings = new Map()
+        nativeEventBindings.set(node, bindings)
+      }
+      const previous = bindings.get(type)?.handler?.deref()
+      if (previous) node.removeEventListener(type, previous)
+      bindings.set(type, { handlerName: attr.value })
+      node.removeAttribute(attr.name)
+    }
+
+    if (bindings) {
+      for (const [type, binding] of bindings) {
+        const previous = binding.handler?.deref()
+        if (previous) node.removeEventListener(type, previous)
+        const handler = context[binding.handlerName]
+        binding.handler = undefined
+        if (typeof handler === 'function') {
+          // Do not retain torn-down controller closures on surviving slot nodes.
+          binding.handler = new WeakRef(handler as EventListener)
+          // Re-add even an unchanged handler: subtree cleanup may have removed it.
+          node.addEventListener(type, handler as EventListener)
         }
       }
     }
@@ -115,38 +144,17 @@ export function bindNativeEvents(userContext: State, fragment: DocumentFragment)
   }
 }
 
-/**
- * Binds native DOM event handlers for composite component type.
- * Walks all elements once instead of querying per event type for better performance.
- * Handlers are retrieved directly from methods object without binding.
- * @param methods - Methods object containing event handlers
- * @param fragment - Document fragment to process
- */
+/** Binds consumed declarative handlers to the current options context. */
+export function bindNativeEvents(userContext: State, fragment: DocumentFragment): void {
+  bindNativeEventHandlers(userContext, fragment)
+}
+
+/** Binds consumed declarative handlers without implicit composite context binding. */
 export function bindNativeEventsForComposite(
   methods: Methods,
   fragment: DocumentFragment,
 ): void {
-  const walker = document.createTreeWalker(fragment, NodeFilter.SHOW_ELEMENT)
-  let node = walker.nextNode() as HTMLElement | null
-
-  while (node) {
-    for (const attr of Array.from(node.attributes)) {
-      const match = attr.name.match(EVENT_ATTR_REGEX)
-      if (match) {
-        const type = match[1]!.toLowerCase()
-        const handlerName = attr.value
-        if (handlerName) {
-          const handler = methods[handlerName]
-          if (typeof handler === 'function') {
-            // For composite type, use handler directly without binding
-            node.removeAttribute(attr.name)
-            node.addEventListener(type, handler)
-          }
-        }
-      }
-    }
-    node = walker.nextNode() as HTMLElement | null
-  }
+  bindNativeEventHandlers(methods, fragment)
 }
 
 /**

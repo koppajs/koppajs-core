@@ -12,8 +12,7 @@ type IfChainState = {
  * Represents a parsed loop binding - either a single variable or a tuple [key, value].
  */
 type LoopBinding =
-  | { type: 'single'; itemVar: string }
-  | { type: 'tuple'; keyVar: string; itemVar: string }
+  { type: 'single'; itemVar: string } | { type: 'tuple'; keyVar: string; itemVar: string }
 
 const IDENTIFIER_REGEX = /^[A-Za-z_$][A-Za-z0-9_$]*$/
 

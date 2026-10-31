@@ -53,10 +53,14 @@ initialization cannot continue after a disconnect/reconnect.
 
 Each render currently does the following:
 
-1. Skip if the component is disconnected.
+1. Await the shared created-hook completion, then skip if the component is disconnected.
 2. Skip if the reactive state version has not changed.
 3. Clone the stored template.
-4. Stage slot content on detached copies, leaving live host nodes connected.
+4. Stage canonical caller slot nodes on detached copies, leaving live nodes connected.
+   Capture only for slot-bearing templates at the first render attempt. Later updates and
+   completed teardown/reinitialization reuse those nodes, not generated wrappers. Children
+   arriving after connection but before that capture are included; arbitrary later light-DOM
+   replacement is not a dynamic slot API.
 5. Process template directives and expressions.
 6. Emit `processed`.
 7. Keep slot originals in place while asynchronous lifecycle hooks run.
@@ -104,7 +108,7 @@ When a component disconnects:
 7. Emit `destroyed`.
 8. Release strong references for garbage collection.
 
-Reconnect during async teardown is guarded so the runtime can abort destructive cleanup when the instance becomes active again.
+Reconnect during async teardown is guarded so the runtime can abort destructive cleanup when the instance becomes active again. An uncommitted initial render has a continuation available before created hooks yield; reconnect resumes it through the existing lock. Async render boundaries validate connection/model ownership before committing. Canonical slot nodes remain host-owned after full teardown, while model and observer references are released. Native declarative event names remain in node-keyed metadata so removed attributes can be rebound once to the next controller after listener cleanup.
 
 ## 8. Component Modes
 

@@ -8,7 +8,7 @@ for lifecycle order, reactive identity, DOM preservation, teardown safety, and p
 
 ## Current Test Stack
 
-- Vitest 4
+- Vitest 5
 - JSDOM test environment
 - V8 coverage reporting
 - Shared setup in `test/setup.ts`

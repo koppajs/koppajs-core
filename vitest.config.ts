@@ -9,7 +9,6 @@ export default defineConfig({
     include: ['test/**/*.test.ts'],
     setupFiles: ['test/setup.ts'],
     coverage: {
-      all: true,
       provider: 'v8',
       reporter: ['text', 'html'],
       include: ['src/**/*.ts'],

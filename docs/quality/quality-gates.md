@@ -27,6 +27,29 @@ pack lifecycle scripts only because it has already built the package.
 
 Use `pnpm validate` for the full validation flow before release work.
 
+## Dependency Toolchain
+
+The development stack uses Vite 8, Vitest 5, ESLint 10, JSDOM 30 and
+TypeScript 6.0.3. Use Node 22.22.2+ on the Node 22 line or Node 24.15.0+
+on the Node 24 line for repository checks; the runtime package engine contract
+is unchanged. TypeScript 7 is blocked by typescript-eslint 8.72.1, whose
+published peer range is `>=4.8.4 <6.1.0`. Node typings stay on the supported
+Node 24 line rather than describing Node 26-only APIs.
+
+TypeScript 6 requires an explicit `rootDir` for declaration output. Coverage
+uses explicit `include` patterns; the obsolete `coverage.all` option is removed.
+No package version or public runtime contract is changed by this tooling update.
+
+Development dependency security fixes use scoped `pnpm.overrides` in `package.json`:
+`glob@^13.0.0` resolves to `^14.0.2`, and `minimatch@<11.0.1` resolves to `^11.0.1`.
+These replace vulnerable versions used by rimraf and ESLint/typescript-eslint while
+upstream packages still declare the older major ranges. The former top-level
+`overrides.glob` setting did not apply to pnpm and has been removed.
+Keep these overrides until upstream dependency ranges include patched versions.
+Validate changes with `pnpm audit`, `pnpm audit --prod`, `pnpm run validate`, and
+a rimraf glob-mode smoke test in a temporary directory; no runtime dependency or
+consumer engine requirement is added.
+
 ## Intentional Scope
 
 - No Playwright: this repository does not ship a repository-local user interface; runtime behavior is covered with Vitest and JSDOM instead.
@@ -61,6 +84,7 @@ After those pass, the workflow creates a GitHub release and publishes to npm.
 Local Git hooks currently provide:
 
 - `pre-commit`
+  - runs `pnpm run check:docs`
   - runs `lint-staged` through the root config
 - `commit-msg`
   - runs `commitlint`
