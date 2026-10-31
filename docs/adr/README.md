@@ -37,6 +37,7 @@ Optional sections such as status, date, or follow-up notes are encouraged when u
 - `0004-connected-styles-and-staged-slots.md`
 - `0005-explicit-commonjs-package-extension.md`
 - `0006-local-first-presentation-protection.md`
+- `0007-canonical-slots-and-reconnect-rendering.md`
 
 ## Template
 

@@ -137,8 +137,13 @@ For package consumers:
 
 For local repository work:
 
-- Node.js >= 22
+- Node.js 22.22.2+ on the Node 22 line or 24.15.0+ on the Node 24 line
 - pnpm >= 10.24.0
+
+These development requirements do not change the published runtime engine (`>=22`).
+Consumer build tools have their own requirements: `@koppajs/koppajs-vite-plugin@2.0.0`
+accepts Vite 7 or 8 and requires Node.js >= 22.12.0; use a Node version supported by
+all tools in your application.
 
 ---
 

@@ -81,6 +81,10 @@ Each render must:
 
 - clone the stored template
 - protect the host's first presentation synchronously before dependencies or hooks can yield, including hosts whose children arrive after connection
+- capture caller-supplied slot nodes for slot-bearing templates on the first render attempt and reuse those same nodes on updates and reconnection; never treat the generated template wrapper as new slot input
+- await completion of created hooks even for observer-triggered or reconnected first renders
+- retain declarative native event binding names on reused node identity so a new controller can rebind them once after completed listener teardown
+- bind parent declarative handlers on nested custom-element hosts, but never consume or rebind their child-owned internal template handlers
 - prepare host slot content without removing live nodes during asynchronous work
 - keep original slot nodes connected and measurable, but suppress host painting until the first successful local DOM commit; do not wait for descendants or route readiness
 - restore author presentation declarations at commit, disconnect, or terminal initialization/render failure; a failed render does not emit mounted or resolve readiness
@@ -128,7 +132,11 @@ When a component disconnects, the runtime must:
 - first-render protection must preserve author display, visibility, opacity and transition declarations, including priorities; it must not change descendant display values
 - rendering failures release temporary presentation overrides and log the failure; failure recovery is not a successful first presentation
 - shared inline component CSS is available before publication; external stylesheets and asynchronous work started by user hooks remain consumer-owned
+- caller children arriving after connection are included until the first slot capture; arbitrary post-capture light-DOM replacement is not a dynamic slot API
 - reconnect during async teardown
+- reconnect after an aborted initial render must resume rendering and release first-presentation protection without duplicating mounted hooks
+- reconnect after completed teardown must initialize from the original slot nodes, not nest the previous rendered template
+- reactive updates of slotted components must preserve caller node identity without adding template wrapper levels
 - array mutations that reorder looped items
 - invalid or missing props
 - missing plugins or modules

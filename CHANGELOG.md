@@ -16,6 +16,34 @@ This section is intentionally empty.
 
 ---
 
+## [3.0.11] — Canonical Slots And Reconnect Rendering
+
+**2026-10-31**
+
+Patch release to preserve caller slot identity and restore rendering and native
+event bindings across reconnects. Includes development-toolchain and security
+updates without changing the public API or published runtime engine requirement.
+
+### Fixed
+
+- Preserve original caller slot nodes across reactive updates and completed teardown/
+  reinitialization instead of projecting generated template wrappers as new slot content.
+- Resume an interrupted first render on reconnect, wait for created hooks on every
+  render path, and reject obsolete commits without duplicating mounted hooks.
+- Rebind declarative native events on retained slot nodes to the current controller
+  after teardown without duplicate listeners or stale controller bindings.
+
+### Changed
+
+- Override vulnerable development-only glob and minimatch versions with patched
+  releases for the rimraf and ESLint/typescript-eslint dependency paths.
+- Update the development toolchain to Vite 8, Vitest 5, ESLint 10, JSDOM 30 and
+  TypeScript 6, with matching declaration-output and coverage configuration.
+- Require Node.js 22.22.2+ or 24.15.0+ on the supported development lines; the
+  published runtime package engine remains `>=22`.
+
+---
+
 ## [3.0.10] — Local First-Presentation Protection
 
 **2026-10-16**

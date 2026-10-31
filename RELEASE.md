@@ -59,8 +59,11 @@ Before cutting a release, ensure all of the following are true:
 
 Tooling expectations for local verification:
 
-- Node.js >= 22
+- Node.js 22.22.2+ on the Node 22 line or 24.15.0+ on the Node 24 line
 - pnpm 10.24.0 or newer
+
+These are development-tool requirements, not a change to the published runtime
+engine (`>=22`). See `docs/quality/quality-gates.md` for toolchain constraints.
 
 This repository also enforces `engine-strict=true` in `.npmrc`, so incompatible
 Node.js or pnpm versions should be treated as a release blocker.
@@ -96,17 +99,15 @@ Before creating the release branch, validate the exact release candidate locally
 Recommended commands:
 
 ```bash
-pnpm install
-pnpm typecheck
-pnpm lint
-pnpm format:check
-pnpm test:ci
-pnpm test:package
+pnpm install --frozen-lockfile
+pnpm run validate
 ```
 
 Why this matters:
 
-- the release workflow will run the same quality gates again in CI
+- `pnpm run validate` checks documentation first, then types, lint, formatting,
+  coverage, and the packed package
+- the release workflow repeats the executable quality gates in CI
 - failing locally is cheaper than failing after tagging
 - `pnpm test:package` builds and verifies the actual packed package in native Node consumers
 
@@ -288,7 +289,7 @@ The job currently performs these steps:
 
 1. Checkout the repository with full history
 2. Install pnpm
-3. Setup Node.js 22
+3. Setup the latest Node.js 22 patch selected by `.nvmrc`
 4. Run `pnpm install --frozen-lockfile`
 5. Run `pnpm typecheck`
 6. Run `pnpm lint`

@@ -125,7 +125,7 @@ export function processSlots({
 }
 
 /** Stage slot processing off-DOM; move the original nodes only at commit time. */
-function prepareSlots(container: DocumentFragment, host: HTMLElement, refs: Refs) {
+function prepareSlots(container: DocumentFragment, slotContent: Node[], refs: Refs) {
   const originals = new Map<Node, Node>()
   const snapshots = new Map<
     Node,
@@ -156,7 +156,7 @@ function prepareSlots(container: DocumentFragment, host: HTMLElement, refs: Refs
     })
     return clone
   }
-  for (const node of host.childNodes) stagedHost.appendChild(stage(node))
+  for (const node of slotContent) stagedHost.appendChild(stage(node))
   processSlots({ container, host: stagedHost })
 
   const commit = () => {
@@ -416,6 +416,8 @@ export function registerComponent(componentName: string, source: ComponentSource
       private _connectionVersion = 0
       private _isDisconnected = false
       private _hasRendered = false
+      private _slotContent?: Node[]
+      private _resumeRender?: () => Promise<void>
       private _releaseFirstPresentation?: () => void
       private _model?: ReturnType<typeof createModel>
       private _observerFn?: () => void
@@ -490,6 +492,10 @@ export function registerComponent(componentName: string, source: ComponentSource
             })
           }
 
+          if (!this._hasRendered && this._resumeRender) {
+            await this._resumeRender()
+          }
+
           // WICHTIG: mounted() Hook darf NICHT nochmal feuern beim Reconnect
           // mounted() geht nur einmal beim ersten Create/Render
           // Observer wird automatisch Renders triggern wenn nötig
@@ -532,6 +538,7 @@ export function registerComponent(componentName: string, source: ComponentSource
         let isRendering = false
         let lastRenderedStateVersion = -1 // Track state version instead of serialized data
         let mountPromise: Promise<void> | undefined
+        let createdPromise: Promise<void> | undefined
 
         // Reset disconnected state for new connection
         this._isDisconnected = false
@@ -691,6 +698,7 @@ export function registerComponent(componentName: string, source: ComponentSource
          * render zuerst definieren (sonst TDZ wenn Observer feuert)
          */
         const render = async () => {
+          await createdPromise
           // Exit early if component has been disconnected
           if (this._isDisconnected) {
             return
@@ -714,6 +722,7 @@ export function registerComponent(componentName: string, source: ComponentSource
             this._releaseFirstPresentation = protectFirstPresentation(this)
           }
           isRendering = true
+          const renderConnectionVersion = this._connectionVersion
           this._renderAborted = false
           // Set flag on instance so child components can check
           if (host.instance) {
@@ -723,7 +732,11 @@ export function registerComponent(componentName: string, source: ComponentSource
           try {
             const container = clonedTemplate.content.cloneNode(true) as DocumentFragment
 
-            const slots = prepareSlots(container, host, refs)
+            // Generated template wrappers must never become new caller slot content.
+            const slotContent = container.querySelector('slot')
+              ? (this._slotContent ??= Array.from(host.childNodes))
+              : []
+            const slots = prepareSlots(container, slotContent, refs)
 
             // Use userContext (which includes methods) for template processing
             // This allows template expressions to call component methods
@@ -732,9 +745,16 @@ export function registerComponent(componentName: string, source: ComponentSource
             slots.remapRefs()
 
             // Check if render was aborted during template processing
-            if (this._renderAborted || this._model !== model) {
+            if (
+              this._renderAborted ||
+              this._isDisconnected ||
+              renderConnectionVersion !== this._connectionVersion ||
+              this._model !== model
+            ) {
               // Schedule new render with latest state
-              this._pendingRender = render
+              if (!this._isDisconnected && this._model === model) {
+                this._pendingRender = render
+              }
               return
             }
 
@@ -743,8 +763,15 @@ export function registerComponent(componentName: string, source: ComponentSource
             await hookEmit(lifecycleRegistry, 'processed')
 
             // Check again if render was aborted
-            if (this._renderAborted || this._model !== model) {
-              this._pendingRender = render
+            if (
+              this._renderAborted ||
+              this._isDisconnected ||
+              renderConnectionVersion !== this._connectionVersion ||
+              this._model !== model
+            ) {
+              if (!this._isDisconnected && this._model === model) {
+                this._pendingRender = render
+              }
               return
             }
 
@@ -775,10 +802,17 @@ export function registerComponent(componentName: string, source: ComponentSource
             )
 
             // Final check before DOM update
-            if (this._renderAborted || this._model !== model) {
+            if (
+              this._renderAborted ||
+              this._isDisconnected ||
+              renderConnectionVersion !== this._connectionVersion ||
+              this._model !== model
+            ) {
               // Clean up ephemeral metadata before aborting
               delete (hookContext as StateWithMetadata).changedPaths
-              this._pendingRender = render
+              if (!this._isDisconnected && this._model === model) {
+                this._pendingRender = render
+              }
               return
             }
 
@@ -936,13 +970,13 @@ export function registerComponent(componentName: string, source: ComponentSource
         // Register observer (render is already defined)
         model.addObserver(this._observerFn)
 
-        // created
+        // Every render, including observer and reconnect work, waits for created hooks.
         const hookContext = useUserContext && userContext ? userContext : state
-        await hookEmit('global', 'created', hookContext)
-        await hookEmit(lifecycleRegistry, 'created')
-
-        // initial render
-        if (this._isDisconnected || this._model !== model) return
+        createdPromise = (async () => {
+          await hookEmit('global', 'created', hookContext)
+          await hookEmit(lifecycleRegistry, 'created')
+        })()
+        this._resumeRender = render
         await render()
       }
 
@@ -1004,6 +1038,7 @@ export function registerComponent(componentName: string, source: ComponentSource
         this._hasRendered = false
         this._model = undefined
         this._observerFn = undefined
+        this._resumeRender = undefined
         this._eventCleanup = null
         host.instance = undefined
       }
