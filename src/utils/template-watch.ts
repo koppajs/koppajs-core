@@ -2,7 +2,7 @@ import { isSimplePathExpression } from './helper'
 
 const MUSTACHE_RE = /\{\{([\s\S]+?)\}\}/g
 
-const STRIP_STRINGS_RE = /(["'`])(?:\\.|(?!\1)[^\\])*\1/g // entfernt "..." '...' `...`
+const STRIP_STRINGS_RE = /(["'`])(?:\\.|(?!\1)[^\\])*\1/g // removes "..." '...' `...`
 
 const PATH_EXPR_RE =
   /[A-Za-z_$][0-9A-Za-z_$]*(?:\[(?:\d+|\w+)\]|\.[A-Za-z_$][0-9A-Za-z_$]*)*/g
@@ -15,7 +15,7 @@ const KEYWORDS = new Set([
   'NaN',
   'Infinity',
   'this',
-  // typische builtins (optional – konservativ)
+  // common built-ins (optional, conservative)
   'Math',
   'Date',
   'JSON',
@@ -27,7 +27,7 @@ const KEYWORDS = new Set([
 ])
 
 function normalizeExpr(expr: string): string {
-  return expr.replace(/\?\./g, '.').trim() // optional chaining entschärfen
+  return expr.replace(/\?\./g, '.').trim() // normalize optional chaining
 }
 
 function stripStrings(expr: string): string {
@@ -38,7 +38,7 @@ function extractFromExpression(expression: string): string[] {
   const exp = normalizeExpr(expression)
   if (!exp) return []
 
-  // simplest case: direkter Pfad
+  // simplest case: direct path
   if (isSimplePathExpression(exp)) return [exp]
 
   // complex expression: split into segments
@@ -77,6 +77,6 @@ export function extractWatchListFromTemplate(templateHtml: string): string[] {
     found.push(...extractFromExpression(expr))
   }
 
-  // entduplizieren + stabile Reihenfolge
+  // deduplicate while preserving order
   return Array.from(new Set(found))
 }

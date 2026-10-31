@@ -465,16 +465,16 @@ export function registerComponent(componentName: string, source: ComponentSource
         // ============================================================
         // SCENARIO 1: RERENDER/RECONNECT - Reuse existing instance
         // ============================================================
-        // Wenn bereits eine Instanz existiert (nach disconnect/connect),
-        // wiederverwenden statt neu erstellen
+        // Reuse an existing instance after disconnect/connect
+        // instead of creating a new one
         if (host.instance && this._model && this._observerFn) {
           const existingInstance = host.instance
           const parent = getParentInstance(host)
 
-          // Update parent reference (kann sich geändert haben)
+          // Update the parent reference, which may have changed
           existingInstance.$parent = parent
 
-          // Reset disconnected state für Reconnect
+          // Reset disconnected state for reconnect
           this._isDisconnected = false
           this._renderAborted = false
           this._pendingRender = null
@@ -482,7 +482,7 @@ export function registerComponent(componentName: string, source: ComponentSource
           // Re-add observer in case disconnectedCallback already removed it
           this._model.addObserver(this._observerFn)
 
-          // Props neu verarbeiten (können sich geändert haben)
+          // Reprocess props, which may have changed
           if (existingInstance.props && existingInstance.state) {
             processProps({
               ele: host,
@@ -496,22 +496,22 @@ export function registerComponent(componentName: string, source: ComponentSource
             await this._resumeRender()
           }
 
-          // WICHTIG: mounted() Hook darf NICHT nochmal feuern beim Reconnect
-          // mounted() geht nur einmal beim ersten Create/Render
-          // Observer wird automatisch Renders triggern wenn nötig
+          // IMPORTANT: Do not fire mounted() again on reconnect
+          // mounted() runs only once, on the first creation/render
+          // The observer automatically triggers renders when needed
           return
         }
 
         // ============================================================
-        // SCENARIO 2: CREATE - Neue Instanz erstellen
+        // SCENARIO 2: CREATE - Create a new instance
         // ============================================================
-        // Nur wenn noch keine Instanz existiert
+        // Only when no instance exists yet
 
-        // Component type bestimmen (default: "options")
+        // Determine the component type (default: "options")
         const componentType = source.type || 'options'
         const useUserContext = componentType === 'options'
 
-        // Parent früh ermitteln (bevor replaceChildren Children aktiviert)
+        // Resolve the parent early, before replaceChildren connects children
         const parent = getParentInstance(host)
 
         const clonedTemplate = this.template.cloneNode(true) as HTMLTemplateElement
@@ -645,7 +645,7 @@ export function registerComponent(componentName: string, source: ComponentSource
           ...attachedModules,
         }
 
-        // Script ausführen
+        // Execute the script
         const controller = compiledScript(componentContext)
 
         // Model setup
@@ -695,7 +695,7 @@ export function registerComponent(componentName: string, source: ComponentSource
         this._model = model
 
         /**
-         * render zuerst definieren (sonst TDZ wenn Observer feuert)
+         * Define render first to avoid the temporal dead zone when the observer fires
          */
         const render = async () => {
           await createdPromise
@@ -704,15 +704,15 @@ export function registerComponent(componentName: string, source: ComponentSource
             return
           }
 
-          // RENDERING GUARD: Wenn bereits am Rendern, kein neuer Render-Prozess
-          // Stattdessen neuen Render planen für nach dem aktuellen Render
+          // RENDERING GUARD: Do not start another render while rendering
+          // Schedule a new render after the current one instead
           if (isRendering) {
             this._renderAborted = true
             this._pendingRender = render
             return
           }
 
-          // State-Version Check: Nur rendern wenn sich State geändert hat
+          // State-version check: Render only when state has changed
           const currentStateVersion = model.getStateVersion()
           if (lastRenderedStateVersion === currentStateVersion) {
             return
@@ -844,7 +844,7 @@ export function registerComponent(componentName: string, source: ComponentSource
 
             // changedPaths is already set via defineProperty, no need to set again
 
-            // Update Hook: Nur wenn bereits gemountet (nicht beim ersten Render)
+            // Update hook: Only after mounting, not on the first render
             if (!isFirstRender) {
               await hookEmit('global', 'updated', hookContext)
               await hookEmit(lifecycleRegistry, 'updated', hookContext)
