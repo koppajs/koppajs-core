@@ -1,8 +1,8 @@
 import {
   bindNativeEvents,
   bindNativeEventsForComposite,
-  setupEvents,
-  setupEventsForComposite,
+  prepareEvents,
+  reconcileNativeEvents,
 } from './event-handler'
 import { cleanupSubtree } from './global-event-cleaner'
 import { createModel } from './model'
@@ -818,27 +818,36 @@ export function registerComponent(componentName: string, source: ComponentSource
 
             slots.commit()
 
+            const preparedEvents = prepareEvents(
+              useUserContext && userContext ? userContext : state,
+              events,
+              container,
+              refs,
+            )
             if (useUserContext && userContext) {
               bindNativeEvents(userContext, container)
-              // Clean up previous event listeners (including window) before adding new ones
-              if (this._eventCleanup) this._eventCleanup()
-              this._eventCleanup = setupEvents(userContext, events, container, refs)
             } else {
-              // For composite type, use methods directly without binding
               bindNativeEventsForComposite(methods, container)
-              if (this._eventCleanup) this._eventCleanup()
-              this._eventCleanup = setupEventsForComposite(
-                methods,
-                state,
-                events,
-                container,
-                refs,
-              )
             }
 
-            // Use DOM reconciliation instead of replaceChildren to preserve
-            // custom element instances and prevent infinite mount loops
-            reconcileDOM(host, container, isFirstRender, source.structAttr)
+            // Reconciliation retains native nodes as well as custom-element hosts.
+            // Keep template target selection, but bind listeners to committed identity.
+            if (this._eventCleanup) this._eventCleanup()
+            preparedEvents.bind()
+            this._eventCleanup = preparedEvents.cleanup
+            const reconciledElements = reconcileDOM(
+              host,
+              container,
+              isFirstRender,
+              source.structAttr,
+              (existing, updated) => {
+                reconcileNativeEvents(existing, updated)
+                preparedEvents.reconcile(existing, updated)
+              },
+            )
+            for (const key of Object.keys(refs)) {
+              refs[key] = (reconciledElements.get(refs[key]) ?? refs[key]) as HTMLElement
+            }
             this._hasRendered = true
             this.releaseFirstPresentation()
 

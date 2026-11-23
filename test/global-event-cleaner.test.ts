@@ -8,15 +8,25 @@ import {
 } from '../src/global-event-cleaner'
 
 describe('global-event-cleaner', () => {
+  const nativeAdd = EventTarget.prototype.addEventListener
+  const nativeRemove = EventTarget.prototype.removeEventListener
+  const globals = globalThis as typeof globalThis & {
+    __koppajsEventTrackingPatched?: boolean
+  }
+  const originalPatched = globals.__koppajsEventTrackingPatched
+
   beforeEach(() => {
-    // Reset global flag
-    ;(globalThis as any).__koppajsEventTrackingPatched = false
+    EventTarget.prototype.addEventListener = nativeAdd
+    EventTarget.prototype.removeEventListener = nativeRemove
+    globals.__koppajsEventTrackingPatched = false
     stopGlobalDisconnectionObserver()
   })
 
   afterEach(() => {
     stopGlobalDisconnectionObserver()
-    ;(globalThis as any).__koppajsEventTrackingPatched = false
+    EventTarget.prototype.addEventListener = nativeAdd
+    EventTarget.prototype.removeEventListener = nativeRemove
+    globals.__koppajsEventTrackingPatched = originalPatched
   })
 
   describe('patchGlobalEventTracking', () => {

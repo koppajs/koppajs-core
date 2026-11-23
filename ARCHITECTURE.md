@@ -79,10 +79,22 @@ Detailed sequence notes live in `docs/architecture/runtime-flow.md`.
 - `src/event-handler.ts`
 - Binds declarative native DOM handlers and structured event definitions.
 - Supports selector targets, `window`, and `$refs`-based targets.
+- Resolves structured targets against the processed template before reconciliation, then binds to
+  the committed nodes through reconciliation callbacks before their DOM mutations. This preserves template selector
+  scope instead of querying into child-owned rendered templates.
+- Binds new nodes before insertion and transfers structured and declarative native bindings onto
+  preserved HTML/SVG elements before attribute changes or moves, removing obsolete bindings.
+  Synchronous custom-element connection events remain observable. Refs are remapped to the
+  same committed identity before `updated` or `mounted`.
 
 - `src/global-event-cleaner.ts`
-- Tracks global event listener registration and cleans listeners from removed DOM subtrees.
+- Tracks native listener identity (type, callback, capture) and cleans listeners from removed DOM subtrees.
+- Synchronizes the same registry with explicit removal, once dispatch and AbortSignal removal;
+  failed or pre-aborted registrations never retain callbacks. Internal abort observation is
+  detached on every removal path and uses weak target/entry references. A private dependent
+  signal shields observation from source-event suppression where `AbortSignal.any` is available.
 - Uses one global patch and one global mutation observer, both browser-guarded and idempotent.
+- The exact lifetime and compatibility guarantees live in `docs/specs/global-event-tracking-contract.md`.
 
 ### DOM Identity And Reconciliation
 

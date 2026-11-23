@@ -34,6 +34,11 @@ boundaries; obsolete attempts cannot publish or complete readiness.
 - Native declarative binding names remain node-owned metadata after consumed attributes
   disappear; rebind to a new controller once after cleanup, without retaining old contexts.
   Stop traversal below nested custom-element hosts so parent rebinds cannot steal child handlers.
+- Reconciliation reports retained template-to-live element identity. The component runtime
+  binds new targets before insertion, transfers declarative and structured bindings before
+  retained-node mutations, and remaps refs to committed identity, not discarded template nodes.
+  This preserves synchronous connection events and includes SVG targets. Selector resolution remains
+  template-scoped; this is the same node-ownership contract for native and custom elements.
 - No new public API, dependency, timer budget, or descendant readiness barrier is added.
 - Runtime integration tests cover update, aborted first-render reconnect and completed
   teardown; real-browser consumer checks remain authoritative for visible rendering.

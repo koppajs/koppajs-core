@@ -68,8 +68,14 @@ Each render currently does the following:
 9. Emit either:
    - `beforeMount` on the first render
    - `beforeUpdate` on later renders
-10. Transfer processed slot changes to the original nodes, remap refs, bind native and
-    structured events, and reconcile the fragment into the host DOM without another await.
+10. Transfer processed slot changes to the original nodes and prepare declarative bindings
+    and structured event targets in the processed template. Clean up old structured listeners
+    and bind the new template targets before insertion. Reconcile the fragment, transferring
+    structured and native bindings to preserved HTML/SVG elements before their attribute changes
+    or moves. This retains synchronous connection events. Remap refs through the returned
+    template-to-live identity map. Newly inserted nodes keep their identity; preserved custom
+    hosts do not expose child-owned handlers to parent binding traversal. This commit has no
+    intervening await.
     Restore temporary first-presentation declarations in that same turn. Only a successful
     render emits first mounted hooks and resolves readiness; superseded attempts stay protected.
 11. Emit `updated` on non-initial renders.

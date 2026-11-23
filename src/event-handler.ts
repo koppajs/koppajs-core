@@ -26,7 +26,23 @@ export function setupEvents(
   container: DocumentFragment,
   refs: Refs,
 ): () => void {
-  if (!Array.isArray(events)) return () => {}
+  const prepared = prepareEvents(userContext, events, container, refs)
+  prepared.bind()
+  return prepared.cleanup
+}
+
+/** Resolve template targets and transfer their listeners before DOM mutations. */
+export function prepareEvents(
+  userContext: State,
+  events: Events,
+  container: DocumentFragment,
+  refs: Refs,
+): {
+  bind: () => void
+  reconcile: (existing: Element, updated: Element) => void
+  cleanup: () => void
+} {
+  if (!Array.isArray(events)) events = []
 
   const cleanupEntries: EventCleanupEntry[] = []
 
@@ -66,16 +82,31 @@ export function setupEvents(
       // Handler is already bound if userContext is a compose object (options type)
       // For composite type, userContext === state and handler should be bound to state
       const boundHandler = bindOnce(handler, userContext)
-      el.addEventListener(type, boundHandler)
       cleanupEntries.push({ target: el, type, handler: boundHandler })
     }
   })
 
-  return () => {
-    for (const { target, type, handler } of cleanupEntries) {
-      target.removeEventListener(type, handler)
-    }
-    cleanupEntries.length = 0
+  return {
+    bind() {
+      for (const { target, type, handler } of cleanupEntries) {
+        target.addEventListener(type, handler)
+      }
+    },
+    reconcile(existing, updated) {
+      if (existing === updated) return
+      for (const entry of cleanupEntries) {
+        if (entry.target !== updated) continue
+        updated.removeEventListener(entry.type, entry.handler)
+        entry.target = existing
+        existing.addEventListener(entry.type, entry.handler)
+      }
+    },
+    cleanup() {
+      for (const { target, type, handler } of cleanupEntries) {
+        target.removeEventListener(type, handler)
+      }
+      cleanupEntries.length = 0
+    },
   }
 }
 
@@ -90,7 +121,7 @@ type NativeEventBinding = {
 }
 
 // Caller-owned slot nodes survive teardown, but their consumed attributes do not.
-const nativeEventBindings = new WeakMap<HTMLElement, Map<string, NativeEventBinding>>()
+const nativeEventBindings = new WeakMap<Element, Map<string, NativeEventBinding>>()
 
 function bindNativeEventHandlers(
   context: State | Methods,
@@ -144,6 +175,27 @@ function bindNativeEventHandlers(
   }
 }
 
+/** Transfer only this template node's native bindings, never child-owned handlers. */
+export function reconcileNativeEvents(existing: Element, updated: Element): void {
+  if (existing === updated) return
+  for (const [type, binding] of nativeEventBindings.get(existing) ?? []) {
+    const handler = binding.handler?.deref()
+    if (handler) existing.removeEventListener(type, handler)
+  }
+  nativeEventBindings.delete(existing)
+  const bindings = nativeEventBindings.get(updated)
+  if (!bindings) return
+  nativeEventBindings.set(existing, bindings)
+  for (const [type, binding] of bindings) {
+    const handler = binding.handler?.deref()
+    if (handler) {
+      updated.removeEventListener(type, handler)
+      existing.addEventListener(type, handler)
+    }
+  }
+  nativeEventBindings.delete(updated)
+}
+
 /** Binds consumed declarative handlers to the current options context. */
 export function bindNativeEvents(userContext: State, fragment: DocumentFragment): void {
   bindNativeEventHandlers(userContext, fragment)
@@ -175,54 +227,5 @@ export function setupEventsForComposite(
   container: DocumentFragment,
   refs: Refs,
 ): () => void {
-  if (!Array.isArray(events)) return () => {}
-
-  const cleanupEntries: EventCleanupEntry[] = []
-
-  events.forEach(([type, target, handler]) => {
-    if (typeof type !== 'string' || typeof handler !== 'function') {
-      logger.error('Provided handler is not a function', handler)
-      return
-    }
-
-    let elements: (Element | Window)[] = []
-
-    if (target === 'window') {
-      elements = [window]
-    } else if (typeof target === 'string') {
-      if (target.startsWith('$refs.')) {
-        const [refName, ...rest] = target.slice(6).split(' ')
-        const ref = refs[refName]
-        if (ref) {
-          elements = rest.length
-            ? Array.from(ref.querySelectorAll(rest.join(' ')))
-            : [ref]
-        }
-      } else {
-        elements = Array.from(container.querySelectorAll(target))
-      }
-    } else if (target instanceof Element || target instanceof Window) {
-      elements = [target]
-    } else if (typeof target === 'object' && target && 'ref' in target) {
-      const { ref: refName, selector } = target
-      const ref = refs[refName]
-      if (ref) {
-        elements = selector ? Array.from(ref.querySelectorAll(selector)) : [ref]
-      }
-    }
-
-    for (const el of elements) {
-      // For composite type, bind handler to state (not userContext)
-      const boundHandler = bindOnce(handler, state)
-      el.addEventListener(type, boundHandler)
-      cleanupEntries.push({ target: el, type, handler: boundHandler })
-    }
-  })
-
-  return () => {
-    for (const { target, type, handler } of cleanupEntries) {
-      target.removeEventListener(type, handler)
-    }
-    cleanupEntries.length = 0
-  }
+  return setupEvents(state, events, container, refs)
 }

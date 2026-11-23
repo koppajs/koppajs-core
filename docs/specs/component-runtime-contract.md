@@ -89,7 +89,9 @@ Each render must:
 - keep original slot nodes connected and measurable, but suppress host painting until the first successful local DOM commit; do not wait for descendants or route readiness
 - restore author presentation declarations at commit, disconnect, or terminal initialization/render failure; a failed render does not emit mounted or resolve readiness
 - process directives and interpolation
-- bind events
+- bind structured events to committed DOM targets, resolving selectors and refs against the nodes retained by reconciliation
+- transfer declarative native bindings to retained template nodes, replacing obsolete handlers without accumulating listeners
+- bind newly inserted targets before connection and transfer bindings to retained HTML/SVG targets before attribute changes or moves so synchronous custom-element events remain observable
 - flush changed paths for lifecycle metadata
 - emit `beforeMount` on first render or `beforeUpdate` on later renders
 - transfer processed slot content to the original nodes immediately before DOM reconciliation, preserving node identity and existing listeners
@@ -149,5 +151,8 @@ When a component disconnects, the runtime must:
 - `mounted` does not become a generic reconnect hook.
 - DOM reconciliation preserves custom element instances where intended.
 - Array identity behavior remains stable across loop-related mutations.
+- Native DOM events (declarative and structured selector/ref/window targets) fire exactly once after repeated updates in both component modes.
+- Ref targets identify committed nodes, including preserved native elements and custom-element hosts.
+- Removed event targets and completed teardown have no active component-owned listeners; remount binds only the fresh controller.
 - Disconnect reliably removes observers and listeners.
 - Existing runtime tests continue to cover component, model, reconciliation, and event-cleanup behavior.
