@@ -117,7 +117,7 @@ function isSameNodeType(nodeA: Node, nodeB: Node): boolean {
  * @param existing - The existing element to update
  * @param updated - The new element with desired attributes
  */
-function reconcileAttributes(existing: HTMLElement, updated: HTMLElement): void {
+function reconcileAttributes(existing: Element, updated: Element): void {
   // Get all attribute names from both elements
   const existingAttrs = new Set(existing.getAttributeNames())
   const updatedAttrs = new Set(updated.getAttributeNames())
@@ -153,9 +153,11 @@ function reconcileAttributes(existing: HTMLElement, updated: HTMLElement): void 
  * @param structAttr - Optional attribute name for structural identity fallback
  */
 function reconcileChildren(
-  existing: HTMLElement,
-  updated: HTMLElement,
-  structAttr?: string,
+  existing: Element,
+  updated: Element,
+  structAttr: string | undefined,
+  reconciledElements: Map<Element, Element>,
+  onReconcile?: (existing: Element, updated: Element) => void,
 ): void {
   const existingChildren = Array.from(existing.childNodes)
   const updatedChildren = Array.from(updated.childNodes)
@@ -187,6 +189,8 @@ function reconcileChildren(
 
     // If we found a matching custom element by identity
     if (matchedNode && isCustomElement(matchedNode)) {
+      reconciledElements.set(updatedChild as Element, matchedNode)
+      onReconcile?.(matchedNode, updatedChild as Element)
       // Move or keep the matched element at the correct position
       if (existingChild !== matchedNode) {
         // Need to move the element to the correct position
@@ -249,8 +253,11 @@ function reconcileChildren(
     }
 
     if (existingChild.nodeType === Node.ELEMENT_NODE) {
-      const existingEl = existingChild as HTMLElement
-      const updatedEl = updatedChild as HTMLElement
+      const existingEl = existingChild as Element
+      const updatedEl = updatedChild as Element
+
+      reconciledElements.set(updatedEl, existingEl)
+      onReconcile?.(existingEl, updatedEl)
 
       // Custom elements need special handling
       if (isCustomElement(existingEl)) {
@@ -262,7 +269,13 @@ function reconcileChildren(
 
       // Regular HTML elements - update attributes and recurse into children
       reconcileAttributes(existingEl, updatedEl)
-      reconcileChildren(existingEl, updatedEl, structAttr)
+      reconcileChildren(
+        existingEl,
+        updatedEl,
+        structAttr,
+        reconciledElements,
+        onReconcile,
+      )
     }
   }
 
@@ -285,6 +298,7 @@ function reconcileChildren(
  * 3. Preserve custom element instances where possible
  * 4. Only update what has changed
  *
+ * @returns Mapping of processed template elements to preserved live elements
  * @param host - The host element to update
  * @param newContent - The new DocumentFragment with desired content
  * @param isFirstRender - Whether this is the initial render
@@ -295,7 +309,9 @@ export function reconcileDOM(
   newContent: DocumentFragment,
   isFirstRender: boolean,
   structAttr?: string,
-): void {
+  onReconcile?: (existing: Element, updated: Element) => void,
+): Map<Element, Element> {
+  const reconciledElements = new Map<Element, Element>()
   // First render - just append everything (no existing content to preserve)
   if (isFirstRender || host.childNodes.length === 0) {
     // Clean up structAttr attributes before inserting into DOM
@@ -304,7 +320,7 @@ export function reconcileDOM(
       cleanupStructAttributes(newContent, structAttr)
     }
     host.replaceChildren(newContent)
-    return
+    return reconciledElements
   }
 
   // Create a temporary container to work with the new content
@@ -312,5 +328,6 @@ export function reconcileDOM(
   tempContainer.appendChild(newContent)
 
   // Reconcile the children
-  reconcileChildren(host as HTMLElement, tempContainer, structAttr)
+  reconcileChildren(host, tempContainer, structAttr, reconciledElements, onReconcile)
+  return reconciledElements
 }

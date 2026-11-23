@@ -12,7 +12,11 @@ not every internal refactor.
 
 ## [Unreleased]
 
-This section is intentionally empty.
+### Fixed
+
+- Keep declarative and structured event listeners on live reconciled DOM targets,
+  refresh refs, and remove obsolete bindings across updates and remounts. Preserve
+  SVG targets, child-owned handlers, and synchronous custom-element connection events.
 
 ---
 
