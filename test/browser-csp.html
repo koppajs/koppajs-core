@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KoppaJS CSP acceptance</title>
+  </head>
+  <body>
+    <h1>Precompiled controller: CSP acceptance</h1>
+    <p>
+      Policy: <code>script-src 'self'</code>. No unsafe-eval, unsafe-inline scripts, blob
+      or data scripts.
+    </p>
+    <p id="status" role="status">RUNNING</p>
+    <pre id="details"></pre>
+    <div id="fixture"></div>
+    <button id="rerun" type="button">Run again</button>
+    <script type="module" src="/fixture.mjs"></script>
+  </body>
+</html>

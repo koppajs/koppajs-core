@@ -21,11 +21,44 @@ pnpm test:coverage
 ```
 
 `pnpm test:package` uses the current Node executable for consumers and requires
-local npm and pnpm tooling. It does not use Vitest transforms or browser shims.
+local npm and pnpm tooling. It uses native Node imports without Vitest transforms,
+JSDOM for separate ESM/CJS mount cases, and a strict TypeScript consumer for the
+packed factory declarations. DOM-free import-safety cases remain separate.
 `prepack` also rebuilds ordinary pack/publish output; the consumer test disables
 pack lifecycle scripts only because it has already built the package.
 
-Use `pnpm validate` for the full validation flow before release work.
+Use `pnpm validate` for the configured validation flow before release work.
+
+### Real-Browser CSP Gate
+
+For precompiled controller changes and their release candidate, additionally run:
+
+```bash
+pnpm build
+node --test test/browser-csp.test.mjs
+```
+
+The Node test uses Chrome/Chromium via WebSocket/CDP with no additional dependencies.
+Set `CHROME_BIN` to its executable, or install Chrome/Chromium in a standard browser path.
+A fresh build is required because the fixture loads built package output, not source imports.
+The test owns a loopback server and temporary browser profile and cleans them up afterward.
+A missing browser blocks the check; it must not be reported as passing CSP evidence.
+
+The page enforces `script-src 'self'` without `unsafe-eval`. The positive case uses a
+precompiled controller, static template, and structured function handlers; the legacy
+string-script path is the negative control. `style-src 'self' 'unsafe-inline'` is a separate
+allowance for runtime CSS, not proof of strict style CSP support. Dynamic template
+expressions remain outside this controller-level guarantee.
+
+Manual inspection after building:
+
+1. Run `node test/browser-csp-server.mjs`.
+2. Open `http://127.0.0.1:4178/` and verify the precompiled example and event interaction.
+3. Open `http://127.0.0.1:4178/?legacy=1` and confirm CSP blocks string-script execution.
+4. Stop the server.
+
+This is a separate local gate. Neither `pnpm check`, `pnpm test:package`, nor
+`pnpm validate` implies it ran, and the CI/release lists below do not claim browser coverage.
 
 ## Dependency Toolchain
 
@@ -52,7 +85,9 @@ consumer engine requirement is added.
 
 ## Intentional Scope
 
-- No Playwright: this repository does not ship a repository-local user interface; runtime behavior is covered with Vitest and JSDOM instead.
+- No Playwright dependency: general runtime behavior uses Vitest/JSDOM. The narrow CSP
+  boundary additionally uses a real Chrome/Chromium browser via Node WebSocket/CDP;
+  it is not an application UI or full toolchain E2E suite.
 - No Stylelint: styling is not maintained as a standalone CSS/SCSS codebase in this package.
 
 ## CI

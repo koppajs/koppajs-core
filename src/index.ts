@@ -9,6 +9,7 @@ export type {
   ComponentSource,
   ComponentInstance,
   ComponentController,
+  CompiledScript,
   ComponentContext,
   CoreCallable,
   CoreCtx,

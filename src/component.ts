@@ -32,6 +32,7 @@ import {
   type AnyFn,
   type ComponentInstance,
   type ComponentSource,
+  type ComponentContext,
   type State,
   type Events,
   type HTMLElementWithInstance,
@@ -532,7 +533,14 @@ export function registerComponent(componentName: string, source: ComponentSource
 
         if (connectionVersion !== this._connectionVersion || this._isDisconnected) return
 
-        const compiledScript = compileCode(source.script, resolvedDeps)
+        const precompiled = source.compiledScript
+        if (precompiled !== undefined && typeof precompiled !== 'function') {
+          throw new TypeError('compiledScript must be a function')
+        }
+        const instantiateController =
+          precompiled !== undefined
+            ? (context: ComponentContext) => precompiled(context, resolvedDeps)
+            : compileCode(source.script, resolvedDeps)
 
         const refs: Refs = {}
         let isRendering = false
@@ -646,7 +654,18 @@ export function registerComponent(componentName: string, source: ComponentSource
         }
 
         // Execute the script
-        const controller = compiledScript(componentContext)
+        const controller = instantiateController(componentContext)
+        if (
+          precompiled !== undefined &&
+          (controller === null ||
+            typeof controller !== 'object' ||
+            Array.isArray(controller) ||
+            typeof (controller as { then?: unknown }).then === 'function')
+        ) {
+          throw new TypeError(
+            'compiledScript must return a synchronous ComponentController object',
+          )
+        }
 
         // Model setup
         const model = createModel(controller.state ?? {})

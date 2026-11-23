@@ -188,6 +188,55 @@ The runtime does not own `.kpa` parsing. That stays in
 `@koppajs/koppajs-vite-plugin`, which emits the component source objects that
 core consumes at runtime.
 
+### ComponentSource and precompiled controllers
+
+`ComponentSource` requires `template`, `script`, and `style` strings. It also accepts
+`compiledScript?: CompiledScript`. The public `CompiledScript` type is
+`(context: ComponentContext, resolvedDeps?: Record<string, unknown>) => ComponentController`.
+It must return the controller synchronously, not a Promise or thenable.
+
+A supplied factory takes precedence over `script` without calling `compileCode`. Invalid
+factories, invalid results, and factory errors fail initialization without string-script
+fallback. Omit the factory to retain string-script execution. Dependencies resolve first;
+the factory receives their values by key, or `undefined` when `deps` is absent or `null`.
+It receives the same live context, including refs and module properties. Both entries use
+the existing component modes, lifecycle, rendering, and teardown.
+
+For example, a static template with a structured function handler needs no runtime
+controller compilation:
+
+```ts
+import { Core, type CompiledScript, type ComponentSource } from '@koppajs/koppajs-core'
+
+const compiledScript: CompiledScript = (context, resolvedDeps = {}) => ({
+  state: { value: resolvedDeps.initialValue },
+  events: [
+    ['click', 'button', () => context.$emit('selected', resolvedDeps.initialValue)],
+  ],
+})
+
+const confirmButton: ComponentSource = {
+  template: '<button type="button">Confirm</button>',
+  script: '',
+  style: '',
+  deps: { initialValue: async () => 42 },
+  compiledScript,
+}
+
+Core.take(confirmButton, 'confirm-button')
+Core()
+```
+
+Keep `script: ''` when emitting a precompiled factory to avoid shipping the same controller
+as both function and string. The string field remains required. Static templates and
+structured function handlers support a CSP without `unsafe-eval`; dynamic template
+expressions are not covered. Application code and script/style policies remain the
+consumer's responsibility. The core entry does not imply that an existing Vite plugin
+version emits precompiled factories automatically.
+
+The normative contract lives in
+[Component Runtime Contract](./docs/specs/component-runtime-contract.md).
+
 ---
 
 ## Roadmap

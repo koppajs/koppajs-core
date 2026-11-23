@@ -2,7 +2,7 @@
 
 - Status: Approved
 - Owner: KoppaJS core maintainers
-- Last updated: 2026-03-12
+- Last updated: 2026-11-23
 
 ## Summary
 
@@ -52,15 +52,54 @@ Registration alone must not insert CSS. Track connected hosts, including those s
 dependencies; remove CSS synchronously when the last host disconnects. An obsolete connection
 must not resume initialization, commit DOM, or emit `mounted` after disconnect.
 
-1. resolve `ComponentSource.deps` if present
-2. execute the controller code
-3. create reactive state from `controller.state`
-4. process props into state
-5. attach modules and make plugins available through `$take`
-6. register lifecycle hooks
+1. resolve `ComponentSource.deps` if present and reject an obsolete connection
+2. attach modules and build the full live context, including `$take` for plugin access
+3. instantiate the controller through the selected entry
+4. create reactive state, process props, and apply component-mode bindings
+5. register lifecycle hooks, the runtime instance, and the model observer
+6. emit `created` and await its completion before rendering
 7. render the template into the host
-8. emit `created`
-9. emit `mounted` only after the first successful render
+8. emit `mounted` and resolve readiness only after the first successful render
+
+### Controller Factory Contract
+
+`ComponentSource` retains required string fields `template`, `script`, and `style`.
+It additionally accepts `compiledScript?: CompiledScript`. The package root publicly exports
+`CompiledScript` as a type with this synchronous signature:
+
+```ts
+type CompiledScript = (
+  context: ComponentContext,
+  resolvedDeps?: Record<string, unknown>,
+) => ComponentController
+```
+
+- Resolve `deps` before invoking either controller entry. Pass the resolved values by their
+  declared keys as the second argument; pass `undefined` when no dependency map is supplied
+  (`deps` absent or `null`). An explicitly empty dependency map resolves to an empty record.
+- When `compiledScript !== undefined`, it takes precedence over `script`. Do not call
+  `compileCode` or compile the script string on that path.
+- The factory receives the same `ComponentContext` used by the string-script path:
+  `$refs`, `$parent`, `$emit`, `$take`, and attached module properties. Preserve live
+  references, especially the `$refs` object populated during rendering; do not pass snapshots.
+- The factory must return a non-null, non-array `ComponentController` object synchronously.
+  Promises and thenables are invalid. A supplied non-function is invalid as well.
+- A factory throw, invalid factory, or invalid result fails initialization through the existing
+  error handling. Never fall back to the string script or retry through `compileCode`.
+- If `compiledScript` is absent or `undefined`, retain the existing string-script execution path.
+- `script` remains a required string, including for precompiled sources, and may be empty.
+  Producers should emit `script: ''` with a precompiled factory to avoid shipping duplicate
+  controller code in the bundle.
+- Both entries converge on the existing model, component modes, lifecycle, rendering, event
+  binding, and teardown. The factory is an additive entry, not a second execution engine.
+
+### CSP Boundary
+
+A precompiled controller with a static template and function-valued structured events can run
+under a Content Security Policy that disallows `unsafe-eval`. This guarantee concerns controller
+instantiation without runtime code generation, not all possible templates or user code.
+Dynamic template expressions still use the existing expression evaluator and are not covered.
+Precompilation does not relax the application's script or style policy.
 
 ### Component Modes
 
@@ -155,4 +194,11 @@ When a component disconnects, the runtime must:
 - Ref targets identify committed nodes, including preserved native elements and custom-element hosts.
 - Removed event targets and completed teardown have no active component-owned listeners; remount binds only the fresh controller.
 - Disconnect reliably removes observers and listeners.
+- Precompiled factories take precedence without calling `compileCode`, receive resolved
+  dependencies and live context references, and retain existing lifecycle and teardown behavior.
+- Invalid factories, throws, and invalid or asynchronous results fail without string-script fallback.
+- String-only components retain their existing behavior.
+- `node --test test/browser-csp.test.mjs` provides a real-browser CSP check of the built
+  package with a static template and structured function handlers, without `unsafe-eval`.
+  JSDOM or mocked `Function` tests alone are not sufficient CSP evidence.
 - Existing runtime tests continue to cover component, model, reconciliation, and event-cleanup behavior.

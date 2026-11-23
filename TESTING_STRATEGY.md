@@ -61,17 +61,42 @@ Most of the value in this repository comes from integration tests because the ru
 with Node's test runner. It packs the actual publish payload, installs the local
 tarball offline in a temporary consumer and launches native `.mjs` and `.cjs`
 processes by package name. A separate check loads the packed legacy `main` target.
-Each must expose callable `Core` and `Core.take` without DOM globals. No source
-imports, Vitest transforms or module mocks are allowed at this boundary.
+The import-safety cases expose callable `Core` and `Core.take` without DOM globals.
+Separate ESM/CJS consumers use JSDOM to mount both precompiled and string-script
+components from the installed tarball, including events, teardown and reinitialization.
+A strict TypeScript consumer checks the packed factory declarations with Bundler resolution.
+No runtime source imports, Vitest transforms or module mocks are allowed at this boundary.
 
 CI runs these checks on Node 22 and 24. After a build, additional local runtimes
 can run `node --test test/package-consumer.test.mjs` directly. Temporary consumer
 files and tarballs are removed after the tests. This gate validates runtime
-entrypoints, not TypeScript declaration compatibility or cross-format singleton identity.
+entrypoints and the typed factory contract; it does not promise NodeNext declaration
+compatibility or cross-format singleton identity.
+
+### Real-Browser CSP Contract Test
+
+After a fresh `pnpm build`, run `node --test test/browser-csp.test.mjs`. This targeted
+Node test uses a real Chrome/Chromium browser through WebSocket/CDP, a loopback HTTP server,
+and a temporary browser profile, with server/profile cleanup. Set `CHROME_BIN` to the browser
+executable or use a standard Chrome/Chromium installation path. No additional dependencies
+are needed. A missing browser is an environment blocker, not passing CSP evidence.
+
+The fixture loads built package output under `script-src 'self'`, without `unsafe-eval`.
+It exercises a precompiled controller with a static template and structured function events.
+The legacy string-script path is the negative control. The separate `style-src 'self' 'unsafe-inline'`
+allowance permits runtime styles; this proves the controller execution boundary, not
+strict style CSP support or dynamic template expression compatibility.
+
+For manual inspection after building, run `node test/browser-csp-server.mjs` and open
+`http://127.0.0.1:4178/`. Confirm the precompiled example and its event interaction work.
+Open `http://127.0.0.1:4178/?legacy=1` for the CSP-blocked string-script negative control.
+Stop the server when finished. JSDOM integration coverage and mocked `Function` failures
+complement this check but do not prove browser CSP enforcement.
 
 ### End-To-End Tests
 
-This repository does not currently host browser-level end-to-end tests. E2E coverage belongs in:
+The CSP contract test is a narrow browser boundary, not a full toolchain E2E suite.
+Broader application E2E coverage belongs in:
 
 - the example application repository
 - plugin repositories
@@ -98,6 +123,9 @@ Coverage numbers are advisory. Behavioral coverage of important contracts is the
 ## Required Test Moves By Change Type
 
 - Public API change -> add or update unit and integration coverage around the exported contract.
+- Precompiled controller change -> cover priority, synchronous return validation, failure without
+  fallback, resolved dependencies, live refs/modules, lifecycle, and teardown in integration
+  tests; run the real-browser CSP contract test against a fresh build.
 - Lifecycle or render change -> add integration tests covering first mount, update, and teardown where relevant.
 - Reactive model change -> add direct model tests and at least one integration test if component rendering depends on the change.
 - Directive or template behavior change -> add template-processor tests and component-level confirmation if user-visible.
@@ -121,3 +149,6 @@ The repository quality gates currently include:
 - `pnpm test:package` (includes build and packed-package consumer checks)
 
 These gates are enforced in GitHub Actions and should pass locally before release work.
+The separate local CSP gate is `pnpm build` followed by
+`node --test test/browser-csp.test.mjs`; it is not included in the commands above.
+Record its actual browser result separately rather than inferring it from JSDOM or package tests.
