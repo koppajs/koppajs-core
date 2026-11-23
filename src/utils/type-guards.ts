@@ -25,7 +25,7 @@ import type {
  * - `style`    - CSS style string
  *
  * **OPTIONAL** (not validated, absence is acceptable):
- * - `scriptMap`, `type`, `deps`, `structAttr`
+ * - `compiledScript` (validated during initialization), `scriptMap`, `type`, `deps`, `structAttr`
  *
  * **IGNORED** (extra fields are allowed and not validated):
  * - Any additional properties are permitted for forward compatibility

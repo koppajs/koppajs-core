@@ -23,9 +23,10 @@ The package is intentionally runtime-focused:
    - shared per-tag CSS is inserted synchronously before asynchronous work
    - original host content receives local first-presentation paint protection without detaching slots
    - optional dependency imports are resolved from `ComponentSource.deps`
-   - controller code is compiled and executed
-   - a reactive model is created from controller state
-   - props, lifecycle hooks, plugins, and modules are wired
+   - obsolete connections are rejected; modules attach and the full live context is built
+   - `compiledScript` is invoked when supplied; otherwise controller code is compiled and executed
+   - a reactive model is created from controller state; props and component-mode bindings are applied
+   - lifecycle hooks, the instance record, and observers are registered; created hooks complete before rendering
    - the template is processed into a `DocumentFragment`
    - events are bound
    - caller slot nodes are captured at the first render attempt and retained across updates and reinitialization, never recaptured from generated wrappers
@@ -110,6 +111,11 @@ Detailed sequence notes live in `docs/architecture/runtime-flow.md`.
 - `src/utils/script.ts`
 - The explicit runtime boundary for executing controller code emitted by the plugin.
 - Injects `$refs`, `$parent`, `$emit`, `$take`, module variables, and resolved dependency bindings.
+- `src/component.ts` can instead invoke `ComponentSource.compiledScript` with that same live
+  context and resolved dependencies, without calling `compileCode`. Both entries feed the
+  existing lifecycle and rendering pipeline; no second runtime engine is introduced.
+- Static templates and structured function handlers support a CSP without `unsafe-eval` on
+  the precompiled path. Dynamic template expressions remain outside this guarantee.
 
 ### Types And Ambient Contracts
 
@@ -131,8 +137,16 @@ plugin. At minimum the runtime expects:
 - `script`
 - `style`
 
-Optional fields such as `type`, `deps`, `scriptMap`, and `structAttr` are interpreted by the core.
-Any breaking change to this contract requires coordinated documentation and an ADR.
+All three required fields remain strings. Optional `compiledScript?: CompiledScript` is a
+synchronous `(context: ComponentContext, resolvedDeps?: Record<string, unknown>) => ComponentController`
+factory. `CompiledScript` is a public type export. A supplied factory takes precedence over
+`script`, and failures or invalid results never fall back to runtime compilation. With no
+dependency map, its second argument is `undefined`. Producers should use `script: ''`
+to avoid duplicate controller code in bundles. Context refs and module properties stay live.
+
+Other optional fields such as `type`, `deps`, `scriptMap`, and `structAttr` are interpreted by
+the core. Any breaking change to this contract requires coordinated documentation and an ADR.
+See ADR 0008 and `docs/specs/component-runtime-contract.md` for the additive factory contract.
 
 ### Extensions
 

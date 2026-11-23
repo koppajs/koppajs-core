@@ -16,6 +16,22 @@ This section is intentionally empty.
 
 ---
 
+## [3.0.14] — Precompiled Controller Entry
+
+**2026-11-23**
+
+### Added
+
+- Official optional `ComponentSource.compiledScript` support and public `CompiledScript`
+  type export for synchronous controller factories. Factories receive the live context and
+  resolved dependencies and take precedence without runtime compilation or error fallback.
+  The required `script` string can be empty to avoid duplicate controller code in bundles.
+- Real-browser CSP verification for the precompiled path with static templates and
+  structured function handlers. Dynamic template expressions remain outside the
+  no-`unsafe-eval` guarantee; lifecycle and string-script behavior remain unchanged.
+
+---
+
 ## [3.0.13] — Reconciled Events And Listener Lifetimes
 
 **2026-11-23**

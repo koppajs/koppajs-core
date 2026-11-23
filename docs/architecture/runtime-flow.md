@@ -33,21 +33,34 @@ insert styles. Each connection has a version so obsolete
 initialization cannot continue after a disconnect/reconnect.
 
 1. Resolve optional async dependencies from `ComponentSource.deps`.
-2. Compile and execute the controller code with:
+2. Reject an obsolete connection, attach modules, and build the full live context,
+   including `$take` for plugin access.
+3. Select the controller entry: invoke `compiledScript(context, resolvedDeps)` when it is
+   supplied; otherwise compile and execute `script` through `compileCode`. Pass `undefined`
+   for dependencies when no map is supplied (an explicitly empty map yields `{}`). Both
+   entries receive the same live context with:
    - `$refs`
    - `$parent`
    - `$emit`
    - `$take`
    - any attached module variables
-   - resolved dependency bindings
-3. Create a reactive model from `controller.state`.
-4. Process props from the host element into component state.
+
+   Resolved dependency bindings are supplied separately to the factory as its second argument;
+   the string-script path retains its injected local dependency bindings.
+
+4. Create a reactive model from `controller.state` and process props into state.
 5. Bind methods and lifecycle hooks as required by component mode.
-6. Attach modules and make plugin setup available through `$take`.
-7. Create the runtime instance record and observer function.
-8. Emit `created`.
-9. Execute the initial render.
-10. Emit `mounted` after the first successful render only.
+6. Register lifecycle hooks, create the runtime instance record, and attach the observer.
+7. Emit `created` and await its completion before rendering.
+8. Execute the initial render.
+9. Emit `mounted` and resolve readiness after the first successful render only.
+
+The precompiled factory returns a controller synchronously. Invalid factories, non-object or
+thenable results, and factory throws fail initialization through the existing error handling;
+there is no string-script fallback or `compileCode` call on that path. Keep `script` as a
+string and emit `script: ''` to avoid duplicate bundle code. `$refs` and attached module
+references are shared with the existing pipeline rather than copied snapshots. Component
+modes, lifecycle timing, rendering, and teardown remain unchanged (ADR 0008).
 
 ## 4. Render Pipeline
 
@@ -61,7 +74,9 @@ Each render currently does the following:
    completed teardown/reinitialization reuse those nodes, not generated wrappers. Children
    arriving after connection but before that capture are included; arbitrary later light-DOM
    replacement is not a dynamic slot API.
-5. Process template directives and expressions.
+5. Process template directives and expressions. A precompiled controller does not precompile
+   template expressions. The no-`unsafe-eval` CSP guarantee covers static templates and
+   structured function handlers, not dynamic template expressions.
 6. Emit `processed`.
 7. Keep slot originals in place while asynchronous lifecycle hooks run.
 8. Flush model changes and attach `changedPaths` metadata for lifecycle hooks.

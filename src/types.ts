@@ -169,6 +169,7 @@ export interface IModule extends IBaseExtension {
  * - `style`    - CSS style string (can be empty string)
  *
  * ### OPTIONAL Fields (may exist, core handles absence gracefully)
+ * - `compiledScript` - Synchronous precompiled controller factory
  * - `scriptMap` - Sourcemap for debugging (null or object)
  * - `type`      - Component composition mode ("options" | "composite")
  * - `deps`      - Async import map for [ts] block dependencies
@@ -247,6 +248,13 @@ export interface ComponentSource {
    * @optional
    */
   scriptMap?: unknown | null
+
+  /**
+   * Synchronous controller factory. Takes precedence over script without dynamic
+   * compilation. Receives the live context and resolved dependencies (undefined
+   * when deps is absent). The required script field may be empty.
+   */
+  compiledScript?: CompiledScript
 
   /**
    * Component composition type.
@@ -426,11 +434,15 @@ export interface ComponentContext {
 }
 
 /**
- * Compiled component script function.
- * @param context - Component context with $refs, $parent, etc.
- * @returns Component controller with state, methods, etc.
+ * Synchronous component controller factory, produced at build time or by compileCode.
+ * @param context - Live component context with $refs, $parent and attached modules.
+ * @param resolvedDeps - Resolved imports under their source keys; undefined without deps.
+ * @returns Component controller with state, methods and hooks, never a Promise.
  */
-export type CompiledScript = (context: ComponentContext) => ComponentController
+export type CompiledScript = (
+  context: ComponentContext,
+  resolvedDeps?: Record<string, unknown>,
+) => ComponentController
 
 /**
  * Component controller returned from compiled script.
