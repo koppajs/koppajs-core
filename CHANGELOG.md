@@ -17,6 +17,9 @@ not every internal refactor.
 - Keep declarative and structured event listeners on live reconciled DOM targets,
   refresh refs, and remove obsolete bindings across updates and remounts. Preserve
   SVG targets, child-owned handlers, and synchronous custom-element connection events.
+- Release central listener-registry entries on AbortSignal cancellation and native once
+  dispatch; do not retain pre-aborted or failed registrations. Match native duplicate
+  and capture identity, and detach internal abort observers on every removal path.
 
 ---
 
