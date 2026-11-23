@@ -12,6 +12,18 @@ not every internal refactor.
 
 ## [Unreleased]
 
+This section is intentionally empty.
+
+---
+
+## [3.0.13] — Reconciled Events And Listener Lifetimes
+
+**2026-11-23**
+
+Patch release to keep event bindings on live reconciled DOM nodes and release
+central listener-tracking references when native listeners expire or abort.
+No public API or published runtime engine requirement changes.
+
 ### Fixed
 
 - Keep declarative and structured event listeners on live reconciled DOM targets,
